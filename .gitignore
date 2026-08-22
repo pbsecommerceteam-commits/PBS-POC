@@ -9,3 +9,10 @@ Thumbs.db
 node_modules/
 dist/
 *.log
+
+# Original Claude Design canvas prototype (superseded by app/) — kept
+# locally for reference, not tracked in the repo.
+*.dc.html
+.thumbnail
+_ds/
+support.js
