@@ -16,3 +16,4 @@ dist/
 .thumbnail
 _ds/
 support.js
+/data/
