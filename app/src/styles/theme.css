@@ -1,0 +1,157 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Shelfline brand system.
+
+   This file is the single source of truth for Shelfline's visual identity.
+   Components must never hardcode a color — everything resolves through the
+   tokens below, so this is the only file a future palette change touches.
+
+   Two layers:
+   1. Primitive overrides — the Industry design-system's own --color-*
+      variables (design-system.css), repointed from its steel-blue mono
+      scheme to the Shelfline palette. This is what recolors the vendor
+      .btn/.input/.card/.tag/.seg classes we still rely on, with zero
+      changes to that file.
+   2. Semantic tokens — surface/border/text/status/radius/shadow, plus
+      Shelfline-specific concepts (brand, sidebar, chart palette,
+      intelligence accent) that components actually reference by name.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  /* ---- 1. Industry primitives, repointed to the Shelfline palette ---- */
+  --color-bg: #F5F7FA;              /* page canvas */
+  --color-surface: #F8FAFC;         /* muted surface (form fields, nested blocks) */
+  --color-text: #172033;            /* primary body text */
+  --color-divider: #E2E8F0;         /* standard hairline */
+
+  /* Neutral ramp — a cool slate scale, light → dark. */
+  --color-neutral-100: #F8FAFC;
+  --color-neutral-200: #EEF2F6;
+  --color-neutral-300: #E2E8F0;
+  --color-neutral-400: #CBD5E1;
+  --color-neutral-500: #98A2B3;
+  --color-neutral-600: #667085;
+  --color-neutral-700: #475569;
+  --color-neutral-800: #172033;
+  --color-neutral-900: #101828;
+
+  /* Accent ramp — Shelfline teal, light → dark. Base sits at 700 so the
+     vendor .btn-primary background (var(--color-accent)) lands exactly on
+     the brand primary. */
+  --color-accent: #0F766E;
+  --color-accent-100: #E6F5F3;
+  --color-accent-200: #C5E8E3;
+  --color-accent-300: #9AD6CD;
+  --color-accent-400: #62BAAC;
+  --color-accent-500: #34A091;
+  --color-accent-600: #1C8C80;
+  --color-accent-700: #0F766E;
+  --color-accent-800: #0B5F59;
+  --color-accent-900: #073F3B;
+
+  /* Accent-2 ramp — the intelligence violet, kept available for anything
+     still reaching for the vendor's secondary-accent classes. */
+  --color-accent-2: #6D5AE6;
+  --color-accent-2-100: #F1EEFC;
+  --color-accent-2-200: #E1DBFA;
+  --color-accent-2-300: #C7BBF5;
+  --color-accent-2-400: #A794ED;
+  --color-accent-2-500: #8B75E8;
+  --color-accent-2-600: #6D5AE6;
+  --color-accent-2-700: #5A47C9;
+  --color-accent-2-800: #4735A3;
+  --color-accent-2-900: #362876;
+
+  /* ---- 2. Brand ---- */
+  --brand-primary: #0F766E;
+  --brand-primary-hover: #0B5F59;
+  --brand-secondary: #6D5AE6;       /* "intelligence" accent — AI insights, predictions, recommendations only */
+
+  /* ---- Sidebar / app shell (its own dark context, not derived from the
+     light-mode surface tokens below) ---- */
+  --sidebar-bg: #101828;
+  --sidebar-hover: #18233A;
+  --sidebar-active: #21304D;
+  --sidebar-text: #F8FAFC;
+  --sidebar-muted: #98A2B3;
+  --sidebar-active-indicator: var(--brand-primary);
+
+  /* ---- Chart palette — dedicated hues, not the rainbow default. Series 1
+     is always the primary teal; later series stay muted rather than
+     competing with it. ---- */
+  --chart-1: var(--brand-primary);   /* #0F766E */
+  --chart-2: var(--brand-secondary); /* #6D5AE6 */
+  --chart-3: #3B82F6;
+  --chart-4: #D9822B;
+  --chart-5: #64748B;
+  --chart-6: #0E9F6E;
+
+  /* ---- surface ---- */
+  --surface-page: #F5F7FA;
+  --surface-card: #FFFFFF;
+  --surface-secondary: #F8FAFC;
+  --surface-elevated: #FFFFFF;
+  --surface-hover: color-mix(in srgb, var(--brand-primary) 5%, transparent);
+  --surface-selected: color-mix(in srgb, var(--brand-primary) 8%, white);
+  --surface-selected-strong: color-mix(in srgb, var(--brand-primary) 12%, white);
+  --surface-sidebar: var(--sidebar-bg);
+  --surface-intelligence: color-mix(in srgb, var(--brand-secondary) 6%, white);
+
+  /* ---- border ---- */
+  --border-subtle: #EEF2F6;
+  --border-standard: #E2E8F0;
+  --border-strong: #CBD5E1;
+  --border-accent: var(--brand-primary);
+  --border-selected: color-mix(in srgb, var(--brand-primary) 55%, white);
+  --border-intelligence: color-mix(in srgb, var(--brand-secondary) 35%, white);
+
+  /* ---- text ---- */
+  --text-primary: #172033;
+  --text-secondary: #667085;
+  --text-muted: #98A2B3;
+  --text-faint: color-mix(in srgb, #98A2B3 62%, white);
+  --text-label: #667085;
+  --text-heading: #101828;
+  --text-display: #101828;
+  --text-on-accent: #FFFFFF;
+  --text-link: var(--brand-primary);
+  --text-intelligence: var(--brand-secondary);
+
+  /* ---- fills (progress tracks, chip backgrounds) ---- */
+  --fill-track: #EEF2F6;
+  --fill-track-strong: #CBD5E1;
+
+  /* ---- status: exact Shelfline semantic hues ---- */
+  --status-positive-fg: #0E9F6E;
+  --status-positive-bg: color-mix(in srgb, #0E9F6E 12%, white);
+  --status-warning-fg: #D9822B;
+  --status-warning-bg: color-mix(in srgb, #D9822B 13%, white);
+  --status-critical-fg: #D64545;
+  --status-critical-bg: color-mix(in srgb, #D64545 11%, white);
+  /* Ordinary negative deltas (a rank slipping, a price ticking up) — present
+     but calmer than a "critical" badge, so the page doesn't read as alarmed
+     over routine movement (e.g. Out of Stock stays the strong critical red). */
+  --status-negative-fg: color-mix(in srgb, #D64545 55%, var(--text-secondary));
+  --status-neutral-fg: #667085;
+  --status-neutral-bg: color-mix(in srgb, #667085 10%, white);
+  --status-info-fg: #3B82F6;
+  --status-info-bg: color-mix(in srgb, #3B82F6 10%, white);
+
+  /* ---- radius: compact, professional — 8px is the workhorse size ---- */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* ---- elevation: mostly spacing/border carries hierarchy; shadows are
+     reserved for things that float above content (menus, dialogs, tooltips) ---- */
+  --shadow-1: 0 1px 2px color-mix(in srgb, var(--color-neutral-900) 6%, transparent);
+  --shadow-2: 0 6px 20px color-mix(in srgb, var(--color-neutral-900) 12%, transparent);
+  --shadow-3: 0 20px 48px color-mix(in srgb, var(--color-neutral-900) 20%, transparent);
+
+  --overlay-backdrop: color-mix(in srgb, var(--color-neutral-900) 50%, transparent);
+
+  /* ---- motion ---- */
+  --ease: cubic-bezier(.2, .7, .3, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+}

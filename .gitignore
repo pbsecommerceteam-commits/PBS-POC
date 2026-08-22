@@ -1,0 +1,11 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Node (belt-and-suspenders alongside app/.gitignore)
+node_modules/
+dist/
+*.log
