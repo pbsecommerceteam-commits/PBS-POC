@@ -51,14 +51,14 @@ export const periods = [
 export const user = { name: "R. Vance", role: "Commercial Insights", initials: "RV" };
 
 export const sectionMeta: Record<string, { title: string; subtitle: string }> = {
-  overview: { title: "Overview", subtitle: "Portfolio health across the selected retailers and period" },
+  overview: { title: "Overview", subtitle: "Monitor digital shelf health across your retailers, products and categories." },
   shelf: { title: "Digital Shelf", subtitle: "Monitor product visibility, availability, pricing and content across retailers" },
   alerts: { title: "Alerts", subtitle: "Rules watching the portfolio and what they have caught" },
   reports: { title: "Reports", subtitle: "Scheduled exports and briefings sent to your teams" },
-  sales: { title: "Sales & Share", subtitle: "Understand sales performance, market share and growth across your monitored retailers" },
-  content: { title: "Content", subtitle: "Page completeness, imagery and copy compliance" },
-  reviews: { title: "Reviews", subtitle: "Rating trajectory, review volume and recurring themes" },
-  competitors: { title: "Competitors", subtitle: "Rival portfolios tracked against the same keyword set" },
+  sales: { title: "Performance Intelligence", subtitle: "Understand how products perform across search, pricing, availability and retailer conditions." },
+  content: { title: "Content Intelligence", subtitle: "Measure product-content completeness across monitored retailers." },
+  reviews: { title: "Ratings & Reviews", subtitle: "Rating trajectory, review volume and retailer/category comparisons" },
+  competitors: { title: "Competitive Intelligence", subtitle: "Compare listings, pricing, availability and search presence across the monitored competitive set." },
   settings: { title: "Settings", subtitle: "Workspace defaults, alerting and data refresh" },
 };
 
@@ -67,7 +67,7 @@ export const alertTypes = [
   { id: "price", name: "Price change", condition: "Shelf price moves by more than", unit: "%", preset: "5" },
   { id: "rank", name: "Search rank change", condition: "Search rank drops below position", unit: "", preset: "10" },
   { id: "rating", name: "Rating change", condition: "Average rating falls below", unit: "", preset: "4.2" },
-  { id: "content", name: "Content score", condition: "Content score falls below", unit: "/100", preset: "80" },
+  { id: "content", name: "Content completeness", condition: "Content completeness falls below", unit: "/100", preset: "80" },
   { id: "competitor", name: "Competitor movement", condition: "Competitor share of search rises above", unit: "%", preset: "30" },
 ];
 
@@ -88,7 +88,7 @@ export const alertRules = [
   { id: "ar1", name: "Core SKU availability", type: "Stock availability", condition: "In-stock rate below 95%", scope: "Entire portfolio", retailer: "All retailers", frequency: "Real time", channel: "Email + Slack", status: "Active", triggered: "3 times this week" },
   { id: "ar2", name: "Beverages rank watch", type: "Search rank change", condition: "Rank drops below position 10", scope: "Category — Beverages", retailer: "Northgate Market", frequency: "Daily digest", channel: "Email digest", status: "Active", triggered: "Once this week" },
   { id: "ar3", name: "Competitor price undercut", type: "Price change", condition: "Competitor priced 5% below", scope: "Entire portfolio", retailer: "Halcyon Mega", frequency: "Twice daily", channel: "Email + Slack", status: "Active", triggered: "4 times this week" },
-  { id: "ar4", name: "Content compliance sweep", type: "Content score", condition: "Content score below 80", scope: "Entire portfolio", retailer: "All retailers", frequency: "Weekly summary", channel: "In-app only", status: "Paused", triggered: "—" },
+  { id: "ar4", name: "Content compliance sweep", type: "Content completeness", condition: "Content completeness below 80", scope: "Entire portfolio", retailer: "All retailers", frequency: "Weekly summary", channel: "In-app only", status: "Paused", triggered: "—" },
   { id: "ar5", name: "Rating erosion", type: "Rating change", condition: "Average rating below 4.2", scope: "Category — Personal care", retailer: "Union Pharmacy", frequency: "Daily digest", channel: "Email digest", status: "Active", triggered: "Twice this week" },
 ];
 
@@ -96,7 +96,7 @@ export const reports = [
   { id: "rp1", name: "Monday shelf health", contents: "KPIs, availability, rank movement", cadence: "Weekly — Monday 07:00", recipients: "Commercial team (9)", lastSent: "Mon 07:00", format: "PDF + CSV", status: "Scheduled" },
   { id: "rp2", name: "Category share review", contents: "Share of search by category and retailer", cadence: "Monthly — 1st 08:00", recipients: "Category leads (4)", lastSent: "1 Aug 08:00", format: "PDF", status: "Scheduled" },
   { id: "rp3", name: "Content compliance export", contents: "Attribute coverage, failing SKUs", cadence: "Weekly — Thursday 06:00", recipients: "Content ops (6)", lastSent: "Thu 06:00", format: "CSV", status: "Scheduled" },
-  { id: "rp4", name: "Competitor pricing brief", contents: "Rival price index and share change", cadence: "On demand", recipients: "Pricing (3)", lastSent: "12 Aug 14:20", format: "XLSX", status: "Draft" },
+  { id: "rp4", name: "Competitor pricing brief", contents: "Rival price index and share-of-search change", cadence: "On demand", recipients: "Pricing (3)", lastSent: "12 Aug 14:20", format: "XLSX", status: "Draft" },
 ];
 
 /* ── product catalog ──────────────────────────────────────────────────── */
@@ -327,17 +327,26 @@ function snapshot(retailer: string, period: string) {
   });
 
   const r = rng(seed + 7);
+  /* Same seeds/formula as shelfData() so Price Index and Buy Box Presence
+     read identically wherever they appear. */
+  const idxNow = round((pool.reduce((a, p) => a + p.priceIndex, 0) / (pool.length || 1)) * 100, 1);
+  const priceIdx = series(seed + 21, n, idxNow - 1.8 * sw, idxNow, 0.6, 1);
+  const buyNow = round((pool.filter((p) => p.buyBox).length / (pool.length || 1)) * 100, 0);
+  const buyBoxSeries = series(seed + 22, n, buyNow + 2 * sw, buyNow, 1.2, 0).map((v) => clamp(Math.round(v), 40, 100));
+
   const out: any = {
     retailer, period, labels,
     generatedAt: "Today 06:40 UTC",
     kpis: [
-      kpi("sos", "Share of Search", "%", sos, 40, 1),
-      kpi("instock", "In Stock %", "%", stockVals, 98, 1),
+      kpi("sos", "Search Visibility", "%", sos, 40, 1),
+      kpi("instock", "Availability", "%", stockVals, 98, 1),
+      kpi("pidx", "Price Index", "", priceIdx, 100, 1),
+      kpi("content", "Content Completeness", "/100", contentVals, 95, 0),
+      kpi("buybox", "Buy Box Presence", "%", buyBoxSeries, 95, 0),
       kpi("rating", "Average Rating", "", ratingVals, 4.5, 2),
-      kpi("content", "Content Score", "/100", contentVals, 95, 0),
       { id: "oos", label: "Out of Stock SKUs", unit: "", target: 0, value: oos, delta: Math.round((r() - 0.5) * 4), spark: series(seed + 8, n, oos + 1, oos, 0.7, 0).map((v) => clamp(v, 0, 20)) },
       { id: "rank", label: "Avg Search Rank", unit: "", target: 5, value: avgRank, delta: round((r() - 0.5) * 2, 1), spark: series(seed + 9, n, avgRank + 1.4 * sw, avgRank, 0.5, 1) },
-      { id: "reviews", label: "Review Volume", unit: "", target: 20000, value: reviewVolume, delta: Math.round(reviewVolume * 0.04), spark: series(seed + 10, n, reviewVolume * 0.94, reviewVolume, reviewVolume * 0.01, 0) },
+      { id: "reviews", label: "Review Count", unit: "", target: 20000, value: reviewVolume, delta: Math.round(reviewVolume * 0.04), spark: series(seed + 10, n, reviewVolume * 0.94, reviewVolume, reviewVolume * 0.01, 0) },
       { id: "gap", label: "Gap to Leader", unit: " pts", target: 0, value: round(last(leader) - last(sos), 1), delta: round((first(leader) - first(sos)) * -1 + (last(leader) - last(sos)), 1), spark: leader.map((v, i) => round(v - sos[i], 1)) },
       { id: "issues", label: "Content Issues", unit: "", target: 0, value: pool.filter((p) => p.contentScore < 80).length, delta: -1, spark: series(seed + 11, n, pool.filter((p) => p.contentScore < 80).length + 2, pool.filter((p) => p.contentScore < 80).length, 0.6, 0).map((v) => clamp(v, 0, 30)) },
     ],
@@ -556,11 +565,12 @@ function shelfData(retailer: string, period: string) {
     const content = own.length ? Math.round(avg(own, (p) => p.contentScore, 0)) : clamp(Math.round(85 + b.content), 40, 100);
     const rating = own.length ? avg(own, (p) => p.rating, 2) : round(clamp(4.3 + b.rating, 3.4, 5), 2);
     const priceIndex = own.length ? round(avg(own, (p) => p.priceIndex, 3) * 100, 1) : round(98 + rr() * 8, 1);
+    const buyBoxPresence = own.length ? Math.round((own.filter((p) => p.buyBox).length / own.length) * 100) : Math.round(60 + rr() * 30);
     const shelfScore = clamp(Math.round(
       (visibility / 45) * 25 + (availability / 100) * 30 + (content / 100) * 25 + (rating / 5) * 20
     ), 25, 100);
     return {
-      id: rt.id, name: rt.name, skus: own.length, visibility, availability, content, rating, priceIndex, shelfScore,
+      id: rt.id, name: rt.name, skus: own.length, visibility, availability, content, rating, priceIndex, buyBoxPresence, shelfScore,
       visibilityDelta: round((rr() - 0.5) * 4.5, 1),
       availabilityDelta: round((rr() - 0.5) * 2.4, 1),
       shelfScoreDelta: round((rr() - 0.5) * 5, 1),
@@ -577,9 +587,10 @@ function shelfData(retailer: string, period: string) {
     const availability = inCat.length ? avg(inCat, (p) => p.inStockRate, 1) : round(93 + rr() * 6, 1);
     const content = inCat.length ? Math.round(avg(inCat, (p) => p.contentScore, 0)) : Math.round(70 + rr() * 25);
     const priceIndex = inCat.length ? round(avg(inCat, (p) => p.priceIndex, 3) * 100, 1) : round(96 + rr() * 10, 1);
+    const rating = inCat.length ? avg(inCat, (p) => p.rating, 2) : round(clamp(4.3 + rr() * 0.3, 3.4, 5), 2);
     const overall = inCat.length ? Math.round(avg(inCat, (p) => p.shelfScore, 0)) : Math.round(55 + rr() * 30);
     return {
-      category: c, skus: inCat.length, visibility, availability, content, priceIndex, overall,
+      category: c, skus: inCat.length, visibility, availability, content, priceIndex, rating, overall,
       delta: round((rr() - 0.5) * 6, 1),
     };
   });
@@ -641,22 +652,22 @@ function shelfData(retailer: string, period: string) {
   const highPrice = pool.filter((p) => p.priceIndex > 1.1);
   const weakContent = pool.filter((p) => p.contentScore < 80);
   const opportunities = [
-    { id: "o-rank", focus: "rank", title: "Improve search rank",
+    { id: "o-rank", focus: "rank", title: "Improve Search Visibility",
       problem: lowRank.length + " products sit outside the top 10 on keywords where a competitor ranks higher.",
       impact: lowRank.length > 6 ? "High" : "Medium", count: lowRank.length,
       why: "Positions 11 and below take a fraction of category click share, so the volume is going to rivals.",
       action: "Raise keyword coverage in titles and bullets on the affected SKUs, then re-crawl in 48 hours." },
-    { id: "o-avail", focus: "avail", title: "Recover availability",
+    { id: "o-avail", focus: "avail", title: "Recover Availability",
       problem: lowAvail.length + " products fell below the 90% availability threshold in this period.",
       impact: lowAvail.length > 2 ? "High" : "Medium", count: lowAvail.length,
       why: "Out-of-stock days suppress rank as well as sales, so the loss compounds after the gap is closed.",
       action: "Flag the replenishment gap with the retailer team and confirm forecast cover for the next cycle." },
-    { id: "o-price", focus: "price", title: "Correct pricing",
+    { id: "o-price", focus: "price", title: "Review Price Position",
       problem: highPrice.length + " products are priced more than 10% above the category average.",
       impact: highPrice.length > 4 ? "Medium" : "Low", count: highPrice.length,
       why: "Shoppers comparing on price filter these lines out before they reach the product page.",
       action: "Review promotional cover on these lines before the next price file goes out." },
-    { id: "o-content", focus: "content", title: "Improve content",
+    { id: "o-content", focus: "content", title: "Improve Content Completeness",
       problem: weakContent.length + " products have incomplete attributes suppressing filter and long-tail discovery.",
       impact: weakContent.length > 8 ? "High" : "Medium", count: weakContent.length,
       why: "Missing structured fields keep these SKUs out of retailer filters and long-tail results.",
@@ -666,11 +677,11 @@ function shelfData(retailer: string, period: string) {
   return {
     retailer, period, labels, generatedAt: "Today 06:40 UTC",
     kpis: [
-      kpi("sos", "Share of Search", "%", sos, 40, 1),
+      kpi("sos", "Search Visibility", "%", sos, 40, 1),
       kpi("instock", "Availability", "%", stockVals, 98, 1),
-      kpi("pidx", "Avg Price Index", "", priceIdx, 100, 1),
-      kpi("content", "Content Score", "/100", contentVals, 95, 0),
-      kpi("buybox", "Buy Box Share", "%", buyBox, 95, 0),
+      kpi("pidx", "Price Index", "", priceIdx, 100, 1),
+      kpi("content", "Content Completeness", "/100", contentVals, 95, 0),
+      kpi("buybox", "Buy Box Presence", "%", buyBox, 95, 0),
     ],
     visibility: {
       labels, previous: sos.map((v, i) => round(v - 2.4 - (i % 3) * 0.3, 1)), target: 40,
@@ -842,29 +853,30 @@ function salesData(retailer: string, period: string) {
   const declines = movers.filter((p) => p.sales < p.prevSales).slice(-4).reverse()
     .map((p) => ({ id: p.id, name: p.name, retailerName: p.retailerName, delta: p.sales - p.prevSales, growth: p.salesGrowth }));
 
-  /* shelf → sales bridge: the shelf signals that moved with the sales line */
+  /* Digital shelf signals for the same retailer + period — Performance
+     Intelligence reads these directly rather than an estimated-sales figure. */
   const shelf = shelfData(retailer, period);
   const shelfKpi = (id: string) => shelf.kpis.find((k) => k.id === id) || { delta: 0, value: 0 };
   const signals = [
     { label: "Availability", delta: shelfKpi("instock").delta, unit: " pts", value: shelfKpi("instock").value + "%" },
-    { label: "Search visibility", delta: shelfKpi("sos").delta, unit: " pts", value: shelfKpi("sos").value + "%" },
-    { label: "Content score", delta: shelfKpi("content").delta, unit: " pts", value: String(shelfKpi("content").value) },
-    { label: "Buy box share", delta: shelfKpi("buybox").delta, unit: " pts", value: shelfKpi("buybox").value + "%" },
+    { label: "Search Visibility", delta: shelfKpi("sos").delta, unit: " pts", value: shelfKpi("sos").value + "%" },
+    { label: "Price Index", delta: shelfKpi("pidx").delta, unit: " pts", value: String(shelfKpi("pidx").value) },
+    { label: "Content Completeness", delta: shelfKpi("content").delta, unit: " pts", value: String(shelfKpi("content").value) },
+    { label: "Buy Box Presence", delta: shelfKpi("buybox").delta, unit: " pts", value: shelfKpi("buybox").value + "%" },
   ];
 
   const byMove = signals.slice().sort((a, b) => a.delta - b.delta);
   const weakest = byMove[0], strongest = byMove[byMove.length - 1];
-  const SIGNAL_FOCUS: Record<string, string> = { "Availability": "avail", "Search visibility": "rank", "Content score": "content", "Buy box share": "avail" };
+  const SIGNAL_FOCUS: Record<string, string> = { "Availability": "avail", "Search Visibility": "rank", "Price Index": "price", "Content Completeness": "content", "Buy Box Presence": "avail" };
   const diagnosis = {
-    sales: growth,
-    headline: growth < 0 ? "Likely driver: " + weakest.label.toLowerCase() : "Most likely support: " + strongest.label.toLowerCase(),
-    text: growth < 0
+    headline: weakest.delta < 0 ? "Likely shelf signal: " + weakest.label.toLowerCase() : "Potential contributor: " + strongest.label.toLowerCase(),
+    text: weakest.delta < 0
       ? weakest.label + " fell " + Math.abs(weakest.delta).toFixed(1) + " pts while " + strongest.label.toLowerCase() +
         " moved " + (strongest.delta >= 0 ? "up " : "down ") + Math.abs(strongest.delta).toFixed(1) +
-        " pts. The decline tracks " + weakest.label.toLowerCase() + " more closely than discoverability."
+        " pts over the same window. Observed change, not a confirmed cause."
       : strongest.label + " rose " + Math.abs(strongest.delta).toFixed(1) + " pts over the same window, with " +
         weakest.label.toLowerCase() + " the weakest signal at " + (weakest.delta >= 0 ? "+" : "−") +
-        Math.abs(weakest.delta).toFixed(1) + " pts — the growth is coming from the shelf, not from price alone.",
+        Math.abs(weakest.delta).toFixed(1) + " pts. Potential contributor to overall shelf performance.",
     actionLabel: "Investigate " + weakest.label.toLowerCase(),
     focus: SIGNAL_FOCUS[weakest.label] || "avail",
   };
@@ -1016,7 +1028,7 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w" }: {
 }
 
 export function toCsv(rows: any[]) {
-  const cols = ["SKU", "Product", "Brand", "Category", "Retailer", "Search Rank", "Rank Delta", "Search Visibility %", "Price", "Price Index", "Stock Status", "In Stock %", "Rating", "Reviews", "Content Score", "Shelf Score", "Opportunity"];
+  const cols = ["SKU", "Product", "Brand", "Category", "Retailer", "Search Rank", "Rank Delta", "Search Visibility %", "Price", "Price Index", "Stock Status", "In Stock %", "Rating", "Reviews", "Content Completeness", "Shelf Score", "Opportunity"];
   const cell = (v: any) => {
     const s = String(v == null ? "" : v);
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;

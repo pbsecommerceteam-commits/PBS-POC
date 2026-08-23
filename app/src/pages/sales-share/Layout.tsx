@@ -20,8 +20,8 @@ export default function SalesShareLayout() {
   const [categoryFilter, setCategoryFilter] = useState("");
 
   return (
-    <PageShell title={categoryFilter ? `${categoryFilter} — Sales & Share` : "Sales & Share"}
-      subtitle={categoryFilter ? `Sales, growth and share for ${categoryFilter}` : "Understand sales performance, market share and growth across your monitored retailers"}
+    <PageShell title={categoryFilter ? `${categoryFilter} — Performance Intelligence` : "Performance Intelligence"}
+      subtitle={categoryFilter ? `Search, pricing, availability and retailer conditions for ${categoryFilter}` : "Understand how products perform across search, pricing, availability and retailer conditions."}
       tabs={<PageTabs items={[
         { label: "Summary", to: "/sales-share", end: true },
         { label: "Drivers", to: "/sales-share/drivers" },

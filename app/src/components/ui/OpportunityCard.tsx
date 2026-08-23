@@ -2,7 +2,7 @@ import { Card } from "./Card";
 import { Badge, type BadgeTone } from "./Badge";
 
 /** A ranked, actionable finding — shown on Digital Shelf ("Shelf
- *  Opportunities") and Sales & Share ("Commercial Opportunities"). Clicking
+ *  Opportunities") and Performance Intelligence ("Opportunities"). Clicking
  *  the CTA scopes the product table below to whatever it affects. */
 export function OpportunityCard({ impact, impactTone, count, title, problem, why, action, cta, active, showEvidenceLabel, onGo }: {
   impact: string;

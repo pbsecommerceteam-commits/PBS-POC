@@ -46,7 +46,7 @@ export default function Overview() {
     all, productSorters, "searchRank", 8, [stockFilter, categoryFilter].join("|"),
   );
 
-  if (!snap) return <PageShell title="Overview" subtitle="Portfolio health across the selected retailers and period"><div /></PageShell>;
+  if (!snap) return <PageShell title="Overview" subtitle="Monitor digital shelf health across your retailers, products and categories."><div /></PageShell>;
 
   const kpi = (id: string) => snap.kpis.find((k: any) => k.id === id);
   const vis = lineChart({
@@ -75,7 +75,7 @@ export default function Overview() {
     { key: "rating", label: "Rating", align: "right", sortable: true, render: (p) => (
       <><div style={{ fontWeight: 500 }}>{p.rating.toFixed(2)}</div><div className="sl-table-sub">{p.reviews.toLocaleString()} reviews</div></>
     ) },
-    { key: "contentScore", label: "Content", align: "right", sortable: true, render: (p) => (
+    { key: "contentScore", label: "Content completeness", align: "right", sortable: true, render: (p) => (
       <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
         <span className="sl-progress-track" style={{ width: 40 }}><span className="sl-progress-fill" style={{ width: p.contentScore + "%" }}></span></span>
         <span style={{ fontWeight: 600, minWidth: 22 }}>{p.contentScore}</span>
@@ -85,7 +85,7 @@ export default function Overview() {
   ];
 
   return (
-    <PageShell title="Overview" subtitle="Portfolio health across the selected retailers and period"
+    <PageShell title="Overview" subtitle="Monitor digital shelf health across your retailers, products and categories."
       onExportCsv={() => {
         if (!all.length) { toast("Nothing to export with these filters."); return; }
         const blob = new Blob([toCsv(all)], { type: "text/csv;charset=utf-8" });
@@ -99,7 +99,7 @@ export default function Overview() {
       exportDisabled={all.length === 0}
     >
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,238px),1fr))", gap: "var(--app-gap)" }}>
-        {["sos", "instock", "rating", "content"].map((id) => <KpiCard key={id} k={kpiCard(kpi(id), spark)} />)}
+        {["sos", "instock", "pidx", "content", "rating", "buybox"].map((id) => <KpiCard key={id} k={kpiCard(kpi(id), spark)} />)}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
@@ -174,7 +174,7 @@ export default function Overview() {
                 </div>
                 <div className="sl-progress-track" style={{ margin: "10px 0" }}><span className="sl-progress-fill" style={{ width: c.overall + "%" }}></span></div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 11.5 }} className="sl-muted">
-                  <span>Share {pct(c.sos)}</span>
+                  <span>Visibility {pct(c.sos)}</span>
                   <span>Avail. {pct(c.availability)}</span>
                   <span>Content {c.content}</span>
                 </div>

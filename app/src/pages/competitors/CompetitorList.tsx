@@ -6,9 +6,9 @@ import type { CompetitorsContext } from "./Layout";
 export default function CompetitorList() {
   const { snap } = useOutletContext<CompetitorsContext>();
 
-  const competitorsTable = table("Tracked competitors", "Rival portfolios measured on the same keyword set",
+  const competitorsTable = table("Competitive listing comparison", "Rival portfolios measured on the same keyword set",
     [{ label: "Brand", align: "left" }, { label: "Share of search", align: "right" }, { label: "Change", align: "right" },
-     { label: "Tracked SKUs", align: "right" }, { label: "Avg price", align: "right" }, { label: "Avg rating", align: "right" }, { label: "Content", align: "right" }],
+     { label: "Tracked SKUs", align: "right" }, { label: "Competitor price", align: "right" }, { label: "Avg rating", align: "right" }, { label: "Content completeness", align: "right" }],
     snap.competitors.map((c: any) => ({ cells: [
       cell(c.name, { strong: true }), cell(pct(c.share), { align: "right", strong: true }),
       cell(delta(c.delta, " pts"), { align: "right", color: deltaColor(c.delta, true) }),

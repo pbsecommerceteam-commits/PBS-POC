@@ -11,7 +11,7 @@ export default function CompetitorsLayout() {
   const { snap } = useDashboardData();
 
   return (
-    <PageShell title="Competitors" subtitle="Rival portfolios tracked against the same keyword set"
+    <PageShell title="Competitive Intelligence" subtitle="Compare listings, pricing, availability and search presence across the monitored competitive set."
       tabs={<PageTabs items={[
         { label: "Summary", to: "/competitors", end: true },
         { label: "Competitors", to: "/competitors/list" },

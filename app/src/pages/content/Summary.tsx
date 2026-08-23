@@ -12,10 +12,10 @@ export default function ContentSummary() {
 
   const content = snap.kpis.find((k: any) => k.id === "content");
   const issues = snap.kpis.find((k: any) => k.id === "issues");
-  const trend = lineChart({ id: "ctrend", title: "Content Score Trend", subtitle: "Weighted completeness across tracked pages",
+  const trend = lineChart({ id: "ctrend", title: "Content Completeness Trend", subtitle: "Weighted completeness across tracked pages",
     labels: snap.labels, lo: 40, hi: 100, ticks: [40, 55, 70, 85, 100], fmt: (v) => String(Math.round(v)), hideLegend: true,
-    series: [{ name: "Content score", values: snap.contentTrend.values }], previous: snap.contentTrend.previous, target: 95 }, hover, onEnter);
-  const dist = barChart({ id: "cdist", title: "Score Distribution", subtitle: "SKUs by content score band",
+    series: [{ name: "Content completeness", values: snap.contentTrend.values }], previous: snap.contentTrend.previous, target: 95 }, hover, onEnter);
+  const dist = barChart({ id: "cdist", title: "Completeness Distribution", subtitle: "SKUs by content completeness band",
     labels: snap.contentDistribution.map((b: any) => b.bucket), valueName: "SKUs", values: snap.contentDistribution.map((b: any) => b.count),
     lo: 0, hi: Math.max(4, Math.max(...snap.contentDistribution.map((b: any) => b.count)) + 1), ticks: [0, 2, 4, 6, 8], fmt: (v) => String(Math.round(v)) }, hover, onEnter);
 

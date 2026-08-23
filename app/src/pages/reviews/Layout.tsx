@@ -16,7 +16,7 @@ export default function ReviewsLayout() {
   const { toast } = useUi();
 
   return (
-    <PageShell title="Reviews" subtitle="Rating trajectory, review volume and recurring themes"
+    <PageShell title="Ratings & Reviews" subtitle="Rating trajectory, review volume and retailer/category comparisons"
       tabs={<PageTabs items={[
         { label: "Summary", to: "/reviews", end: true },
         { label: "Benchmarks", to: "/reviews/benchmarks" },

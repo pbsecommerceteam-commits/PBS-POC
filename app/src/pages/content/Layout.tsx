@@ -16,7 +16,7 @@ export default function ContentLayout() {
   const { toast } = useUi();
 
   return (
-    <PageShell title="Content" subtitle="Page completeness, imagery and copy compliance"
+    <PageShell title="Content Intelligence" subtitle="Measure product-content completeness across monitored retailers."
       tabs={<PageTabs items={[
         { label: "Summary", to: "/content", end: true },
         { label: "Benchmarks", to: "/content/benchmarks" },

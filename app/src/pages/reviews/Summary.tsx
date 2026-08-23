@@ -15,7 +15,12 @@ export default function ReviewsSummary() {
   const trend = lineChart({ id: "rtrend", title: "Rating Trend", subtitle: "Weighted average rating across tracked SKUs",
     labels: snap.labels, lo: 3.6, hi: 5, ticks: [3.6, 4, 4.4, 4.8], fmt: (v) => v.toFixed(2), hideLegend: true,
     series: [{ name: "Average rating", values: snap.ratingTrend.values }], previous: snap.ratingTrend.previous, target: 4.5,
-    span: "1 / -1", badge: "Target 4.5" }, hover, onEnter);
+    badge: "Target 4.5" }, hover, onEnter);
+  const volumeTrend = lineChart({ id: "rvoltrend", title: "Review Volume Trend", subtitle: "Total tracked reviews across the selected period",
+    labels: snap.labels, lo: Math.min(...reviews.spark) * 0.97, hi: Math.max(...reviews.spark) * 1.03,
+    ticks: [Math.min(...reviews.spark), (Math.min(...reviews.spark) + Math.max(...reviews.spark)) / 2, Math.max(...reviews.spark)],
+    fmt: (v) => Math.round(v).toLocaleString(), hideLegend: true,
+    series: [{ name: "Review count", values: reviews.spark }] }, hover, onEnter);
 
   return (
     <>
@@ -25,6 +30,7 @@ export default function ReviewsSummary() {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
         <ChartCard c={trend} onLeave={onLeave} />
+        <ChartCard c={volumeTrend} onLeave={onLeave} />
       </div>
     </>
   );

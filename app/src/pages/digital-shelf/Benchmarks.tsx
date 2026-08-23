@@ -92,7 +92,7 @@ export default function DigitalShelfBenchmarks() {
       <Card padding="20px 22px">
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
           <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Content health</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{sh.contentHealth.components[0]?.name} is costing the most points</div></div>
-          <div style={{ textAlign: "right" }}><div className="sl-eyebrow">Overall content score</div><div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 24, marginTop: 2 }}>{sh.contentHealth.overall}/100</div></div>
+          <div style={{ textAlign: "right" }}><div className="sl-eyebrow">Overall content completeness</div><div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 24, marginTop: 2 }}>{sh.contentHealth.overall}/100</div></div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
           {sh.contentHealth.components.slice().sort((a: any, b: any) => b.lost - a.lost).map((c: any) => (

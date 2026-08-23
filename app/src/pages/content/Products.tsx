@@ -50,7 +50,7 @@ export default function ContentProducts() {
     { key: "price", label: "Price", align: "right", sortable: true, render: (p) => "$" + p.price.toFixed(2) },
     { key: "stockStatus", label: "Stock", sortable: true, render: (p) => <Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge> },
     { key: "rating", label: "Rating", align: "right", sortable: true, render: (p) => p.rating.toFixed(2) },
-    { key: "contentScore", label: "Content", align: "right", sortable: true, render: (p) => <span style={{ fontWeight: 600, color: p.contentScore < 80 ? deltaColor(-1) : "inherit" }}>{p.contentScore}</span> },
+    { key: "contentScore", label: "Content completeness", align: "right", sortable: true, render: (p) => <span style={{ fontWeight: 600, color: p.contentScore < 80 ? deltaColor(-1) : "inherit" }}>{p.contentScore}</span> },
     { key: "opportunity", label: "Opportunity", sortable: true, render: (p) => <Badge tone={opportunityTone(p.opportunity)}>{p.opportunity}</Badge> },
   ];
 

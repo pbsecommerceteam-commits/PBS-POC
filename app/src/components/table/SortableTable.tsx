@@ -10,7 +10,7 @@ export interface Column<T> {
 }
 
 /** Shared sort/click wiring for every product-shaped table (Overview,
- *  Digital Shelf, Sales & Share, keywords) — each page supplies its own
+ *  Digital Shelf, Performance Intelligence, keywords) — each page supplies its own
  *  column render functions for the bespoke cell visuals (progress bars,
  *  badges, deltas), so only the header-sort and row-click plumbing is
  *  centralized here instead of repeated per page. */

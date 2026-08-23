@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 /** Shared sort + paginate behavior for every product-shaped table
- *  (Overview, Digital Shelf, Sales & Share, keywords) — ported from the
+ *  (Overview, Digital Shelf, Performance Intelligence, keywords) — ported from the
  *  prototype's filteredProducts()/sort()/page state, generalized so each
  *  page just supplies per-column comparators instead of rewriting the
  *  sort-toggle and pagination logic each time.

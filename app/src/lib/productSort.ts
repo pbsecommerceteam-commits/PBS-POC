@@ -4,7 +4,7 @@ const STOCK_ORDER: Record<string, number> = { "In Stock": 0, "Low Stock": 1, "Ou
 const OPP_ORDER: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
 
 /** One comparator per sortable product column, shared by every product
- *  table (Overview, Digital Shelf, Sales & Share) so sort behavior — and
+ *  table (Overview, Digital Shelf, Performance Intelligence) so sort behavior — and
  *  the string/enum/numeric special-casing — is defined once. */
 export const productSorters: Record<string, (a: Product, b: Product) => number> = {
   name: (a, b) => a.name.localeCompare(b.name),

@@ -14,7 +14,7 @@ import { productSorters } from "../../lib/productSort";
 import type { Product } from "../../models/types";
 import type { DigitalShelfContext } from "./Layout";
 
-const FOCUS_LABEL: Record<string, string> = { rank: "Improve search rank", avail: "Recover availability", price: "Correct pricing", content: "Improve content" };
+const FOCUS_LABEL: Record<string, string> = { rank: "Improve Search Visibility", avail: "Recover Availability", price: "Review Price Position", content: "Improve Content Completeness" };
 
 export default function DigitalShelfProducts() {
   const { sh, categoryFilter, setCategoryFilter } = useOutletContext<DigitalShelfContext>();
@@ -62,7 +62,7 @@ export default function DigitalShelfProducts() {
     { key: "searchRank", label: "Rank", align: "right", sortable: true, render: (p) => (<><span style={{ fontWeight: 600 }}>#{p.searchRank}</span><span style={{ fontSize: 11.5, marginLeft: 5, color: deltaColor(p.rankDelta) }}>{p.rankDelta === 0 ? "—" : (p.rankDelta > 0 ? "↑" : "↓") + Math.abs(p.rankDelta)}</span></>) },
     { key: "price", label: "Price", align: "right", sortable: true, render: (p) => "$" + p.price.toFixed(2) },
     { key: "inStockRate", label: "Availability", sortable: true, render: (p) => (<><Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge><div className="sl-table-sub">{p.inStockRate.toFixed(1)}%</div></>) },
-    { key: "contentScore", label: "Content", align: "right", sortable: true, render: (p) => p.contentScore },
+    { key: "contentScore", label: "Content completeness", align: "right", sortable: true, render: (p) => p.contentScore },
     { key: "shelfScore", label: "Shelf score", align: "right", minWidth: 110, sortable: true, render: (p) => (
       <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
         <span className="sl-progress-track" style={{ width: 40 }}><span className="sl-progress-fill" style={{ width: p.shelfScore + "%" }}></span></span>
