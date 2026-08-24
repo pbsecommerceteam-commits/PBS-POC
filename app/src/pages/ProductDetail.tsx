@@ -65,19 +65,22 @@ export default function ProductDetail() {
   const lo = Math.min(...t.price), hi = Math.max(...t.price);
   const reviewsLo = Math.min(...t.reviews), reviewsHi = Math.max(...t.reviews);
 
-  const rankChart = lineChart({ id: "d-rank", title: "Search Rank Trend", subtitle: "Position on the primary category term (lower is better)",
+  const isReal = detail.dataSource === "real";
+  const realNote = isReal ? " · Real crawl data (Sep 8–29)" : " · Illustrative — crawl covers one month only";
+
+  const rankChart = lineChart({ id: "d-rank", title: "Search Rank Trend", subtitle: "Position on the primary category term (lower is better) · Illustrative — no reliable per-SKU crawled rank",
     labels, lo: 1, hi: 30, ticks: [1, 10, 20, 30], fmt: (v) => "#" + Math.round(v), invert: true, hideLegend: true, series: [{ name: "Rank", values: t.rank }] }, hover, onEnter);
-  const priceChart = lineChart({ id: "d-price", title: "Price Trend", subtitle: "Shelf price over the period",
+  const priceChart = lineChart({ id: "d-price", title: "Price Trend", subtitle: "Shelf price over the period" + realNote,
     labels, lo: lo * 0.94, hi: hi * 1.06, ticks: [lo * 0.96, (lo + hi) / 2, hi * 1.04], fmt: (v) => "$" + v.toFixed(2), hideLegend: true,
     series: [{ name: "Price", values: t.price }],
     footer: detail.priceComparison.map((c: any) => ({ label: c.name, value: "$" + c.price.toFixed(2), color: c.price < p.price ? "var(--status-neutral-fg)" : "var(--status-positive-fg)" })) }, hover, onEnter);
-  const stockChart = barChart({ id: "d-stock", title: "Availability Trend", subtitle: "In-stock rate at this retailer", badge: "Target 98%",
+  const stockChart = barChart({ id: "d-stock", title: "Availability Trend", subtitle: "In-stock rate at this retailer" + realNote, badge: "Target 98%",
     labels, values: t.stock, valueName: "In stock", lo: 60, hi: 100, ticks: [60, 70, 80, 90, 100], fmt: (v) => v.toFixed(1) + "%", target: 98,
     fill: (v) => (v >= 98 ? "var(--status-positive-fg)" : "var(--color-accent-300)") }, hover, onEnter);
-  const ratingChart = lineChart({ id: "d-rating", title: "Rating Trend", subtitle: "Average rating and review distribution",
+  const ratingChart = lineChart({ id: "d-rating", title: "Rating Trend", subtitle: "Average rating and review distribution" + realNote,
     labels, lo: 3.4, hi: 5, ticks: [3.4, 4, 4.5, 5], fmt: (v) => v.toFixed(2), hideLegend: true, series: [{ name: "Rating", values: t.rating }],
     footer: detail.reviewMix.map((m: any) => ({ label: m.stars + " star", value: m.count.toLocaleString(), color: m.count === maxStars ? "var(--status-positive-fg)" : "var(--status-neutral-fg)" })) }, hover, onEnter);
-  const reviewsChart = lineChart({ id: "d-reviews", title: "Review Count Trend", subtitle: "Total tracked reviews over the period",
+  const reviewsChart = lineChart({ id: "d-reviews", title: "Review Count Trend", subtitle: "Total tracked reviews over the period" + realNote,
     labels, lo: reviewsLo * 0.97, hi: reviewsHi * 1.04, ticks: [reviewsLo, (reviewsLo + reviewsHi) / 2, reviewsHi], fmt: (v) => Math.round(v).toLocaleString(), hideLegend: true,
     series: [{ name: "Review count", values: t.reviews }] }, hover, onEnter);
 
