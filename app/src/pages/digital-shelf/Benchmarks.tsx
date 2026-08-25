@@ -23,7 +23,7 @@ export default function DigitalShelfBenchmarks() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(380px,1fr))", gap: "var(--app-gap)" }}>
         <Card padding="20px 22px">
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-            <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Price intelligence</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Your shelf price against the category and tracked rivals</div></div>
+            <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Price intelligence</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Your shelf price against the real peer-group average; named rivals below are illustrative — no resolvable competitor entity in the raw crawl</div></div>
             <Badge tone={pr.verdict === "inline" ? "positive" : "warning"}>{pr.verdict === "above" ? "Above category" : pr.verdict === "below" ? "Below category" : "In line"}</Badge>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

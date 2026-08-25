@@ -31,7 +31,7 @@ export default function DigitalShelfSearch() {
   return (
     <Card padding="20px 22px 14px">
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
-        <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Search performance</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{kwAll.length} of {sh.keywords.length} tracked keywords — select a keyword to see who is winning it</div></div>
+        <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Search performance</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{kwAll.length} of {sh.keywords.length} tracked keywords, pulled from the real Share of Search crawl — rank and the "Competitor" column are illustrative</div></div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <input className="input" type="search" placeholder="Search keywords" value={kwQuery} onChange={(e) => { setKwQuery(e.target.value); setKwPage(1); }} style={{ width: 190, minHeight: 34, fontSize: 13 }} />
           <Tabs options={OPP_TABS} value={kwOpp} onChange={(v) => { setKwOpp(v); setKwPage(1); }} size="sm" />

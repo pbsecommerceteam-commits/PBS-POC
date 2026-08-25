@@ -228,6 +228,14 @@ export const catalog = [
   { id: "r3-213639374", name: "Remington All-In-One Grooming Kit, Trimmer, Clippers , Black, PG6024A", brand: "Remington", category: "HPC", retailer: "r3", rank: 14, price: 17.97, rating: 4.2, reviews: 806, content: 80, stockBias: 0.23, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
 ];
 
+/* Illustrative only -- no first-class Competitor entity is resolvable from
+   the raw crawl (the data audit's own finding: nothing in the three
+   workbooks names "who competes with whom"). The real signal that DOES
+   exist -- third-party marketplace sellers who win the buy box, see
+   REAL_BUYBOX_COMPETITOR above -- turns out to be one-off arbitrage
+   resellers, not persistent brands with their own price/rating/content, so
+   it can't fill this shape either. Every UI surface using this array labels
+   it illustrative rather than presenting it as a real competitive set. */
 export const competitorBrands = [
   { id: "c1", name: "Corvus Group", share: 36.1, skus: 148, price: 7.2, rating: 4.28, content: 90 },
   { id: "c2", name: "Palisade Foods", share: 25.2, skus: 96, price: 6.1, rating: 4.41, content: 84 },
@@ -485,6 +493,30 @@ export const REAL_SOS_WEEKLY: Record<string, number[]> = {};
    a shared brand word). Only 31 of 116 products have a real match; the rest
    genuinely are not tracked at any other retailer in this sample, which the
    product page states honestly instead of fabricating "Live" everywhere. */
+/* Real third-party marketplace sellers that actually won the buy box on a
+   tracked product, pulled from the real "Buy box seller" field in Price
+   Data. Home Depot is deliberately excluded -- its seller field is a
+   store-location name (e.g. "Cumberland"), not a competing marketplace
+   seller, so there is no real third-party signal for that retailer in this
+   sample. These are one-off arbitrage resellers, not persistent competitor
+   brands with their own ratings/content/price -- which is exactly why the
+   Competitors page below still uses an illustrative brand set: no
+   first-class Competitor entity is resolvable from this crawl. */
+export const REAL_BUYBOX_COMPETITOR: Record<string, { seller: string; daysWon: number }> = {
+  "r1-B01GJOMWYC": { seller: "Ron's Home and Hardware", daysWon: 1 },
+  "r1-B002LAREDS": { seller: "Norse Lands LLC", daysWon: 1 },
+  "r1-B016Y8JSR2": { seller: "Havetz Deals for You", daysWon: 18 },
+  "r1-B010AFV1LQ": { seller: "California Distribution Inc", daysWon: 1 },
+  "r1-B07MZMLZZ3": { seller: "Petersman Sales Limited", daysWon: 8 },
+  "r3-43966519": { seller: "CCFF", daysWon: 7 },
+  "r3-200093306": { seller: "ABID TRADERS INC", daysWon: 3 },
+  "r3-981923626": { seller: "Cornerstone Goods", daysWon: 21 },
+  "r3-20564657": { seller: "ROYAL CARE COSMETICS, LLC", daysWon: 3 },
+  "r3-772119289": { seller: "THE REAL DEAL", daysWon: 2 },
+  "r3-22569723": { seller: "SANTIFA", daysWon: 2 },
+  "r3-2684038": { seller: "YPGP Ltd.", daysWon: 9 },
+};
+
 export const CROSS_RETAILER_MATCH: Record<string, Record<string, string>> = {
   "r3-14978527": { "r1": "r1-B003S516XO" },
   "r1-B003S516XO": { "r3": "r3-14978527" },
@@ -844,12 +876,13 @@ function deriveInsights(s: any) {
   list.push({
     id: "i-price",
     kind: Math.abs(undercut) > 5 ? "warning" : "neutral",
-    title: "Competitive price movement",
+    title: "Competitive price movement (illustrative)",
     body: cheapest.name + " sits " + Math.abs(undercut).toFixed(1) + "% " +
       (undercut > 0 ? "below" : "above") + " your price index on comparable lines" +
       (rising && rising.id !== cheapest.id && rising.delta > 0
         ? ", and " + rising.name + " gained " + rising.delta.toFixed(1) + " pts of search share."
-        : "."),
+        : ".") +
+      " No competitor entity is resolvable from the raw crawl — see real buy-box-loss findings on individual product pages instead.",
     action: "View competitors", target: "competitors",
   });
   list.push({
@@ -1408,7 +1441,9 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w" }: {
           return { retailer: rt.name, sales: s, growth: round((rr() - 0.45) * 24, 1), units: Math.round(s / p.price) };
         }),
       },
-      note: p.buyBox
+      note: REAL_BUYBOX_COMPETITOR[id]
+        ? "Buy box won by " + REAL_BUYBOX_COMPETITOR[id].seller + " for " + REAL_BUYBOX_COMPETITOR[id].daysWon + " of 30 tracked days."
+        : p.buyBox
         ? "Buy box held for the full period."
         : "Buy box lost for " + (1 + Math.round(r() * 4)) + " days in the period.",
     });

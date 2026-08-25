@@ -6,7 +6,7 @@ import type { CompetitorsContext } from "./Layout";
 export default function CompetitorList() {
   const { snap } = useOutletContext<CompetitorsContext>();
 
-  const competitorsTable = table("Competitive listing comparison", "Rival portfolios measured on the same keyword set",
+  const competitorsTable = table("Competitive listing comparison", "Illustrative rival set — no competitor entity is resolvable from the raw crawl data; real third-party sellers found (see product pages) are one-off resellers, not persistent brands",
     [{ label: "Brand", align: "left" }, { label: "Share of search", align: "right" }, { label: "Change", align: "right" },
      { label: "Tracked SKUs", align: "right" }, { label: "Competitor price", align: "right" }, { label: "Avg rating", align: "right" }, { label: "Content completeness", align: "right" }],
     snap.competitors.map((c: any) => ({ cells: [
