@@ -17,3 +17,6 @@ dist/
 _ds/
 support.js
 /data/
+
+# Generated reports/deliverables — large binaries, not source, kept locally
+/reports/
