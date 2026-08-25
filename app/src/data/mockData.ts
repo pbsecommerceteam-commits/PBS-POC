@@ -567,7 +567,6 @@ export const REAL_ROLLUP_WEEKLY: Record<string, {
 
 function productFor(p: (typeof catalog)[number], key: string) {
   const r = rng(hash(p.id + key));
-  const bias = RETAILER_BIAS[key.split("|")[0]] || RETAILER_BIAS.all;
   const roll = r();
   const status = roll < p.stockBias - 0.28 ? "In Stock" : roll < p.stockBias + 0.14 ? "Low Stock" : "Out of Stock";
   return {
