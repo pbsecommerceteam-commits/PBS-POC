@@ -480,6 +480,46 @@ export const REAL_PRODUCT_WEEKLY: Record<string, {
 
 export const REAL_SOS_WEEKLY: Record<string, number[]> = {};
 
+/* Genuine cross-retailer matches within our own 116-SKU sample — same brand
+   plus >=45% product-name token overlap (title/model number match, not just
+   a shared brand word). Only 31 of 116 products have a real match; the rest
+   genuinely are not tracked at any other retailer in this sample, which the
+   product page states honestly instead of fabricating "Live" everywhere. */
+export const CROSS_RETAILER_MATCH: Record<string, Record<string, string>> = {
+  "r3-14978527": { "r1": "r1-B003S516XO" },
+  "r1-B003S516XO": { "r3": "r3-14978527" },
+  "r3-200093306": { "r2": "r2-129721", "r1": "r1-B07BVL8TQF" },
+  "r2-129721": { "r3": "r3-200093306" },
+  "r5-5134180": { "r2": "r2-51634" },
+  "r2-51634": { "r5": "r5-5134180" },
+  "r5-5158650": { "r2": "r2-47575" },
+  "r2-47575": { "r5": "r5-5158650" },
+  "r3-981923626": { "r1": "r1-B002LAREDS" },
+  "r1-B002LAREDS": { "r3": "r3-981923626" },
+  "r6-50065981": { "r4": "r4-205755526" },
+  "r4-205755526": { "r6": "r6-50065981" },
+  "r3-46092119": { "r1": "r1-B002LAREDS" },
+  "r1-B01GJOMWYC": { "r3": "r3-46092119" },
+  "r1-B07BVL8TQF": { "r3": "r3-200093306" },
+  "r3-43920730": { "r1": "r1-B07BVL8TQF" },
+  "r3-164464324": { "r1": "r1-B00H2B4H2M" },
+  "r1-B00H2B4H2M": { "r3": "r3-164464324" },
+  "r6-50236519": { "r4": "r4-202056480" },
+  "r4-202056480": { "r6": "r6-50236519" },
+  "r4-311330332": { "r6": "r6-50065981" },
+  "r6-999912917": { "r4": "r4-205755526" },
+  "r6-5001952515": { "r4": "r4-202056480" },
+  "r6-1000383881": { "r4": "r4-202561604" },
+  "r4-202561604": { "r6": "r6-1000383881" },
+  "r2-192722": { "r3": "r3-200093306" },
+  "r6-1003171818": { "r4": "r4-206498775" },
+  "r4-206498775": { "r6": "r6-1003171818" },
+  "r2-191386": { "r5": "r5-5158650" },
+  "r2-47595": { "r5": "r5-5158650" },
+  "r5-5178067": { "r2": "r2-47595" },
+};
+
+
 export const REAL_ROLLUP_WEEKLY: Record<string, {
   stockRate: number[]; buyBoxRate: number[]; rating: number[]; content: number[];
 }> = {
@@ -1317,16 +1357,29 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w" }: {
       labels,
       trends,
       dataSource: period === "4w" && real ? "real" : "illustrative",
+      /* Real where a genuine cross-retailer match exists in our own sample
+         (same brand, >=45% name overlap — see CROSS_RETAILER_MATCH); honest
+         "not tracked" everywhere else, instead of fabricating a "Live"
+         listing for a SKU we have no evidence exists at that retailer. */
       retailerPerformance: retailers.slice(1).map((rt) => {
-        const rr = rowRng(key, id + "-retailer", rt.id);
+        if (rt.id === base.retailer) {
+          return {
+            retailer: rt.name, rank: p.searchRank, price: p.price, inStock: p.inStockRate,
+            rating: p.rating, content: p.contentScore, listed: true, isSelf: true, matched: true,
+          };
+        }
+        const matchId = CROSS_RETAILER_MATCH[id]?.[rt.id];
+        const match = matchId ? (catalog as any[]).find((x) => x.id === matchId) : null;
+        if (match) {
+          const mp = withShelfMetrics(productFor(match, rt.id + "|" + period));
+          return {
+            retailer: rt.name, rank: mp.searchRank, price: mp.price, inStock: mp.inStockRate,
+            rating: mp.rating, content: mp.contentScore, listed: true, isSelf: false, matched: true,
+          };
+        }
         return {
-          retailer: rt.name,
-          rank: clamp(Math.round(p.searchRank + (rr() - 0.5) * 8), 1, 40),
-          price: round(p.price * (0.94 + rr() * 0.14), 2),
-          inStock: round(clamp(p.inStockRate + (rr() - 0.5) * 12, 40, 100), 1),
-          rating: round(clamp(p.rating + (rr() - 0.5) * 0.4, 3, 5), 2),
-          content: clamp(Math.round(p.contentScore + (rr() - 0.5) * 16), 30, 100),
-          listed: rr() > 0.12,
+          retailer: rt.name, rank: null, price: null, inStock: null, rating: null, content: null,
+          listed: false, isSelf: false, matched: false,
         };
       }),
       contentBreakdown: contentAttributes.map((a) => {

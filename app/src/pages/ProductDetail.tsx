@@ -94,15 +94,15 @@ export default function ProductDetail() {
     { label: "Buy box presence", value: p.buyBox ? "Held" : "Lost", sub: detail.note },
   ];
 
-  const retailerPerfTable = table("Retailer performance", "The same SKU measured at every monitored retailer",
+  const retailerPerfTable = table("Retailer comparison", "This exact SKU at its home retailer, plus genuine same-brand matches found elsewhere in our tracked sample — not a claim this product is listed everywhere",
     [{ label: "Retailer", align: "left" }, { label: "Rank", align: "right" }, { label: "Price", align: "right" },
      { label: "In Stock", align: "right" }, { label: "Rating", align: "right" }, { label: "Content completeness", align: "right" }, { label: "Listing", align: "left" }],
     detail.retailerPerformance.map((r: any) => ({ cells: [
-      cell(r.retailer), cell("#" + r.rank, { align: "right", strong: true }),
-      cell("$" + r.price.toFixed(2), { align: "right" }),
-      cell(pct(r.inStock), { align: "right", color: r.inStock >= 98 ? "var(--status-positive-fg)" : "inherit" }),
-      cell(r.rating.toFixed(2), { align: "right" }), cell(String(r.content), { align: "right" }),
-      cell(r.listed ? "Live" : "Not listed", { tone: r.listed ? "positive" : "neutral" }),
+      cell(r.retailer), cell(r.matched ? "#" + r.rank : "—", { align: "right", strong: r.matched }),
+      cell(r.matched ? "$" + r.price.toFixed(2) : "—", { align: "right" }),
+      cell(r.matched ? pct(r.inStock) : "—", { align: "right", color: r.matched && r.inStock >= 98 ? "var(--status-positive-fg)" : "inherit" }),
+      cell(r.matched ? r.rating.toFixed(2) : "—", { align: "right" }), cell(r.matched ? String(r.content) : "—", { align: "right" }),
+      cell(r.isSelf ? "Home retailer" : r.matched ? "Matched product" : "Not tracked in sample", { tone: r.isSelf ? "positive" : r.matched ? "neutral" : "neutral" }),
     ] })));
 
   const contentChecklistTable = table("Content checklist", "Requirement-level detail behind the content score",
