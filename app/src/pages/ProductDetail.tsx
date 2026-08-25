@@ -22,7 +22,10 @@ export default function ProductDetail() {
 
   const [detail, setDetail] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [photoBroken, setPhotoBroken] = useState(false);
   const reqKey = useRef("");
+
+  useEffect(() => { setPhotoBroken(false); }, [id]);
 
   useEffect(() => {
     const key = id + "|" + retailer + "|" + period;
@@ -118,7 +121,16 @@ export default function ProductDetail() {
     >
       <Card padding="20px 22px">
         <div style={{ display: "flex", alignItems: "flex-start", gap: 18, flexWrap: "wrap" }}>
-          <span className="sl-avatar" style={{ width: 56, height: 56, fontSize: 17, borderRadius: "var(--radius-md)" }}>{initials}</span>
+          {photoBroken ? (
+            <span className="sl-avatar" style={{ width: 56, height: 56, fontSize: 17, borderRadius: "var(--radius-md)" }}>{initials}</span>
+          ) : (
+            <img
+              src={`${import.meta.env.BASE_URL}product-images/${p.id}.jpg`}
+              alt="" width={56} height={56}
+              style={{ borderRadius: "var(--radius-md)", objectFit: "cover", flex: "none", background: "var(--surface-secondary)" }}
+              onError={() => setPhotoBroken(true)}
+            />
+          )}
           <div style={{ flex: "1 1 240px", minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <h2 style={{ margin: 0, fontSize: 19, fontWeight: 600 }}>{p.name}</h2>

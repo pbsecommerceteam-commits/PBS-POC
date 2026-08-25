@@ -48,7 +48,7 @@ export default function SalesShareProducts() {
   const deteriorations = movers.filter((p: Product) => visibilityDelta(p) < 0).slice(-4).reverse();
 
   const columns: Column<Product>[] = [
-    { key: "name", label: "Product", minWidth: 230, sortable: true, render: (p) => <ProductCell name={p.name} sku={p.id.toUpperCase()} /> },
+    { key: "name", label: "Product", minWidth: 230, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} /> },
     { key: "category", label: "Category", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.category}</span> },
     { key: "retailerName", label: "Retailer", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.retailerName}</span> },
     { key: "searchRank", label: "Search rank", align: "right", sortable: true, render: (p) => (

@@ -63,7 +63,7 @@ export default function Overview() {
   }, hover, onEnter);
 
   const columns: Column<Product>[] = [
-    { key: "name", label: "Product", minWidth: 260, sortable: true, render: (p) => <ProductCell name={p.name} sku={p.id.toUpperCase()} meta={p.category} /> },
+    { key: "name", label: "Product", minWidth: 260, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.category} /> },
     { key: "searchRank", label: "Search Rank", align: "right", sortable: true, render: (p) => (
       <><span style={{ fontWeight: 600 }}>#{p.searchRank}</span>
       <span style={{ fontSize: 11.5, marginLeft: 6, color: deltaColor(p.rankDelta) }}>{p.rankDelta === 0 ? "—" : (p.rankDelta > 0 ? "↑ " : "↓ ") + Math.abs(p.rankDelta)}</span></>

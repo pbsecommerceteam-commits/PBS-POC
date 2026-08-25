@@ -45,7 +45,7 @@ export default function ContentProducts() {
   );
 
   const columns: Column<Product>[] = [
-    { key: "name", label: "Product", minWidth: 240, sortable: true, render: (p) => <ProductCell name={p.name} sku={p.id.toUpperCase()} meta={`${p.category} · ${p.retailerName}`} /> },
+    { key: "name", label: "Product", minWidth: 240, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={`${p.category} · ${p.retailerName}`} /> },
     { key: "searchRank", label: "Search rank", align: "right", sortable: true, render: (p) => "#" + p.searchRank },
     { key: "price", label: "Price", align: "right", sortable: true, render: (p) => "$" + p.price.toFixed(2) },
     { key: "stockStatus", label: "Stock", sortable: true, render: (p) => <Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge> },

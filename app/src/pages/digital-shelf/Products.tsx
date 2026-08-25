@@ -56,7 +56,7 @@ export default function DigitalShelfProducts() {
   );
 
   const columns: Column<Product>[] = [
-    { key: "name", label: "Product", minWidth: 220, sortable: true, render: (p) => <ProductCell name={p.name} sku={p.id.toUpperCase()} /> },
+    { key: "name", label: "Product", minWidth: 220, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} /> },
     { key: "category", label: "Category", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.category}</span> },
     { key: "retailerName", label: "Retailer", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.retailerName}</span> },
     { key: "searchRank", label: "Rank", align: "right", sortable: true, render: (p) => (<><span style={{ fontWeight: 600 }}>#{p.searchRank}</span><span style={{ fontSize: 11.5, marginLeft: 5, color: deltaColor(p.rankDelta) }}>{p.rankDelta === 0 ? "—" : (p.rankDelta > 0 ? "↑" : "↓") + Math.abs(p.rankDelta)}</span></>) },

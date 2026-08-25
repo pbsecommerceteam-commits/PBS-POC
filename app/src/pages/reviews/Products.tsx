@@ -40,7 +40,7 @@ export default function ReviewsProducts() {
   );
 
   const columns: Column<Product>[] = [
-    { key: "name", label: "Product", minWidth: 240, sortable: true, render: (p) => <ProductCell name={p.name} sku={p.id.toUpperCase()} meta={`${p.category} · ${p.retailerName}`} /> },
+    { key: "name", label: "Product", minWidth: 240, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={`${p.category} · ${p.retailerName}`} /> },
     { key: "rating", label: "Rating", align: "right", sortable: true, render: (p) => <span style={{ fontWeight: 600 }}>{p.rating.toFixed(2)}</span> },
     { key: "reviews", label: "Reviews", align: "right", sortable: true, render: (p) => p.reviews.toLocaleString() },
     { key: "price", label: "Price", align: "right", sortable: true, render: (p) => "$" + p.price.toFixed(2) },
