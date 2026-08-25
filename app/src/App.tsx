@@ -1,8 +1,11 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/layout/AppShell";
+import { RequireAuth } from "./components/layout/RequireAuth";
+import { AuthProvider } from "./context/AuthContext";
 import { FiltersProvider } from "./context/FiltersContext";
 import { DataProvider } from "./context/DataContext";
 import { UiProvider } from "./context/UiContext";
+import Login from "./pages/Login";
 import Overview from "./pages/Overview";
 import DigitalShelfLayout from "./pages/digital-shelf/Layout";
 import DigitalShelfSummary from "./pages/digital-shelf/Summary";
@@ -31,11 +34,13 @@ import ProductDetail from "./pages/ProductDetail";
 
 export default function App() {
   return (
-    <FiltersProvider>
-      <UiProvider>
-        <DataProvider>
+    <AuthProvider>
+      <FiltersProvider>
+        <UiProvider>
+          <DataProvider>
           <Routes>
-            <Route path="/" element={<AppShell />}>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<RequireAuth><AppShell /></RequireAuth>}>
               <Route index element={<Navigate to="/overview" replace />} />
               <Route path="overview" element={<Overview />} />
 
@@ -76,8 +81,9 @@ export default function App() {
               <Route path="*" element={<Navigate to="/overview" replace />} />
             </Route>
           </Routes>
-        </DataProvider>
-      </UiProvider>
-    </FiltersProvider>
+          </DataProvider>
+        </UiProvider>
+      </FiltersProvider>
+    </AuthProvider>
   );
 }

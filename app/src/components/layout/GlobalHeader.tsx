@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFilters } from "../../context/FiltersContext";
 import { useUi } from "../../context/UiContext";
+import { useAuth } from "../../context/AuthContext";
 import { FilterSelect } from "../ui/FilterSelect";
 import { SearchPalette } from "./SearchPalette";
 import { user } from "../../data/mockData";
@@ -15,10 +16,12 @@ const SEVERITY_GROUP: Record<string, { label: string; order: number }> = {
 export function GlobalHeader() {
   const { retailer, period, setRetailer, setPeriod, retailers, periods } = useFilters();
   const { notifDismissed, notifications, markAllRead } = useUi();
+  const { logout } = useAuth();
   const navigate = useNavigate();
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,10 +33,14 @@ export function GlobalHeader() {
   }, []);
 
   useEffect(() => {
-    const onClick = (e: MouseEvent) => { if (rootRef.current && !rootRef.current.contains(e.target as Node)) setNotifOpen(false); };
+    const onClick = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) { setNotifOpen(false); setProfileOpen(false); }
+    };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
   }, []);
+
+  const handleLogout = () => { setProfileOpen(false); logout(); navigate("/login", { replace: true }); };
 
   const openProduct = (id: string) => { navigate("/product/" + id); setNotifOpen(false); };
 
@@ -95,12 +102,25 @@ export function GlobalHeader() {
         )}
       </div>
 
-      <div className="sl-profile">
-        <span className="sl-avatar" style={{ width: 30, height: 30 }}>{user.initials}</span>
-        <div style={{ lineHeight: 1.25 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 500 }}>{user.name}</div>
-          <div className="sl-faint" style={{ fontSize: 11 }}>{user.role}</div>
-        </div>
+      <div style={{ position: "relative" }}>
+        <button
+          className="sl-profile" onClick={() => setProfileOpen((o) => !o)}
+          style={{ border: "none", background: "transparent", cursor: "pointer", font: "inherit", color: "inherit" }}
+        >
+          <span className="sl-avatar" style={{ width: 30, height: 30 }}>{user.initials}</span>
+          <div style={{ lineHeight: 1.25, textAlign: "left" }}>
+            <div style={{ fontSize: 12.5, fontWeight: 500 }}>{user.name}</div>
+            <div className="sl-faint" style={{ fontSize: 11 }}>{user.role}</div>
+          </div>
+        </button>
+        {profileOpen && (
+          <div className="sl-panel sl-pop-in" onClick={(e) => e.stopPropagation()} style={{ position: "absolute", top: 44, right: 0, width: 180, zIndex: 30, padding: "6px 0" }}>
+            <button className="sl-palette__row" onClick={handleLogout} style={{ gap: 9 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+              <span style={{ fontSize: 13 }}>Log out</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
