@@ -426,18 +426,34 @@ def main():
     # only. rating/content are unaffected -- every product contributes
     # exactly one real observation per week either way, so equal-weight
     # averaging is already correct for those two.
+    # A handful of Petco SKUs are crawled for price/stock but were never
+    # given a Content-tab row (no name/category/images -- see
+    # excluded_price_only above), so they can't appear in the catalog or
+    # feed content/rating. But they ARE genuine stock-status observations:
+    # a manual filter of the raw Price tab naturally includes them, so
+    # Availability/Buy Box pooling below includes them too (grouped by
+    # retailer code) even though `ids`/`id_pairs` (content/rating's scope)
+    # deliberately does not.
+    price_only_by_code = defaultdict(list)
+    for code, native_id in excluded_price_only:
+        price_only_by_code[code].append((code, native_id))
+
     real_rollup_weekly = {}
     for scope in ["portfolio"] + list(RETAILER_NAMES.keys()):
         ids = [pid for pid in real_product_weekly if scope == "portfolio" or pid.startswith(scope + "-")]
         if not ids:
             continue
         id_pairs = [pid_to_key[pid] for pid in ids]
+        stock_id_pairs = id_pairs + (
+            [pair for pairs in price_only_by_code.values() for pair in pairs]
+            if scope == "portfolio" else price_only_by_code[scope]
+        )
 
         stockRate, buyBoxRate, stockWeight, buyBoxWeight, rating, content = [], [], [], [], [], []
         for wi, wk_start in enumerate(CONTENT_WEEKS):
             wk_end = CONTENT_WEEKS[wi + 1] if wi + 1 < len(CONTENT_WEEKS) else "2022-10-06"
             in_stock_n, total_n, buybox_n, buybox_d = 0, 0, 0, 0
-            for code, native_id in id_pairs:
+            for code, native_id in stock_id_pairs:
                 for r in price_by_product.get((code, native_id), []):
                     if not (wk_start <= date_key(r.get("Crawl date")) < wk_end):
                         continue

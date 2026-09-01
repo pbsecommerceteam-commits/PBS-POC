@@ -633,14 +633,14 @@ export const REAL_ROLLUP_WEEKLY: Record<string, {
      this table's construction in build_mock_data.py for why. */
   stockRateWeight: number[]; buyBoxRateWeight: number[];
 }> = {
-  "portfolio": { stockRate: [61.98, 60.75, 56.08, 62.13, 62.16], buyBoxRate: [81.88, 82.11, 81.95, 81.51, 80.18], rating: [4.26, 4.26, 4.26, 4.26, 4.26], content: [61.13, 61.13, 61.21, 61.24, 61.32], stockRateWeight: [789, 777, 781, 779, 222], buyBoxRateWeight: [789, 777, 781, 779, 222] },
+  "portfolio": { stockRate: [62.3, 61.24, 56.77, 62.58, 62.61], buyBoxRate: [82.32, 82.73, 82.48, 82.16, 80.87], rating: [4.26, 4.26, 4.26, 4.26, 4.26], content: [61.13, 61.13, 61.21, 61.24, 61.32], stockRateWeight: [809, 805, 805, 807, 230], buyBoxRateWeight: [809, 805, 805, 807, 230] },
   "r1": { stockRate: [64.76, 64.29, 66.67, 67.14, 66.67], buyBoxRate: [61.43, 60.95, 62.38, 62.86, 60.0], rating: [4.27, 4.27, 4.28, 4.29, 4.28], content: [66.73, 66.73, 66.5, 66.63, 66.63], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [210, 210, 210, 210, 60] },
   "r2": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [3.78, 3.78, 3.78, 3.78, 3.78], content: [61.4, 61.4, 63.0, 63.0, 63.0], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20] },
   "r3": { stockRate: [68.57, 67.14, 42.86, 69.52, 73.33], buyBoxRate: [70.48, 72.86, 70.48, 68.57, 66.67], rating: [4.24, 4.24, 4.24, 4.24, 4.24], content: [58.87, 58.87, 58.87, 58.87, 58.87], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [210, 210, 210, 210, 60] },
   "r4": { stockRate: [60.0, 60.0, 60.0, 58.57, 50.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.0, 4.0, 4.0, 3.99, 3.99], content: [61.8, 61.8, 61.8, 61.8, 61.8], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20] },
   "r5": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.65, 4.65, 4.65, 4.65, 4.65], content: [60.5, 60.5, 60.5, 60.5, 60.5], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20] },
   "r6": { stockRate: [2.52, 0.0, 8.4, 0.0, 0.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.23, 4.24, 4.24, 4.24, 4.24], content: [60.88, 60.88, 60.88, 60.88, 60.88], stockRateWeight: [119, 119, 119, 119, 34], buyBoxRateWeight: [119, 119, 119, 119, 34] },
-  "r7": { stockRate: [60.0, 50.0, 50.0, 53.33, 50.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.67, 4.67, 4.67, 4.67, 4.67], content: [51.2, 51.2, 51.2, 51.2, 52.1], stockRateWeight: [40, 28, 32, 30, 8], buyBoxRateWeight: [40, 28, 32, 30, 8] },
+  "r7": { stockRate: [65.0, 62.5, 62.5, 63.79, 62.5], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.67, 4.67, 4.67, 4.67, 4.67], content: [51.2, 51.2, 51.2, 51.2, 52.1], stockRateWeight: [60, 56, 56, 58, 16], buyBoxRateWeight: [60, 56, 56, 58, 16] },
 };
 
 
