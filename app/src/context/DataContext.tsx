@@ -19,7 +19,7 @@ const DataContext = createContext<DataValue | null>(null);
  *  about a number. Pages that only need one slice (e.g. Reviews only needs
  *  `snap`) simply ignore the others. */
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { retailer, period } = useFilters();
+  const { retailer, period, dateRange } = useFilters();
   const [snap, setSnap] = useState<any | null>(null);
   const [shelf, setShelf] = useState<any | null>(null);
   const [sales, setSales] = useState<any | null>(null);
@@ -29,14 +29,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const reqKey = useRef("");
 
   useEffect(() => {
-    const key = retailer + "|" + period + "|" + reloadTick;
+    const rangeKey = dateRange ? dateRange.start + ".." + dateRange.end : "";
+    const key = retailer + "|" + period + "|" + rangeKey + "|" + reloadTick;
     reqKey.current = key;
     setLoading(true);
     setError("");
     Promise.all([
-      fetchSnapshot({ retailer, period }),
-      fetchShelf({ retailer, period }),
-      fetchSales({ retailer, period }),
+      fetchSnapshot({ retailer, period, dateRange }),
+      fetchShelf({ retailer, period, dateRange }),
+      fetchSales({ retailer, period, dateRange }),
     ]).then(([s, sh, sa]) => {
       if (reqKey.current !== key) return;
       setSnap(s); setShelf(sh); setSales(sa); setLoading(false);
@@ -45,7 +46,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       setError(String(err?.message || err));
     });
-  }, [retailer, period, reloadTick]);
+  }, [retailer, period, dateRange, reloadTick]);
 
   const value: DataValue = { snap, shelf, sales, loading, error, reload: () => setReloadTick((t) => t + 1) };
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

@@ -4,6 +4,7 @@ import { useFilters } from "../../context/FiltersContext";
 import { useUi } from "../../context/UiContext";
 import { useAuth } from "../../context/AuthContext";
 import { FilterSelect } from "../ui/FilterSelect";
+import { DateRangePicker } from "../ui/DateRangePicker";
 import { SearchPalette } from "./SearchPalette";
 import { user } from "../../data/mockData";
 
@@ -14,7 +15,7 @@ const SEVERITY_GROUP: Record<string, { label: string; order: number }> = {
 };
 
 export function GlobalHeader() {
-  const { retailer, period, setRetailer, setPeriod, retailers, periods } = useFilters();
+  const { retailer, period, dateRange, setRetailer, setPeriod, setDateRange, retailers, periods } = useFilters();
   const { notifDismissed, notifications, markAllRead } = useUi();
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -56,6 +57,7 @@ export function GlobalHeader() {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <FilterSelect label="Retailer" value={retailer} onChange={setRetailer} options={retailers} width={168} />
         <FilterSelect label="Period" value={period} onChange={setPeriod} options={periods} width={156} />
+        <DateRangePicker value={dateRange} onChange={setDateRange} />
       </div>
 
       <div style={{ flex: 1 }} />

@@ -15,7 +15,7 @@ import { fetchProduct } from "../data/mockData";
 
 export default function ProductDetail() {
   const { id = "" } = useParams();
-  const { retailer, period } = useFilters();
+  const { retailer, period, dateRange } = useFilters();
   const { toast } = useUi();
   const navigate = useNavigate();
   const { hover, onEnter, onLeave } = useChartHover();
@@ -28,10 +28,11 @@ export default function ProductDetail() {
   useEffect(() => { setPhotoBroken(false); }, [id]);
 
   useEffect(() => {
-    const key = id + "|" + retailer + "|" + period;
+    const rangeKey = dateRange ? dateRange.start + ".." + dateRange.end : "";
+    const key = id + "|" + retailer + "|" + period + "|" + rangeKey;
     reqKey.current = key;
     setLoading(true);
-    fetchProduct(id, { retailer, period })
+    fetchProduct(id, { retailer, period, dateRange })
       .then((d) => { if (reqKey.current === key) { setDetail(d); setLoading(false); } })
       .catch(() => {
         if (reqKey.current !== key) return;
@@ -39,7 +40,7 @@ export default function ProductDetail() {
         toast("That SKU is not tracked at this retailer.");
         navigate(-1);
       });
-  }, [id, retailer, period]);
+  }, [id, retailer, period, dateRange]);
 
   if (loading || !detail) {
     return (
@@ -69,7 +70,8 @@ export default function ProductDetail() {
   const reviewsLo = Math.min(...t.reviews), reviewsHi = Math.max(...t.reviews);
 
   const isReal = detail.dataSource === "real";
-  const realNote = isReal ? " · Real crawl data (Sep 8–29)" : " · Illustrative — crawl covers one month only";
+  const realWindow = labels.length ? `${labels[0]}–${labels[labels.length - 1]}` : "Sep 8–29";
+  const realNote = isReal ? ` · Real crawl data (${realWindow})` : " · Illustrative — crawl covers one month only";
 
   const rankChart = lineChart({ id: "d-rank", title: "Search Rank Trend", subtitle: "Position on the primary category term (lower is better) · Illustrative — no reliable per-SKU crawled rank",
     labels, lo: 1, hi: 30, ticks: [1, 10, 20, 30], fmt: (v) => "#" + Math.round(v), invert: true, hideLegend: true, series: [{ name: "Rank", values: t.rank }] }, hover, onEnter);

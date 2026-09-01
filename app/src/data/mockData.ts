@@ -377,6 +377,13 @@ for (const p of catalog as any[]) {
    jitter since September is the only month this crawl covers. */
 export const REAL_WEEK_LABELS = ["Sep 1", "Sep 8", "Sep 15", "Sep 22", "Sep 29"];
 export const REAL_SOS_WEEK_LABELS = ["Sep 8", "Sep 15", "Sep 22", "Sep 29"];
+/* ISO dates behind the labels above, for the custom date-range filter. Content
+   crawl weeks vs. Share Of Search crawl weeks intentionally use the same
+   Sep 8-29 window (the "Last 4 weeks" period already trims Content's Sep 1
+   point via .slice(1) for exactly this reason -- Share Of Search has no Sep 1
+   data point to pair it with, so a custom range narrows *within* Sep 8-29
+   rather than adding a 5th standalone checkpoint). */
+export const REAL_SOS_WEEK_DATES = ["2022-09-08", "2022-09-15", "2022-09-22", "2022-09-29"];
 
 export const REAL_PRODUCT_WEEKLY: Record<string, {
   rating: number[]; reviews: number[]; price: number[]; stockRate: number[]; buyBoxRate: number[];
@@ -702,14 +709,34 @@ function poolFor(retailer: string, key: string) {
   });
 }
 
+export type DateRange = { start: string; end: string };
+
+/* Resolves a custom date range to indices into the 4-point real window
+   (REAL_SOS_WEEK_DATES / REAL_SOS_WEEK_LABELS: Sep 8/15/22/29). If nothing in
+   the range overlaps that window (e.g. a range outside September 2022),
+   falls back to the full 4-week window rather than showing nothing —
+   `matched: false` tells the caller to surface that substitution instead of
+   silently presenting it as an exact match. */
+function matchRangeWeeks(range: DateRange | null | undefined): { idx: number[]; matched: boolean } {
+  if (!range) return { idx: [], matched: false };
+  const idx = REAL_SOS_WEEK_DATES.map((d, i) => (d >= range.start && d <= range.end ? i : -1)).filter((i) => i >= 0);
+  if (idx.length) return { idx, matched: true };
+  return { idx: [0, 1, 2, 3], matched: false };
+}
+
 /* Real portfolio/retailer-level trend series for the "Last 4 weeks" period —
    same reasoning as REAL_PRODUCT_WEEKLY above: this is the one window the
    real September crawl can honestly fill point-for-point. Every other
-   period keeps the synthetic series() curves. */
-function realRollupSeries(period: string, retailer: string, field: "stockRate" | "buyBoxRate" | "rating" | "content"): number[] | null {
-  if (period !== "4w") return null;
+   period keeps the synthetic series() curves. `rangeIdx` (0-3, from
+   matchRangeWeeks) overrides the period check entirely for the custom
+   date-range filter — REAL_ROLLUP_WEEKLY is a 5-point array (Sep 1 first),
+   so indices are offset by 1 to land on the same Sep 8-29 window. */
+function realRollupSeries(period: string, retailer: string, field: "stockRate" | "buyBoxRate" | "rating" | "content", rangeIdx?: number[]): number[] | null {
   const row = REAL_ROLLUP_WEEKLY[retailer === "all" ? "portfolio" : retailer];
-  return row ? row[field].slice(1) : null;
+  if (!row) return null;
+  if (rangeIdx) return rangeIdx.map((i) => row[field][i + 1]);
+  if (period !== "4w") return null;
+  return row[field].slice(1);
 }
 
 /* REAL_SOS_WEEKLY holds "% of tracked-keyword searches that returned any
@@ -724,18 +751,21 @@ function realRollupSeries(period: string, retailer: string, field: "stockRate" |
    documented simplification, not a literal match. Retailer/portfolio-level
    only -- there is no reliable way to attribute a keyword-level result to
    one specific tracked SKU, so per-product search rank stays synthetic. */
-function realRollupSeriesSos(period: string, retailer: string): number[] | null {
-  if (period !== "4w") return null;
+function realRollupSeriesSos(period: string, retailer: string, rangeIdx?: number[]): number[] | null {
   const row = REAL_SOS_WEEKLY[retailer === "all" ? "portfolio" : retailer];
-  return row ? row : null;
+  if (!row) return null;
+  if (rangeIdx) return rangeIdx.map((i) => row[i]);
+  if (period !== "4w") return null;
+  return row;
 }
 
-function realPriceIndexWeekly(period: string, retailer: string): number[] | null {
-  if (period !== "4w") return null;
+function realPriceIndexWeekly(period: string, retailer: string, rangeIdx?: number[]): number[] | null {
   const ids = Object.keys(REAL_PRODUCT_WEEKLY).filter((id) => retailer === "all" || id.startsWith(retailer + "-"));
   if (!ids.length) return null;
+  const weekPositions = rangeIdx ? rangeIdx.map((i) => i + 1) : period !== "4w" ? null : [1, 2, 3, 4];
+  if (!weekPositions) return null;
   const out: number[] = [];
-  for (let wi = 1; wi < 5; wi++) {
+  for (const wi of weekPositions) {
     let sum = 0, count = 0;
     for (const id of ids) {
       const prod = (catalog as any[]).find((x) => x.id === id);
@@ -749,10 +779,11 @@ function realPriceIndexWeekly(period: string, retailer: string): number[] | null
   return out;
 }
 
-function snapshot(retailer: string, period: string) {
-  const key = retailer + "|" + period;
+function snapshot(retailer: string, period: string, dateRange?: DateRange | null) {
+  const key = retailer + "|" + period + (dateRange ? "|" + dateRange.start + ".." + dateRange.end : "");
   const seed = hash(key);
-  const labels = labelsFor(period);
+  const rangeMatch = dateRange ? matchRangeWeeks(dateRange) : null;
+  const labels = rangeMatch ? rangeMatch.idx.map((i) => REAL_SOS_WEEK_LABELS[i]) : labelsFor(period);
   const n = labels.length;
   const bias = RETAILER_BIAS[retailer] || RETAILER_BIAS.all;
   const sw = swing[period] || 1;
@@ -763,14 +794,14 @@ function snapshot(retailer: string, period: string) {
      (competitorBrands has no real counterpart), but must sit near the real
      sos value or the "Gap to Leader" comparison reads as nonsense once sos
      is real for the "4w" period. */
-  const sos = realRollupSeriesSos(period, retailer) ?? series(seed + 1, n, 90 - 3 * sw + bias.sos, 90 + bias.sos, 0.9, 1);
+  const sos = realRollupSeriesSos(period, retailer, rangeMatch?.idx) ?? series(seed + 1, n, 90 - 3 * sw + bias.sos, 90 + bias.sos, 0.9, 1);
   const leader = series(seed + 2, n, 93 + 1 * sw, 95, 0.6, 1);
   const riser = series(seed + 3, n, 78 - 8 * sw, 78, 1.1, 1);
-  const stockVals = realRollupSeries(period, retailer, "stockRate")
+  const stockVals = realRollupSeries(period, retailer, "stockRate", rangeMatch?.idx)
     ?? series(seed + 4, n, 96.4 + 1.4 * sw + bias.stock, 96.4 + bias.stock, 0.5, 1).map((v) => round(clamp(v, 88, 100), 1));
-  const ratingVals = realRollupSeries(period, retailer, "rating")
+  const ratingVals = realRollupSeries(period, retailer, "rating", rangeMatch?.idx)
     ?? series(seed + 5, n, 4.32 - 0.14 * sw + bias.rating, 4.32 + bias.rating, 0.03, 2);
-  const contentVals = (realRollupSeries(period, retailer, "content")?.map((v) => Math.round(v)))
+  const contentVals = (realRollupSeries(period, retailer, "content", rangeMatch?.idx)?.map((v) => Math.round(v)))
     ?? series(seed + 6, n, 87 - 8 * sw + bias.content, 87 + bias.content, 1.2, 0).map((v) => clamp(Math.round(v), 40, 100));
 
   const pool = poolFor(retailer, key);
@@ -791,13 +822,17 @@ function snapshot(retailer: string, period: string) {
   /* Same seeds/formula as shelfData() so Price Index and Buy Box Presence
      read identically wherever they appear. */
   const idxNow = round((pool.reduce((a, p) => a + p.priceIndex, 0) / (pool.length || 1)) * 100, 1);
-  const priceIdx = realPriceIndexWeekly(period, retailer) ?? series(seed + 21, n, idxNow - 1.8 * sw, idxNow, 0.6, 1);
+  const priceIdx = realPriceIndexWeekly(period, retailer, rangeMatch?.idx) ?? series(seed + 21, n, idxNow - 1.8 * sw, idxNow, 0.6, 1);
   const buyNow = round((pool.filter((p) => p.buyBox).length / (pool.length || 1)) * 100, 0);
-  const buyBoxSeries = realRollupSeries(period, retailer, "buyBoxRate")?.map((v) => Math.round(v))
+  const buyBoxSeries = realRollupSeries(period, retailer, "buyBoxRate", rangeMatch?.idx)?.map((v) => Math.round(v))
     ?? series(seed + 22, n, buyNow + 2 * sw, buyNow, 1.2, 0).map((v) => clamp(Math.round(v), 40, 100));
 
   const out: any = {
     retailer, period, labels,
+    dateRange: dateRange
+      ? { start: dateRange.start, end: dateRange.end, matched: rangeMatch!.matched,
+          note: rangeMatch!.matched ? null : "No crawl data for the exact range selected — showing the full Sep 8–29 crawl instead." }
+      : null,
     generatedAt: "Today 06:40 UTC",
     kpis: [
       kpi("sos", "Search Visibility", "%", sos, 40, 1),
@@ -971,8 +1006,8 @@ function deriveInsights(s: any) {
 
 const LATENCY = 340;
 
-export function fetchSnapshot({ retailer = "all", period = "12w" }: { retailer?: string; period?: string } = {}) {
-  return new Promise<any>((resolve) => setTimeout(() => resolve(snapshot(retailer, period)), LATENCY));
+export function fetchSnapshot({ retailer = "all", period = "12w", dateRange = null }: { retailer?: string; period?: string; dateRange?: DateRange | null } = {}) {
+  return new Promise<any>((resolve) => setTimeout(() => resolve(snapshot(retailer, period, dateRange)), LATENCY));
 }
 
 /* ── digital shelf ────────────────────────────────────────────────────
@@ -996,10 +1031,11 @@ const CONTENT_COMPONENTS = [
   { id: "specs", name: "Specifications", weight: 8, base: 37, hint: "Nutrition, ingredients, dimensions" },
 ];
 
-function shelfData(retailer: string, period: string) {
-  const key = retailer + "|" + period;
+function shelfData(retailer: string, period: string, dateRange?: DateRange | null) {
+  const key = retailer + "|" + period + (dateRange ? "|" + dateRange.start + ".." + dateRange.end : "");
   const seed = hash(key);
-  const labels = labelsFor(period);
+  const rangeMatch = dateRange ? matchRangeWeeks(dateRange) : null;
+  const labels = rangeMatch ? rangeMatch.idx.map((i) => REAL_SOS_WEEK_LABELS[i]) : labelsFor(period);
   const n = labels.length;
   const bias = RETAILER_BIAS[retailer] || RETAILER_BIAS.all;
   const sw = swing[period] || 1;
@@ -1012,16 +1048,16 @@ function shelfData(retailer: string, period: string) {
      and the same real-data-for-"4w" substitution, so the two pages never
      disagree about whether a number is real. */
   /* Same rescaled anchor as snapshot() above -- see the comment there. */
-  const sos = realRollupSeriesSos(period, retailer) ?? series(seed + 1, n, 90 - 3 * sw + bias.sos, 90 + bias.sos, 0.9, 1);
-  const stockVals = realRollupSeries(period, retailer, "stockRate")
+  const sos = realRollupSeriesSos(period, retailer, rangeMatch?.idx) ?? series(seed + 1, n, 90 - 3 * sw + bias.sos, 90 + bias.sos, 0.9, 1);
+  const stockVals = realRollupSeries(period, retailer, "stockRate", rangeMatch?.idx)
     ?? series(seed + 4, n, 96.4 + 1.4 * sw + bias.stock, 96.4 + bias.stock, 0.5, 1).map((v) => round(clamp(v, 88, 100), 1));
-  const contentVals = (realRollupSeries(period, retailer, "content")?.map((v) => Math.round(v)))
+  const contentVals = (realRollupSeries(period, retailer, "content", rangeMatch?.idx)?.map((v) => Math.round(v)))
     ?? series(seed + 6, n, 87 - 8 * sw + bias.content, 87 + bias.content, 1.2, 0).map((v) => clamp(Math.round(v), 40, 100));
 
   const idxNow = round(avg(pool, (p) => p.priceIndex, 3) * 100, 1);
-  const priceIdx = realPriceIndexWeekly(period, retailer) ?? series(seed + 21, n, idxNow - 1.8 * sw, idxNow, 0.6, 1);
+  const priceIdx = realPriceIndexWeekly(period, retailer, rangeMatch?.idx) ?? series(seed + 21, n, idxNow - 1.8 * sw, idxNow, 0.6, 1);
   const buyNow = round((pool.filter((p) => p.buyBox).length / (pool.length || 1)) * 100, 0);
-  const buyBox = realRollupSeries(period, retailer, "buyBoxRate")?.map((v) => Math.round(v))
+  const buyBox = realRollupSeries(period, retailer, "buyBoxRate", rangeMatch?.idx)?.map((v) => Math.round(v))
     ?? series(seed + 22, n, buyNow + 2 * sw, buyNow, 1.2, 0).map((v) => clamp(Math.round(v), 40, 100));
 
   const kpi = (id: string, label: string, unit: string, vals: number[], target: number, digits: number) => ({
@@ -1148,7 +1184,12 @@ function shelfData(retailer: string, period: string) {
   ].sort((a, b) => ({ High: 0, Medium: 1, Low: 2 } as any)[a.impact] - ({ High: 0, Medium: 1, Low: 2 } as any)[b.impact]);
 
   return {
-    retailer, period, labels, generatedAt: "Today 06:40 UTC",
+    retailer, period, labels,
+    dateRange: dateRange
+      ? { start: dateRange.start, end: dateRange.end, matched: rangeMatch!.matched,
+          note: rangeMatch!.matched ? null : "No crawl data for the exact range selected — showing the full Sep 8–29 crawl instead." }
+      : null,
+    generatedAt: "Today 06:40 UTC",
     kpis: [
       kpi("sos", "Search Visibility", "%", sos, 40, 1),
       kpi("instock", "Availability", "%", stockVals, 98, 1),
@@ -1198,8 +1239,8 @@ const CATEGORY_DRIVER: Record<string, string> = {
   HG: "Spectracide weed & pest control",
 };
 
-function salesData(retailer: string, period: string) {
-  const key = retailer + "|" + period;
+function salesData(retailer: string, period: string, dateRange?: DateRange | null) {
+  const key = retailer + "|" + period + (dateRange ? "|" + dateRange.start + ".." + dateRange.end : "");
   const seed = hash("sales" + key);
   const labels = labelsFor(period);
   const n = labels.length;
@@ -1325,7 +1366,7 @@ function salesData(retailer: string, period: string) {
 
   /* Digital shelf signals for the same retailer + period — Performance
      Intelligence reads these directly rather than an estimated-sales figure. */
-  const shelf = shelfData(retailer, period);
+  const shelf = shelfData(retailer, period, dateRange);
   const shelfKpi = (id: string) => shelf.kpis.find((k) => k.id === id) || { delta: 0, value: 0 };
   const signals = [
     { label: "Availability", delta: shelfKpi("instock").delta, unit: " pts", value: shelfKpi("instock").value + "%" },
@@ -1415,22 +1456,23 @@ function salesData(retailer: string, period: string) {
   };
 }
 
-export function fetchSales({ retailer = "all", period = "12w" }: { retailer?: string; period?: string } = {}) {
-  return new Promise<any>((resolve) => setTimeout(() => resolve(salesData(retailer, period)), LATENCY));
+export function fetchSales({ retailer = "all", period = "12w", dateRange = null }: { retailer?: string; period?: string; dateRange?: DateRange | null } = {}) {
+  return new Promise<any>((resolve) => setTimeout(() => resolve(salesData(retailer, period, dateRange)), LATENCY));
 }
 
-export function fetchShelf({ retailer = "all", period = "12w" }: { retailer?: string; period?: string } = {}) {
-  return new Promise<any>((resolve) => setTimeout(() => resolve(shelfData(retailer, period)), LATENCY));
+export function fetchShelf({ retailer = "all", period = "12w", dateRange = null }: { retailer?: string; period?: string; dateRange?: DateRange | null } = {}) {
+  return new Promise<any>((resolve) => setTimeout(() => resolve(shelfData(retailer, period, dateRange)), LATENCY));
 }
 
-export function fetchProduct(id: string, { retailer = "all", period = "12w" }: { retailer?: string; period?: string } = {}) {
+export function fetchProduct(id: string, { retailer = "all", period = "12w", dateRange = null }: { retailer?: string; period?: string; dateRange?: DateRange | null } = {}) {
   return new Promise<any>((resolve, reject) => setTimeout(() => {
     const base = catalog.find((p) => p.id === id);
     if (!base) return reject(new Error("Product not found: " + id));
-    const key = retailer + "|" + period;
+    const rangeMatch = dateRange ? matchRangeWeeks(dateRange) : null;
+    const key = retailer + "|" + period + (dateRange ? "|" + dateRange.start + ".." + dateRange.end : "");
     const p: any = withSalesMetrics(withShelfMetrics(productFor(base, key)), key);
     p.opportunity = scoreOpportunity(p);
-    const labels = labelsFor(period);
+    const labels = rangeMatch ? rangeMatch.idx.map((i) => REAL_SOS_WEEK_LABELS[i]) : labelsFor(period);
     const n = labels.length;
     const seed = hash(id + key);
     const sw = swing[period] || 1;
@@ -1450,13 +1492,15 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w" }: {
        rank stays synthetic in all periods — no reliable per-SKU crawled
        rank exists (see the Placement matching note). */
     const real = REAL_PRODUCT_WEEKLY[id];
-    const trends = period === "4w" && real
+    const useReal = !!real && (dateRange ? true : period === "4w");
+    const realIdx = rangeMatch ? rangeMatch.idx.map((i) => i + 1) : [1, 2, 3, 4];
+    const trends = useReal
       ? {
           rank: series(seed + 1, n, clamp(p.searchRank + 3 * sw, 1, 40), p.searchRank, 1.2, 0).map((v) => clamp(Math.round(v), 1, 40)),
-          price: real.price.slice(1),
-          stock: real.stockRate.slice(1),
-          rating: real.rating.slice(1),
-          reviews: real.reviews.slice(1),
+          price: realIdx.map((i) => real.price[i]),
+          stock: realIdx.map((i) => real.stockRate[i]),
+          rating: realIdx.map((i) => real.rating[i]),
+          reviews: realIdx.map((i) => real.reviews[i]),
         }
       : {
           rank: series(seed + 1, n, clamp(p.searchRank + 3 * sw, 1, 40), p.searchRank, 1.2, 0).map((v) => clamp(Math.round(v), 1, 40)),
@@ -1469,7 +1513,11 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w" }: {
       product: p,
       labels,
       trends,
-      dataSource: period === "4w" && real ? "real" : "illustrative",
+      dataSource: useReal ? "real" : "illustrative",
+      dateRange: dateRange
+        ? { start: dateRange.start, end: dateRange.end, matched: rangeMatch!.matched,
+            note: rangeMatch!.matched ? null : "No crawl data for the exact range selected — showing the full Sep 8–29 crawl instead." }
+        : null,
       /* Real where a genuine cross-retailer match exists in our own sample
          (same brand, >=45% name overlap — see CROSS_RETAILER_MATCH); honest
          "not tracked" everywhere else, instead of fabricating a "Live"

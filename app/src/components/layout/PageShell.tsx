@@ -20,9 +20,12 @@ export function PageShell({
   onSaveView?: () => void;
   children: ReactNode;
 }) {
-  const { retailerName, periodName } = useFilters();
-  const { loading, error, reload } = useDashboardData();
+  const { retailerName, periodName, dateRange } = useFilters();
+  const { snap, loading, error, reload } = useDashboardData();
+  const rangeNote = dateRange ? snap?.dateRange?.note : null;
   const { openAlert } = useUi();
+  const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const windowLabel = dateRange ? `${fmtDate(dateRange.start)} – ${fmtDate(dateRange.end)}` : periodName;
 
   return (
     <main style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "28px 28px 48px" }}>
@@ -34,7 +37,7 @@ export function PageShell({
               {backTo.label}
             </button>
           )}
-          <div className="sl-eyebrow">{retailerName} — {periodName}</div>
+          <div className="sl-eyebrow">{retailerName} — {windowLabel}</div>
           <h1 style={{ margin: "6px 0 5px", fontSize: 26, fontWeight: 600, letterSpacing: "-.01em" }}>{title}</h1>
           <div className="sl-muted" style={{ fontSize: 14, maxWidth: "62ch", lineHeight: 1.5 }}>{subtitle}</div>
         </div>
@@ -69,7 +72,7 @@ export function PageShell({
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div className="sl-muted" style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 12.5 }}>
             <span className="sl-skel" style={{ width: 11, height: 11, borderRadius: "50%", display: "block" }}></span>
-            Loading {periodName.toLowerCase()} for {retailerName}…
+            Loading {dateRange ? windowLabel : periodName.toLowerCase()} for {retailerName}…
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: "var(--app-gap)" }}>
             {[0, 1, 2, 3].map((i) => <div key={i} className="sl-skel" style={{ height: 152 }}></div>)}
@@ -79,6 +82,12 @@ export function PageShell({
             <div className="sl-skel" style={{ height: 320 }}></div>
           </div>
           <div className="sl-skel" style={{ height: 220 }}></div>
+        </div>
+      )}
+
+      {!error && !loading && rangeNote && (
+        <div className="sl-card-surface" style={{ padding: "12px 16px", marginBottom: 16, fontSize: 13, color: "var(--text-muted)" }}>
+          {rangeNote}
         </div>
       )}
 
