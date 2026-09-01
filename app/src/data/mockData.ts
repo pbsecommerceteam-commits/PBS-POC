@@ -793,6 +793,26 @@ function realRangeValuePriceIndex(retailer: string, idx: number[]): { value: num
   return { value, delta };
 }
 
+/* Single "current value" resolver for the Retailer performance / digital-shelf
+   breakdown cards (Overview's retailerPerformance, Digital Shelf's byRetailer)
+   -- pooled across the selected custom date range when one is active (reusing
+   realRangeValue's weighted pooling), or the latest real week when "Last 4
+   weeks" is selected with no custom range, else null so the caller falls back
+   to its existing synthetic bias-based estimate. Search Visibility stays
+   synthetic on these specific cards (no real per-retailer competitive-share
+   data exists), so this is never called for that field. */
+function realCurrentValue(retailer: string, field: "stockRate" | "buyBoxRate" | "rating" | "content", period: string, dateRange: DateRange | null | undefined, wideIdx?: number[]): number | null {
+  if (dateRange && wideIdx) {
+    const r = realRangeValue(retailer, field, wideIdx);
+    return r ? r.value : null;
+  }
+  if (period === "4w") {
+    const row = REAL_ROLLUP_WEEKLY[retailer === "all" ? "portfolio" : retailer];
+    return row ? row[field][4] : null;
+  }
+  return null;
+}
+
 /* Real portfolio/retailer-level trend series for the "Last 4 weeks" period —
    same reasoning as REAL_PRODUCT_WEEKLY above: this is the one window the
    real September crawl can honestly fill point-for-point. Every other
@@ -994,9 +1014,12 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       const rr = rowRng(key, "retailerPerf", rt.id);
       const b = RETAILER_BIAS[rt.id];
       const sosR = round(clamp(31 + b.sos + (rr() - 0.5) * 6, 8, 55), 1);
-      const inStockR = round(clamp(96.5 + b.stock + (rr() - 0.5) * 3, 85, 100), 1);
-      const contentR = clamp(Math.round(85 + b.content + (rr() - 0.5) * 8), 40, 100);
-      const ratingR = round(clamp(4.3 + b.rating + (rr() - 0.5) * 0.2, 3.4, 5), 2);
+      const realStock = realCurrentValue(rt.id, "stockRate", period, dateRange, wideMatch?.idx);
+      const realContent = realCurrentValue(rt.id, "content", period, dateRange, wideMatch?.idx);
+      const realRating = realCurrentValue(rt.id, "rating", period, dateRange, wideMatch?.idx);
+      const inStockR = realStock != null ? round(realStock, 1) : round(clamp(96.5 + b.stock + (rr() - 0.5) * 3, 85, 100), 1);
+      const contentR = realContent != null ? Math.round(realContent) : clamp(Math.round(85 + b.content + (rr() - 0.5) * 8), 40, 100);
+      const ratingR = realRating != null ? round(realRating, 2) : round(clamp(4.3 + b.rating + (rr() - 0.5) * 0.2, 3.4, 5), 2);
       const overall = Math.round(
         (sosR / 40) * 25 + (inStockR / 100) * 30 + (contentR / 100) * 25 + (ratingR / 5) * 20
       );
@@ -1155,11 +1178,15 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     const b = RETAILER_BIAS[rt.id];
     const own = catalog.filter((p) => p.retailer === rt.id).map((p) => withShelfMetrics(productFor(p, key)));
     const visibility = round(clamp(31 + b.sos + (rr() - 0.5) * 6, 8, 58), 1);
-    const availability = own.length ? avg(own, (p) => p.inStockRate, 1) : round(clamp(96 + b.stock, 85, 100), 1);
-    const content = own.length ? Math.round(avg(own, (p) => p.contentScore, 0)) : clamp(Math.round(85 + b.content), 40, 100);
-    const rating = own.length ? avg(own, (p) => p.rating, 2) : round(clamp(4.3 + b.rating, 3.4, 5), 2);
+    const realAvailability = realCurrentValue(rt.id, "stockRate", period, dateRange, wideMatch?.idx);
+    const realContent = realCurrentValue(rt.id, "content", period, dateRange, wideMatch?.idx);
+    const realRating = realCurrentValue(rt.id, "rating", period, dateRange, wideMatch?.idx);
+    const realBuyBox = realCurrentValue(rt.id, "buyBoxRate", period, dateRange, wideMatch?.idx);
+    const availability = realAvailability != null ? round(realAvailability, 1) : (own.length ? avg(own, (p) => p.inStockRate, 1) : round(clamp(96 + b.stock, 85, 100), 1));
+    const content = realContent != null ? Math.round(realContent) : (own.length ? Math.round(avg(own, (p) => p.contentScore, 0)) : clamp(Math.round(85 + b.content), 40, 100));
+    const rating = realRating != null ? round(realRating, 2) : (own.length ? avg(own, (p) => p.rating, 2) : round(clamp(4.3 + b.rating, 3.4, 5), 2));
     const priceIndex = own.length ? round(avg(own, (p) => p.priceIndex, 3) * 100, 1) : round(98 + rr() * 8, 1);
-    const buyBoxPresence = own.length ? Math.round((own.filter((p) => p.buyBox).length / own.length) * 100) : Math.round(60 + rr() * 30);
+    const buyBoxPresence = realBuyBox != null ? Math.round(realBuyBox) : (own.length ? Math.round((own.filter((p) => p.buyBox).length / own.length) * 100) : Math.round(60 + rr() * 30));
     const shelfScore = clamp(Math.round(
       (visibility / 45) * 25 + (availability / 100) * 30 + (content / 100) * 25 + (rating / 5) * 20
     ), 25, 100);
