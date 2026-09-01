@@ -13,7 +13,7 @@ export default function CompetitorsSummary() {
   const sos = snap.kpis.find((k: any) => k.id === "sos");
   const gap = snap.kpis.find((k: any) => k.id === "gap");
   const chart = lineChart({ id: "vis", title: "Search Visibility Trend", subtitle: "Share of search across the tracked keyword set · Illustrative — no resolvable competitor entity in the raw crawl",
-    labels: snap.labels, lo: 0, hi: 55, ticks: [0, 10, 20, 30, 40, 50], fmt: (v) => v.toFixed(1) + "%",
+    labels: snap.labels, lo: 0, hi: 105, ticks: [0, 20, 40, 60, 80, 100], fmt: (v) => v.toFixed(1) + "%",
     series: snap.visibility.series, previous: snap.visibility.previous, target: 40, span: "1 / -1" }, hover, onEnter);
 
   return (

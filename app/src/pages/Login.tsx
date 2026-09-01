@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { user } from "../data/mockData";
+import { catalog, retailers, user } from "../data/mockData";
 
 const STATS = [
-  { label: "Tracked SKUs", value: "116" },
-  { label: "Retailers monitored", value: "6" },
+  { label: "Tracked SKUs", value: String(catalog.length) },
+  { label: "Retailers monitored", value: String(retailers.length - 1) },
   { label: "Source crawl", value: "Sep 2022" },
 ];
 
@@ -49,7 +49,7 @@ export default function Login() {
             Availability, pricing, content, and rank — tracked across every retailer you sell on.
           </h1>
           <p style={{ color: "var(--sidebar-muted)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-            This workspace runs on a real September 2022 crawl across Amazon, Chewy, Walmart, The Home Depot, PetSmart, and Lowe's.
+            This workspace runs on a real September 2022 crawl across {retailers.slice(1).map((r) => r.name).join(", ")}.
           </p>
           <div style={{ display: "flex", gap: 28, marginTop: 28 }}>
             {STATS.map((s) => (

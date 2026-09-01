@@ -13,7 +13,7 @@ import type { SalesShareContext } from "./Layout";
 type TrendMetric = "sos" | "pidx" | "instock" | "buybox";
 
 const TREND_CONFIG: Record<TrendMetric, { lo: number; hi: number; ticks: number[]; fmt: (v: number) => string; label: string }> = {
-  sos: { lo: 0, hi: 55, ticks: [0, 10, 20, 30, 40, 50], fmt: (v) => v.toFixed(1) + "%", label: "Search Visibility" },
+  sos: { lo: 0, hi: 105, ticks: [0, 20, 40, 60, 80, 100], fmt: (v) => v.toFixed(1) + "%", label: "Search Visibility" },
   pidx: { lo: 90, hi: 112, ticks: [90, 100, 110], fmt: (v) => v.toFixed(1), label: "Price Index" },
   instock: { lo: 85, hi: 100, ticks: [85, 90, 95, 100], fmt: (v) => v.toFixed(1) + "%", label: "Availability" },
   buybox: { lo: 40, hi: 100, ticks: [40, 60, 80, 100], fmt: (v) => v.toFixed(0) + "%", label: "Buy Box" },

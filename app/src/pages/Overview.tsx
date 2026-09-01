@@ -51,7 +51,7 @@ export default function Overview() {
   const kpi = (id: string) => snap.kpis.find((k: any) => k.id === id);
   const vis = lineChart({
     id: "vis", title: "Search Visibility Trend", subtitle: "Share of search across the tracked keyword set",
-    labels: snap.labels, lo: 0, hi: 55, ticks: [0, 10, 20, 30, 40, 50], fmt: (v) => v.toFixed(1) + "%",
+    labels: snap.labels, lo: 0, hi: 105, ticks: [0, 20, 40, 60, 80, 100], fmt: (v) => v.toFixed(1) + "%",
     series: snap.visibility.series, previous: snap.visibility.previous, target: 40,
   }, hover, onEnter);
   const stock = barChart({

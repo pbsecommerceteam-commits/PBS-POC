@@ -34,7 +34,7 @@ export default function DigitalShelfSummary() {
   ];
   const visChart = visMode === "trend"
     ? lineChart({ id: "shelf-vis", title: "Search Visibility", subtitle: "Share of search across the tracked keyword set, against the 40% target",
-        labels: sh.labels, lo: 0, hi: 55, ticks: [0, 10, 20, 30, 40, 50], fmt: (v) => v.toFixed(1) + "%",
+        labels: sh.labels, lo: 0, hi: 105, ticks: [0, 20, 40, 60, 80, 100], fmt: (v) => v.toFixed(1) + "%",
         series: sh.visibility.series, previous: sh.visibility.previous, target: 40,
         modes, span: "1 / -1", badge: "Target 40%", footer: visFooter }, hover, onEnter)
     : barChart({ id: "shelf-vis-" + visMode, title: "Search Visibility",

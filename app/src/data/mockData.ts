@@ -32,14 +32,17 @@
    (retailers, periods, sectionMeta, user).
    ───────────────────────────────────────────────────────────────────────── */
 
-/* Retailers, catalog and category codes below are not synthetic — they are a
-   36-SKU slice of the real September 2022 Profitero-style crawl in
-   data/September/ (Content, Price, Share of Search), picked per retailer for
-   clean 5/5 weekly snapshot coverage. See reports/shelfline_assessment.pdf
-   for the full data audit this slice is drawn from. Everything below this
-   block (rng/series/derivation helpers) still adds period-over-period jitter
-   around these real base values — the September crawl is a single snapshot,
-   not a live feed, so per-period movement is illustrative, not re-crawled. */
+/* Retailers, catalog and category codes below are not synthetic — they are
+   the real September 2022 crawl (117 SKUs across 7 retailers: Amazon, Chewy,
+   Walmart, The Home Depot, PetSmart, Lowe's, Petco) sourced from
+   "Main Working File.xlsx" (Content / Price / Share Of Search tabs) and
+   rebuilt by app/scripts/build_mock_data.py — see that script for the
+   full derivation of every field below (content-completeness rubric,
+   priceGroup, cross-retailer matching, retailer bias, etc.). Everything
+   below this block (rng/series/derivation helpers) still adds
+   period-over-period jitter around these real base values — the September
+   crawl is a single snapshot, not a live feed, so per-period movement
+   outside the "Last 4 weeks" window is illustrative, not re-crawled. */
 
 export const retailers = [
   { id: "all", name: "All retailers" },
@@ -49,6 +52,7 @@ export const retailers = [
   { id: "r4", name: "The Home Depot" },
   { id: "r5", name: "PetSmart" },
   { id: "r6", name: "Lowe's" },
+  { id: "r7", name: "Petco" },
 ];
 
 export const periods = [
@@ -110,122 +114,123 @@ export const reports = [
 /* ── product catalog ──────────────────────────────────────────────────── */
 
 export const catalog = [
-  { id: "r1-B07BVL8TQF", name: "Good'N'Fun Triple Flavored Rawhide Kabobs for Dogs", brand: "Good'n'Fun", category: "GPC", retailer: "r1", rank: 1, price: 14.23, rating: 4.8, reviews: 47521, content: 100, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r1::GPC" },
-  { id: "r1-B08VXNT9DW", name: "Remington Ultrastyle Rechargeable Total Grooming Kit, PG6111, Teal/Green", brand: "Remington", category: "HPC", retailer: "r1", rank: 1, price: 16.99, rating: 4.5, reviews: 45535, content: 80, stockBias: 0.9, buyBoxRate: 1.0, priceChangePct: -0.6, priceGroup: "Amazon.com::beard & mustache trimmers" },
-  { id: "r1-B00H2B4H2M", name: "Remington All-in-One Grooming Kit, Lithium Powered, 8 Piece Set with Trimmer, Men's S", brand: "Remington", category: "HPC", retailer: "r1", rank: 2, price: 20.99, rating: 4.5, reviews: 45534, content: 68, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Amazon.com::beard & mustache trimmers" },
-  { id: "r1-B01GJOMWVA", name: "Black+Decker CM1160B 12-Cup Programmable Coffee Maker, Black/Stainless Steel", brand: "BLACK+DECKER", category: "HPC", retailer: "r1", rank: 3, price: 19.74, rating: 4.5, reviews: 43039, content: 100, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -34.2, priceGroup: "Amazon.com::coffee machines" },
-  { id: "r1-B01GJOMWYC", name: "Black+Decker CM1160W-1 CM1160W 12-Cup Programmable Coffeemaker, White/Stainless Steel", brand: "BLACK+DECKER", category: "HPC", retailer: "r1", rank: 4, price: 29.81, rating: 4.5, reviews: 43039, content: 100, stockBias: 1.0, buyBoxRate: 0.97, priceChangePct: 1.9, priceGroup: "Amazon.com::coffee machines" },
-  { id: "r1-B002LAREDS", name: "Black+Decker DLX1050B 12-Cup Programmable Coffeemaker", brand: "BLACK+DECKER", category: "HPC", retailer: "r1", rank: 5, price: 33.24, rating: 4.5, reviews: 43039, content: 88, stockBias: 1.0, buyBoxRate: 0.97, priceChangePct: 4.8, priceGroup: "Amazon.com::coffee machines" },
-  { id: "r1-B00MMRFUG8", name: "Remington D3190 Damage Protection Hair Dryer with Ceramic + Ionic + Tourmaline Techno", brand: "Remington", category: "HPC", retailer: "r1", rank: 6, price: 19.16, rating: 4.6, reviews: 41347, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 12.4, priceGroup: "r1::HPC" },
-  { id: "r1-B016Y8JSR2", name: "BLACK+DECKER 14-Cup Cooked/7-Cup Uncooked Rice Cooker and Food Steamer, White", brand: "BLACK+DECKER", category: "HPC", retailer: "r1", rank: 7, price: 52.5, rating: 4.5, reviews: 40288, content: 100, stockBias: 1.0, buyBoxRate: 0.0, priceChangePct: -10.6, priceGroup: "Amazon.com::rice cookers" },
-  { id: "r1-B01B7D3YW4", name: "BLACK+DECKER, White RC5280 28 Cup Rice Cooker", brand: "BLACK+DECKER", category: "HPC", retailer: "r1", rank: 8, price: 28.53, rating: 4.5, reviews: 40288, content: 96, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -5.1, priceGroup: "Amazon.com::rice cookers" },
-  { id: "r1-B016Y8JSC2", name: "BLACK+DECKER 16-Cup Cooked/8-Cup Uncooked Rice Cooker and Food Steamer, White", brand: "BLACK+DECKER", category: "HPC", retailer: "r1", rank: 9, price: 22.44, rating: 4.5, reviews: 40286, content: 100, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 6.6, priceGroup: "Amazon.com::rice cookers" },
-  { id: "r1-B016Y8JSK4", name: "BLACK+DECKER Rice Cooker, 6-cup, White", brand: "BLACK+DECKER", category: "HPC", retailer: "r1", rank: 10, price: 15.4, rating: 4.5, reviews: 40286, content: 100, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -12.5, priceGroup: "Amazon.com::rice cookers" },
-  { id: "r1-B003S516XO", name: "Remington S5500 1\" Anti-Static Flat Iron with Floating Ceramic Plates and Digital Con", brand: "Remington", category: "HPC", retailer: "r1", rank: 11, price: 18.66, rating: 4.6, reviews: 36652, content: 100, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 3.7, priceGroup: "r1::HPC" },
-  { id: "r1-B00OYHF7RQ", name: "Marineland Penguin Bio-Wheel Power Filter", brand: "MarineLand", category: "GPC", retailer: "r1", rank: 2, price: 20.69, rating: 4.4, reviews: 36407, content: 68, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -5.9, priceGroup: "Amazon.com::filter accessories" },
-  { id: "r1-B004N59OFU", name: "Repel 94109 HG-94109 Lemon Eucalyptus Natural Insect, 4-Ounce Pump Spray, 1 pack, Yel", brand: "Repel", category: "HG", retailer: "r1", rank: 1, price: 4.97, rating: 4.4, reviews: 36143, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Amazon.com::sprays" },
-  { id: "r1-B010AFV1LQ", name: "Repel Plant-Based Lemon Eucalyptus Insect Repellent, Mosquito Repellent, Pump Spray, ", brand: "Repel", category: "HG", retailer: "r1", rank: 2, price: 15.37, rating: 4.4, reviews: 36143, content: 80, stockBias: 1.0, buyBoxRate: 0.97, priceChangePct: 9.9, priceGroup: "Amazon.com::sprays" },
-  { id: "r1-B000HHLHDK", name: "Tetra Whisper Bio-Bag Filter Cartridges for Aquariums - Ready to Use", brand: "Tetra", category: "GPC", retailer: "r1", rank: 3, price: 2.09, rating: 4.7, reviews: 36110, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Amazon.com::filter accessories" },
-  { id: "r1-B07MZMLZZ3", name: "FURminator Undercoat Deshedding Tool for Dogs, Deshedding Brush for Dogs, Removes Loo", brand: "FURminator", category: "GPC", retailer: "r1", rank: 4, price: 35.9, rating: 4.7, reviews: 34668, content: 80, stockBias: 0.47, buyBoxRate: 0.07, priceChangePct: 5.9, priceGroup: "r1::GPC" },
-  { id: "r1-B0009YF4FI", name: "Tetra Whisper Easy to Use Air Pump for Aquariums (Non-UL)", brand: "Tetra", category: "GPC", retailer: "r1", rank: 5, price: 10.15, rating: 4.6, reviews: 34222, content: 72, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -0.6, priceGroup: "r1::GPC" },
-  { id: "r2-303600", name: "SMARTBONES SmartSticks Peanut Butter Dog Treats, 12 count", brand: "SmartBones", category: "GPC", retailer: "r2", rank: 1, price: 10.09, rating: 4.5, reviews: 3621, content: 76, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "chewy.com::hard chews" },
-  { id: "r2-47575", name: "NATURE'S MIRACLE Just For Cats Advanced Hooded Corner Cat Litter Box", brand: "Nature's Miracle", category: "GPC", retailer: "r2", rank: 2, price: 37.95, rating: 4.6, reviews: 2459, content: 88, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "chewy.com::covered" },
-  { id: "r2-129721", name: "GOOD 'N' FUN Triple Flavor Kabobs Chicken, Duck & Chicken Liver Dog Chews, 18 count", brand: "Good 'n' Fun", category: "GPC", retailer: "r2", rank: 3, price: 10.5, rating: 4.8, reviews: 1666, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -0.2, priceGroup: "chewy.com::rawhide" },
-  { id: "r2-107282", name: "SMARTBONES Skin & Coat Care Chicken Chews Dog Treats, 16 pack", brand: "SmartBones", category: "GPC", retailer: "r2", rank: 4, price: 8.44, rating: 4.4, reviews: 1106, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "chewy.com::hard chews" },
-  { id: "r2-107286", name: "SMARTBONES SmartSticks Chamomile & Lavender Extract Flavor Chews Dog Treats, 16 count", brand: "SmartBones", category: "GPC", retailer: "r2", rank: 5, price: 6.74, rating: 4.1, reviews: 1041, content: 76, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "chewy.com::hard chews" },
-  { id: "r2-53154", name: "SMARTBONES SmartSticks Chicken Chews Dog Treats, 10 count", brand: "SmartBones", category: "GPC", retailer: "r2", rank: 6, price: 7.2, rating: 4.4, reviews: 905, content: 72, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -10.7, priceGroup: "chewy.com::hard chews" },
-  { id: "r2-56726", name: "FIRSTRAX Noz2Noz Sof-Krate N2 Series 3-Door Collapsible Soft-Sided Dog Crate, 26 inch", brand: "Firstrax", category: "GPC", retailer: "r2", rank: 7, price: 63.3, rating: 4.5, reviews: 897, content: 92, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "chewy.com::crates & kennels" },
-  { id: "r2-52987", name: "SMARTBONES Mini Peanut Butter Chew Bones Dog Treats, 24 count", brand: "SmartBones", category: "GPC", retailer: "r2", rank: 8, price: 11.0, rating: 4.8, reviews: 781, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "chewy.com::hard chews" },
-  { id: "r2-191386", name: "NATURE'S MIRACLE Silver Oval Hooded Litter Box", brand: "Nature's Miracle", category: "GPC", retailer: "r2", rank: 9, price: 29.55, rating: 4.4, reviews: 745, content: 96, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "chewy.com::covered" },
-  { id: "r2-323545", name: "NATURE'S MIRACLE Fresh & Clean Deodorizing Dog Bath Wipes, 25 count", brand: "Nature's Miracle", category: "GPC", retailer: "r2", rank: 10, price: 5.95, rating: 4.4, reviews: 674, content: 100, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r2::GPC" },
-  { id: "r2-47595", name: "NATURE'S MIRACLE Disposable Cat Litter Box, Regular, 3 count", brand: "Nature's Miracle", category: "GPC", retailer: "r2", rank: 11, price: 15.99, rating: 4.2, reviews: 646, content: 92, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r2::GPC" },
-  { id: "r2-40181", name: "FURMINATOR Nail Grinder For Dogs & Cats", brand: "FURminator", category: "GPC", retailer: "r2", rank: 12, price: 24.99, rating: 3.5, reviews: 635, content: 92, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r2::GPC" },
-  { id: "r2-52982", name: "SMARTBONES Mini Chicken Chew Bones Dog Treats, 24 count", brand: "SmartBones", category: "GPC", retailer: "r2", rank: 13, price: 11.02, rating: 4.7, reviews: 621, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "chewy.com::hard chews" },
-  { id: "r2-51634", name: "NATURE'S MIRACLE No More Marking Pet Stain & Odor Remover, 1-gal bottle", brand: "Nature's Miracle", category: "GPC", retailer: "r2", rank: 14, price: 34.21, rating: 3.4, reviews: 607, content: 96, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r2::GPC" },
-  { id: "r2-47652", name: "NATURE'S MIRACLE Jaw Dog Pooper Scooper, Jumbo", brand: "Nature's Miracle", category: "GPC", retailer: "r2", rank: 15, price: 22.94, rating: 4.5, reviews: 532, content: 79, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r2::GPC" },
-  { id: "r2-131749", name: "DINGO Twist Sticks Chicken in the Middle Dog Rawhide Treats, 50 count", brand: "Dingo", category: "GPC", retailer: "r2", rank: 16, price: 14.49, rating: 4.6, reviews: 520, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "chewy.com::rawhide" },
-  { id: "r2-128260", name: "SMARTBONES Stuffed Twistz Peanut Butter Chews Dog Treats, 6 count", brand: "SmartBones", category: "GPC", retailer: "r2", rank: 17, price: 7.58, rating: 4.6, reviews: 490, content: 68, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "chewy.com::hard chews" },
-  { id: "r2-192722", name: "GOOD 'N' FUN Triple Flavor Wings Beef, Pork & Chicken Dog Chews, 12-oz bag", brand: "Good 'n' Fun", category: "GPC", retailer: "r2", rank: 18, price: 12.26, rating: 4.8, reviews: 467, content: 76, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "chewy.com::rawhide" },
-  { id: "r2-56736", name: "FIRSTRAX Petnation Port-A-Crate E Series Double Door Collapsible Soft-Sided Dog Crate", brand: "Firstrax", category: "GPC", retailer: "r2", rank: 19, price: 105.99, rating: 4.3, reviews: 464, content: 100, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "chewy.com::crates & kennels" },
-  { id: "r2-107284", name: "SMARTBONES Hip & Joint Care Chicken Chews Dog Treats, 16 pack", brand: "SmartBones", category: "GPC", retailer: "r2", rank: 20, price: 9.89, rating: 4.6, reviews: 445, content: 68, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "chewy.com::hard chews" },
-  { id: "r4-313473640", name: "Weed and Grass Concentrate and Ready to Use Bundle Pack", brand: "Spectracide", category: "HG", retailer: "r4", rank: 1, price: 33.25, rating: 4.2, reviews: 4734, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -2.8, priceGroup: "Homedepot.com::weed & grass killer" },
-  { id: "r4-311330332", name: "1 Gal. Concentrate Weed and Grass Killer", brand: "Spectracide", category: "HG", retailer: "r4", rank: 2, price: 47.55, rating: 4.2, reviews: 3134, content: 96, stockBias: 0.3, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Homedepot.com::weed & grass killer" },
-  { id: "r4-205755526", name: "Weed and Grass Killer 32 oz. Concentrate", brand: "Spectracide", category: "HG", retailer: "r4", rank: 3, price: 17.47, rating: 4.2, reviews: 3134, content: 96, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Homedepot.com::weed & grass killer" },
-  { id: "r4-100211822", name: "32 fl. oz. Concentrate Backyard Bug Control Spray", brand: "Cutter", category: "HG", retailer: "r4", rank: 4, price: 8.97, rating: 3.9, reviews: 2942, content: 100, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -10.2, priceGroup: "Homedepot.com::bug killer spray" },
-  { id: "r4-313473669", name: "Triazicide Insect Killer and Weed and Feed Ready to Spray Bundle Pack", brand: "Spectracide", category: "HG", retailer: "r4", rank: 5, price: 22.57, rating: 3.8, reviews: 2785, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Homedepot.com::bug killer spray" },
-  { id: "r4-100578850", name: "20 oz. Wasp and Hornet Aerosol Spray Killer", brand: "Spectracide", category: "HG", retailer: "r4", rank: 6, price: 3.47, rating: 4, reviews: 2760, content: 96, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Homedepot.com::bug killer spray" },
-  { id: "r4-203131746", name: "Aerosol Wasp and Hornet Killer Spray (2-Count)", brand: "Spectracide", category: "HG", retailer: "r4", rank: 7, price: 6.97, rating: 4, reviews: 2757, content: 96, stockBias: 0.53, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Homedepot.com::bug killer spray" },
-  { id: "r4-313861639", name: "20 oz. Wasp and Hornet Killer Aerosol (12-Pack)", brand: "Spectracide", category: "HG", retailer: "r4", rank: 8, price: 32.16, rating: 4, reviews: 2669, content: 76, stockBias: 0.5, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Homedepot.com::bug killer spray" },
-  { id: "r4-205844053", name: "1 Gal. Ready-to-Use Deer and Rabbit Repellent", brand: "Liquid Fence", category: "HG", retailer: "r4", rank: 9, price: 24.97, rating: 3.8, reviews: 2495, content: 96, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Homedepot.com::animal repellents" },
-  { id: "r4-205844055", name: "32 oz. Ready-to-Use Deer and Rabbit Repellent", brand: "Liquid Fence", category: "HG", retailer: "r4", rank: 10, price: 14.97, rating: 3.8, reviews: 2495, content: 96, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 7.2, priceGroup: "Homedepot.com::animal repellents" },
-  { id: "r4-100352378", name: "32 oz. 7,500 sq. ft. Spring Ready-to-Spray Concentrate Weed and Feed Lawn Fertilizer", brand: "Vigoro", category: "HG", retailer: "r4", rank: 11, price: 12.97, rating: 3.7, reviews: 2163, content: 100, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Homedepot.com::lawn fertilizers" },
-  { id: "r4-204706227", name: "32 oz. 3,500 sq. ft. All Season Ready-to-Spray Concentrate Lawn Fertilizer", brand: "Vigoro", category: "HG", retailer: "r4", rank: 12, price: 9.98, rating: 3.7, reviews: 2163, content: 100, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Homedepot.com::lawn fertilizers" },
-  { id: "r4-315285692", name: "Bug Stop Home Barrier 0.5 gal with Flip & Go Sprayer", brand: "Spectracide", category: "HG", retailer: "r4", rank: 13, price: 10.96, rating: 4.1, reviews: 2030, content: 80, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.2, priceGroup: "Homedepot.com::bug killer spray" },
-  { id: "r4-203842344", name: "Bug Stop 1 gal. RTU Home Insect Control", brand: "Spectracide", category: "HG", retailer: "r4", rank: 14, price: 6.97, rating: 4.1, reviews: 2009, content: 72, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Homedepot.com::bug killer spray" },
-  { id: "r4-206498775", name: "Bug Stop 32 oz. Ready-to-Use Indoor Plus Outdoor Home Insect Control", brand: "Spectracide", category: "HG", retailer: "r4", rank: 15, price: 4.47, rating: 4.1, reviews: 2009, content: 76, stockBias: 0.77, buyBoxRate: 1.0, priceChangePct: 19.2, priceGroup: "Homedepot.com::bug killer spray" },
-  { id: "r4-202056480", name: "20 lbs. Triazicide Lawn Insect Killer Granules", brand: "Spectracide", category: "HG", retailer: "r4", rank: 16, price: 16.68, rating: 4.2, reviews: 1953, content: 96, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r4::HG" },
-  { id: "r4-100352290", name: "Indoor Fogger Insect Killer Aerosol (6-Count)", brand: "Real-Kill", category: "HG", retailer: "r4", rank: 17, price: 9.97, rating: 3.7, reviews: 1938, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Homedepot.com::bug foggers" },
-  { id: "r4-202561604", name: "Bed Bug and Flea Killer Aerosol Fogger (3-Count)", brand: "Hot Shot", category: "HG", retailer: "r4", rank: 18, price: 10.97, rating: 3.6, reviews: 1811, content: 100, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Homedepot.com::bug foggers" },
-  { id: "r6-50040952", name: "Spectracide Bug Stop Home Barrier 1-Gallon Home Pest Control Trigger Spray", brand: "Spectracide", category: "HG", retailer: "r6", rank: 1, price: 6.98, rating: 4, reviews: 1668, content: 80, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::pesticides" },
-  { id: "r6-1000373169", name: "Spectracide Weed and Grass Killer 1-Gallon Trigger Spray Weed and Grass Killer", brand: "Spectracide", category: "HG", retailer: "r6", rank: 2, price: 8.48, rating: 4.5, reviews: 1604, content: 76, stockBias: 0.07, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::weed killers" },
-  { id: "r6-50243433", name: "Spectracide AccuShot Sprayer 1.3-Gallon Ready to Use Weed and Grass Killer", brand: "Spectracide", category: "HG", retailer: "r6", rank: 3, price: 17.98, rating: 4.5, reviews: 1604, content: 100, stockBias: 0.03, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::weed killers" },
-  { id: "r6-999989720", name: "Spectracide Ready-to-Use 32-oz Trigger Spray Lawn Weed Killer", brand: "Spectracide", category: "HG", retailer: "r6", rank: 4, price: 4.98, rating: 4.5, reviews: 1604, content: 100, stockBias: 0.03, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::weed killers" },
-  { id: "r6-50260191", name: "Spectracide Weed and Grass Killer AccuShot Refill 1.3-Gallon Refill Weed and Grass Ki", brand: "Spectracide", category: "HG", retailer: "r6", rank: 5, price: 11.48, rating: 4.5, reviews: 1570, content: 100, stockBias: 0.07, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::weed killers" },
-  { id: "r6-999930408", name: "Spectracide Weed and Grass Killer with AccuShot Sprayer 1-Gallon Ready to Use Weed an", brand: "Spectracide", category: "HG", retailer: "r6", rank: 6, price: 14.98, rating: 4.5, reviews: 1570, content: 80, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::weed killers" },
-  { id: "r6-1003171818", name: "Spectracide Bug Stop Flip and Go 64-fl oz Home Pest Control Ready to Use", brand: "Spectracide", category: "HG", retailer: "r6", rank: 7, price: 11.28, rating: 4, reviews: 1535, content: 80, stockBias: 0.1, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::pesticides" },
-  { id: "r6-1000309991", name: "Spectracide Bug Stop Home Barrier Refill 1.33-Gallon (s) Home Pest Control Refill", brand: "Spectracide", category: "HG", retailer: "r6", rank: 8, price: 8.48, rating: 4, reviews: 1514, content: 80, stockBias: 0.03, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::pesticides" },
-  { id: "r6-1000309995", name: "Spectracide Bug Stop Home Barrier 32-fl oz Home Pest Control Trigger Spray", brand: "Spectracide", category: "HG", retailer: "r6", rank: 9, price: 4.98, rating: 4, reviews: 1514, content: 80, stockBias: 0.03, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::pesticides" },
-  { id: "r6-50328417", name: "Spectracide Bug Stop Home Barrier AccuShot Sprayer 1.33-Gallon (s) Home Pest Control ", brand: "Spectracide", category: "HG", retailer: "r6", rank: 10, price: 14.48, rating: 4, reviews: 1514, content: 80, stockBias: 0.03, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::pesticides" },
-  { id: "r6-50236519", name: "Spectracide Triazicide Insect Killer For Lawns Granules 10-lb Insect Killer", brand: "Spectracide", category: "HG", retailer: "r6", rank: 11, price: 7.98, rating: 4.5, reviews: 1476, content: 96, stockBias: 0.03, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::pesticides" },
-  { id: "r6-1000769722", name: "Spectracide Weed Stop For Lawns Concentrate 40-fl oz Concentrated All-purpose", brand: "Spectracide", category: "HG", retailer: "r6", rank: 12, price: 7.48, rating: 4, reviews: 1365, content: 80, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::weed killers" },
-  { id: "r6-50065981", name: "Spectracide Weed and Grass Killer Concentrate 40-oz Concentrated Weed and Grass Kille", brand: "Spectracide", category: "HG", retailer: "r6", rank: 13, price: 17.48, rating: 4.5, reviews: 1184, content: 96, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::weed killers" },
-  { id: "r6-5005476109", name: "Spectracide Weed and Grass Killer, Flip and Go Ready to Use Weed and Grass Killer", brand: "Spectracide", category: "HG", retailer: "r6", rank: 14, price: 14.28, rating: 4.5, reviews: 1168, content: 92, stockBias: 0.07, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::weed killers" },
-  { id: "r6-4736729", name: "Spectracide Weed Stop For Lawns Plus Crabgrass Killer 32-fl oz Hose End Sprayer Conce", brand: "Spectracide", category: "HG", retailer: "r6", rank: 15, price: 9.98, rating: 4, reviews: 1168, content: 100, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::weed killers" },
-  { id: "r6-1000321887", name: "Spectracide 40-fl oz Concentrated Lawn Weed Killer", brand: "Spectracide", category: "HG", retailer: "r6", rank: 16, price: 8.98, rating: 4, reviews: 1167, content: 100, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::weed killers" },
-  { id: "r6-999912917", name: "Spectracide 32-fl oz Concentrated Weed and Grass Killer", brand: "Spectracide", category: "HG", retailer: "r6", rank: 17, price: 17.48, rating: 4.5, reviews: 1152, content: 96, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::weed killers" },
-  { id: "r6-50328425", name: "Spectracide Weed Stop For Lawns 32-oz Concentrated Crabgrass Control", brand: "Spectracide", category: "HG", retailer: "r6", rank: 18, price: 8.98, rating: 4, reviews: 1121, content: 76, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 6.0, priceGroup: "Lowes.com::weed killers" },
-  { id: "r6-1000383881", name: "Hot Shot 2-oz Bed Bug Killer Fogger (3-Pack)", brand: "Hot Shot", category: "HG", retailer: "r6", rank: 19, price: 12.98, rating: 4.5, reviews: 943, content: 80, stockBias: 0.13, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::pesticides" },
-  { id: "r6-5001952515", name: "Spectracide Triazicide For Lawns Granules 20-lb Insect Killer", brand: "Spectracide", category: "HG", retailer: "r6", rank: 20, price: 13.98, rating: 4.5, reviews: 893, content: 100, stockBias: 0.1, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Lowes.com::pesticides" },
-  { id: "r5-5230281", name: "Tetra HT Submersible Aquarium Heater | Fish heaters | PetSmart", brand: "Tetra", category: "GPC", retailer: "r5", rank: 1, price: 10.99, rating: 2.5, reviews: 301, content: 39, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r5::GPC" },
-  { id: "r5-5174325", name: "Nature's Miracle® Natural Care Clumping Corn Cat Litter - Lightweight, Low Dust, Nat", brand: "Nature's Miracle", category: "GPC", retailer: "r5", rank: 2, price: 21.69, rating: 3.7, reviews: 281, content: 52, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r5::GPC" },
-  { id: "r5-5154527", name: "Marineland® 10 Gallon BioWheel LED Aquarium Kit | Fish starter kits | PetSmart", brand: "Marineland", category: "GPC", retailer: "r5", rank: 3, price: 99.99, rating: 3.1, reviews: 229, content: 83, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Petsmart.com::starter kits" },
-  { id: "r5-5248474", name: "Marineland® Modern LED Aquarium & Stand Ensemble - 60 Gallon | Fish aquariums | PetS", brand: "Marineland", category: "GPC", retailer: "r5", rank: 4, price: 329.99, rating: 3.5, reviews: 220, content: 92, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Petsmart.com::aquariums" },
-  { id: "r5-5306082", name: "Marineland® High Definition LED Ensemble - 75 Gallon | Fish aquariums | PetSmart", brand: "Marineland", category: "GPC", retailer: "r5", rank: 5, price: 499.99, rating: 4.0, reviews: 198, content: 64, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Petsmart.com::aquariums" },
-  { id: "r5-5158650", name: "Nature's Miracle® Advanced Hooded Cat Litter Box | Cat litter boxes | PetSmart", brand: "Nature's Miracle", category: "GPC", retailer: "r5", rank: 6, price: 32.99, rating: 3.8, reviews: 198, content: 39, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Petsmart.com::litter boxes" },
-  { id: "r5-48922", name: "FURminator® Short Hair Undercoat deShedding Dog Tool | Dog brushes combs & blowdryer", brand: "FURminator", category: "GPC", retailer: "r5", rank: 7, price: 28.28, rating: 4.7, reviews: 188, content: 72, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -21.4, priceGroup: "r5::GPC" },
-  { id: "r5-5084949", name: "Tetra® Whisper In Tank Power Aquarium Filters | Fish filters | PetSmart", brand: "Tetra", category: "GPC", retailer: "r5", rank: 8, price: 14.99, rating: 3.0, reviews: 187, content: 43, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Petsmart.com::filters" },
-  { id: "r5-5154528", name: "Marineland® BioWheel LED Aquarium Kit | Fish starter kits | PetSmart", brand: "Marineland", category: "GPC", retailer: "r5", rank: 9, price: 139.99, rating: 3.5, reviews: 179, content: 63, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Petsmart.com::starter kits" },
-  { id: "r5-5307990", name: "FURminator Dry Shampoo for Dogs - 7 Oz | Dog shampoos & conditioners | PetSmart", brand: "FURminator", category: "GPC", retailer: "r5", rank: 10, price: 10.99, rating: 4.8, reviews: 171, content: 76, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r5::GPC" },
-  { id: "r5-5134180", name: "Nature's Miracle® No More Marking Pet Stain & Odor Remover Natural Repellent | Dog s", brand: "Nature's Miracle", category: "GPC", retailer: "r5", rank: 11, price: 12.32, rating: 3.0, reviews: 151, content: 72, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -17.8, priceGroup: "r5::GPC" },
-  { id: "r5-5286669", name: "Nature's Miracle® Multi-Cat Self-Cleaning Litter Box | Cat litter boxes | PetSmart", brand: "Nature's Miracle", category: "GPC", retailer: "r5", rank: 12, price: 199.99, rating: 2.1, reviews: 146, content: 76, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Petsmart.com::litter boxes" },
-  { id: "r5-5178067", name: "Nature's Miracle® High Sided Cat Litter Box | Cat litter boxes | PetSmart", brand: "Nature's Miracle", category: "GPC", retailer: "r5", rank: 13, price: 23.99, rating: 4.0, reviews: 141, content: 43, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Petsmart.com::litter boxes" },
-  { id: "r5-5154725", name: "Nature's Miracle® Pet Block Repellent Pet Spray | Dog deterrents | PetSmart", brand: "Nature's Miracle", category: "GPC", retailer: "r5", rank: 14, price: 7.17, rating: 1.7, reviews: 135, content: 48, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -32.3, priceGroup: "r5::GPC" },
-  { id: "r5-5094985", name: "Tetra® Whisper Aquarium Air Pump | Fish air & water pumps | PetSmart", brand: "Tetra", category: "GPC", retailer: "r5", rank: 15, price: 16.99, rating: 3.1, reviews: 131, content: 72, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r5::GPC" },
-  { id: "r5-5162190", name: "Marineland® LED Aquarium Light Bar | Fish lights | PetSmart", brand: "Marineland", category: "GPC", retailer: "r5", rank: 16, price: 35.39, rating: 2.1, reviews: 115, content: 76, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r5::GPC" },
-  { id: "r5-5099366", name: "Tetra® Whisper Bio Bag Cartridges | Fish filters | PetSmart", brand: "Tetra", category: "GPC", retailer: "r5", rank: 17, price: 2.09, rating: 3.4, reviews: 112, content: 68, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Petsmart.com::filters" },
-  { id: "r5-1031503", name: "Tetra® TetraMin Tropical Flakes Fish Food | Fish food | PetSmart", brand: "Tetra", category: "GPC", retailer: "r5", rank: 18, price: 7.69, rating: 4.8, reviews: 106, content: 72, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r5::GPC" },
-  { id: "r5-5272047", name: "Marineland® Polishing Internal Filter | Fish filters | PetSmart", brand: "Marineland", category: "GPC", retailer: "r5", rank: 19, price: 87.99, rating: 3.4, reviews: 96, content: 76, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Petsmart.com::filters" },
-  { id: "r5-5254042", name: "Nature's Miracle® Hooded Cat Litter Pan | Cat litter boxes | PetSmart", brand: "Nature's Miracle", category: "GPC", retailer: "r5", rank: 20, price: 32.99, rating: 4.2, reviews: 93, content: 72, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Petsmart.com::litter boxes" },
-  { id: "r3-46092119", name: "BLACK+DECKER 12-Cup* QuickTouch Programmable Coffeemaker, White, CM1060W", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 1, price: 46.4, rating: 4.3, reviews: 3376, content: 100, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 159.5, priceGroup: "r3::HPC" },
-  { id: "r3-39791215", name: "BLACK+DECKER 4-Slice Toaster with Extra-Wide Slots, Black/Silver, TR1478BD", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 2, price: 29.96, rating: 4.3, reviews: 2003, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Walmart.com::black + decker toasters" },
-  { id: "r3-49840437", name: "Black+Decker, Easy Steam Compact Iron, IR02V-T", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 3, price: 10.36, rating: 4.5, reviews: 1626, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
-  { id: "r3-43966519", name: "George Foreman 15+ Serving Indoor, Outdoor Electric Grill, Gun Metal, GFO240GM", brand: "George Foreman", category: "GPC", retailer: "r3", rank: 1, price: 99.92, rating: 4.6, reviews: 1512, content: 96, stockBias: 0.67, buyBoxRate: 0.67, priceChangePct: 0.0, priceGroup: "Walmart.com::indoor grills" },
-  { id: "r3-28920902", name: "George Foreman 4-Serving Removable Plate Electric Grill and Panini Press, Black, GRP1", brand: "George Foreman", category: "GPC", retailer: "r3", rank: 2, price: 20.0, rating: 4.5, reviews: 1451, content: 68, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Walmart.com::indoor grills" },
-  { id: "r3-200093306", name: "Good 'n' Fun Triple Flavor Kabobs Rawhide Dog Chews, 24 oz. (36 Count)", brand: "Good 'n' Fun", category: "GPC", retailer: "r3", rank: 3, price: 19.78, rating: 4.8, reviews: 1435, content: 60, stockBias: 1.0, buyBoxRate: 0.83, priceChangePct: 10.0, priceGroup: "Walmart.com::good n fun dog treats" },
-  { id: "r3-981923626", name: "BLACK+DECKER 4-in-1 5-Cup* Coffeemaker, Black, CM0750B", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 4, price: 48.95, rating: 4.2, reviews: 1356, content: 100, stockBias: 1.0, buyBoxRate: 0.0, priceChangePct: -0.1, priceGroup: "r3::HPC" },
-  { id: "r3-20564657", name: "BLACK+DECKER 2-Slice Extra Wide Slot Toaster, Red, Silver, TR1278TRM", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 5, price: 55.99, rating: 4.4, reviews: 1332, content: 80, stockBias: 0.5, buyBoxRate: 0.9, priceChangePct: 124.0, priceGroup: "Walmart.com::black + decker toasters" },
-  { id: "r3-43920730", name: "Good 'n' Fun Triple Flavor Kabobs Snack for All Dogs, 18 count, 12.0 oz", brand: "Good 'n' Fun", category: "GPC", retailer: "r3", rank: 4, price: 10.98, rating: 4.8, reviews: 1227, content: 52, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "Walmart.com::good n fun dog treats" },
-  { id: "r3-14978527", name: "Remington S5500 1\" Anti-Static Flat Iron with Floating Ceramic Plates and Digital Con", brand: "Remington", category: "HPC", retailer: "r3", rank: 6, price: 19.84, rating: 4.5, reviews: 1159, content: 76, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
-  { id: "r3-772119289", name: "BLACK+DECKER Easy Assembly 8-Cup Food Processor, Black, FP4200B", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 7, price: 41.88, rating: 4.4, reviews: 1052, content: 100, stockBias: 1.0, buyBoxRate: 0.93, priceChangePct: 0.0, priceGroup: "r3::HPC" },
-  { id: "r3-22569723", name: "Hot Shot Bedbug & Flea Fogger, 3 Count, 2 oz, with Nylar", brand: "Hot Shot", category: "HG", retailer: "r3", rank: 1, price: 13.6, rating: 4.1, reviews: 1049, content: 96, stockBias: 1.0, buyBoxRate: 0.93, priceChangePct: 0.0, priceGroup: "r3::HG" },
-  { id: "r3-164464324", name: "Remington Lithium All-In-One Men's Grooming Kit, Black/Silver, PG6027", brand: "Remington", category: "HPC", retailer: "r3", rank: 8, price: 29.99, rating: 4.4, reviews: 1026, content: 60, stockBias: 0.83, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
-  { id: "r3-51822911", name: "BLACK+DECKER Fruit and Vegetable Juice Extractor with Space Saving Design, Black, JE2", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 9, price: 49.98, rating: 4, reviews: 1001, content: 80, stockBias: 0.83, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
-  { id: "r3-51800328", name: "BLACK+DECKER Convection Countertop Oven, Stainless Steel, TO3000G", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 10, price: 39.92, rating: 4.3, reviews: 963, content: 80, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
-  { id: "r3-16816451", name: "Black+Decker, Professional Steam Iron with Stainless Steel Soleplate, Purple, IR1350S", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 11, price: 28.56, rating: 4.3, reviews: 951, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
-  { id: "r3-14321489", name: "Remington SP390 Screens and Cutter Refills", brand: "Remington", category: "HPC", retailer: "r3", rank: 12, price: 21.15, rating: 4.3, reviews: 903, content: 60, stockBias: 0.83, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
-  { id: "r3-2684038", name: "BLACK+DECKER 3-in-1 Waffle Maker & Indoor Grill/Griddle, Stainless Steel, G48TD", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 13, price: 88.99, rating: 3.9, reviews: 864, content: 80, stockBias: 1.0, buyBoxRate: 0.0, priceChangePct: -10.1, priceGroup: "r3::HPC" },
-  { id: "r3-24194217", name: "DreamBone Peanut Butter Flavored Rawhide-Free Dry Dog Chews, Mini, 5.6 oz. (10 Count)", brand: "DreamBone", category: "GPC", retailer: "r3", rank: 5, price: 4.94, rating: 4.8, reviews: 856, content: 56, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::GPC" },
-  { id: "r3-213639374", name: "Remington All-In-One Grooming Kit, Trimmer, Clippers , Black, PG6024A", brand: "Remington", category: "HPC", retailer: "r3", rank: 14, price: 17.97, rating: 4.2, reviews: 806, content: 80, stockBias: 0.23, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
+  { id: "r1-B000084EN5", name: "TetraPond Koi Vibrance 5.18 Pounds, Soft Sticks, Floating Pond Food, Model:16486", brand: "Tetra Pond", category: "GPC", retailer: "r1", rank: 1, price: 27.19, rating: 4.8, reviews: 11315, content: 84, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r1::GPC" },
+  { id: "r1-B000255NKA", name: "Instant Ocean Sea Salt for Marine Fish Tank Aquariums, Nitrate & Phosphate-Free", brand: "Instant Ocean", category: "GPC", retailer: "r1", rank: 2, price: 12.99, rating: 4.8, reviews: 7201, content: 76, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r1::GPC" },
+  { id: "r1-B000084EMZ", name: "TetraPond Pond Sticks Pond Fish Food for Goldfish and Koi, Healthy Nutrition Clear Water Pond Food", brand: "Tetra Pond", category: "GPC", retailer: "r1", rank: 3, price: 22.64, rating: 4.8, reviews: 2339, content: 82, stockBias: 0.87, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r1::GPC" },
+  { id: "r1-B000255NLE", name: "Instant Ocean SeaClone Protein Skimmer, External Hang-On or In-Sump", brand: "Instant Ocean", category: "GPC", retailer: "r1", rank: 4, price: 69.99, rating: 4.1, reviews: 882, content: 66, stockBias: 1.0, buyBoxRate: 0.97, priceChangePct: -15.7, priceGroup: "r1::GPC" },
+  { id: "r1-B000255QWA", name: "Tetra 25870 Impeller Whisper Power filter, 60-Gallon - 75069200", brand: "Tetra", category: "GPC", retailer: "r1", rank: 5, price: 6.59, rating: 4.6, reviews: 618, content: 56, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -40.1, priceGroup: "r1::GPC" },
+  { id: "r1-B0002561OM", name: "Jungle TB625W Tank Buddies Ick Clear Tablets, 8-Count", brand: "Jungle", category: "GPC", retailer: "r1", rank: 6, price: 3.99, rating: 4.4, reviews: 490, content: 52, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r1::GPC" },
+  { id: "r1-B000255OAE", name: "Marineland 31003 Silicone Squeeze Tube, 2.8-Ounce, 85.05-Gram", brand: "MarineLand", category: "GPC", retailer: "r1", rank: 7, price: 8.83, rating: 4.6, reviews: 224, content: 59, stockBias: 1.0, buyBoxRate: 0.33, priceChangePct: -5.6, priceGroup: "r1::GPC" },
+  { id: "r1-B000255OAO", name: "Marineland 31010 Silicone Caulker, 10.3-Ounce, 304 ml", brand: "MarineLand", category: "GPC", retailer: "r1", rank: 8, price: 9.23, rating: 4.5, reviews: 185, content: 59, stockBias: 0.07, buyBoxRate: 0.07, priceChangePct: -10.1, priceGroup: "r1::GPC" },
+  { id: "r1-B000255NK0", name: "Instant Ocean Sea Salt (25 gal)", brand: "Instant Ocean", category: "GPC", retailer: "r1", rank: 9, price: 18.57, rating: 4.7, reviews: 110, content: 63, stockBias: 0.0, buyBoxRate: 0.0, priceChangePct: 0.0, priceGroup: "r1::GPC" },
+  { id: "r1-B000255N8C", name: "Marineland Duetto Chemical Filter Cartridge, For Duetto Submersible Power Filter", brand: "MarineLand", category: "GPC", retailer: "r1", rank: 10, price: 5.69, rating: 4.6, reviews: 23, content: 73, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 2.3, priceGroup: "r1::GPC" },
+  { id: "r1-B000BWY6K2", name: "Garden Safe Brand Insecticidal Soap Insect Killer 24 Ounces, Ready-To-Use, For Organic Gardening, 1 Pack", brand: "Garden Safe", category: "HG", retailer: "r1", rank: 1, price: 6.98, rating: 4.3, reviews: 6447, content: 80, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -0.1, priceGroup: "r1::HG" },
+  { id: "r1-B000HHO110", name: "Garden Safe Brand Fungicide3, Ready-to-Use, 24-Ounce, 1 Pack", brand: "Garden Safe", category: "HG", retailer: "r1", rank: 2, price: 7.97, rating: 4.3, reviews: 6124, content: 84, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 33.3, priceGroup: "r1::HG" },
+  { id: "r1-B000HM68HK", name: "Spectracide 53960 HG-53960 Triazicide Insect Killer for Lawns Granules 20 lb, 1-PK, 20 ibn", brand: "Spectracide", category: "HG", retailer: "r1", rank: 3, price: 13.62, rating: 4.5, reviews: 4921, content: 84, stockBias: 0.0, buyBoxRate: 0.0, priceChangePct: 0.0, priceGroup: "r1::HG" },
+  { id: "r1-B000IO1TDU", name: "Spectracide Pruning Seal Aerosol, 13 oz.", brand: "Spectrum", category: "HG", retailer: "r1", rank: 4, price: 5.98, rating: 4.6, reviews: 1757, content: 78, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r1::HG" },
+  { id: "r1-B000I1B0JQ", name: "Hot Shot Ant Killer Plus Aerosol, Unscented, Kills On Contact", brand: "Hot Shot", category: "HG", retailer: "r1", rank: 5, price: 8.08, rating: 4.5, reviews: 1348, content: 74, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r1::HG" },
+  { id: "r1-B000BQURQA", name: "Spectracide 56904 Bag-A-Bug Kwik Stand (HG-56904), 1Pack, Silver", brand: "Spectracide", category: "HG", retailer: "r1", rank: 6, price: 5.28, rating: 4.2, reviews: 1305, content: 85, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -18.6, priceGroup: "r1::HG" },
+  { id: "r1-B00002NC7W", name: "Spectracide Bag-A-Bug Japanese Beetle Trap Replacement Lure 1 Count, Lure Refill", brand: "Spectracide", category: "HG", retailer: "r1", rank: 7, price: 5.99, rating: 4.5, reviews: 1294, content: 78, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r1::HG" },
+  { id: "r1-B000BQU0LC", name: "Spectracide 56903 HG-56903 Insect Killer, 6 Bags", brand: "Spectracide", category: "HG", retailer: "r1", rank: 8, price: 3.78, rating: 4.5, reviews: 795, content: 72, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r1::HG" },
+  { id: "r1-B000HSZH0S", name: "Liquid Fence 147 Goose Repellent, 1-Quart Concentrate (Discontinued by, Pack of 1", brand: "Liquid Fence", category: "HG", retailer: "r1", rank: 9, price: 69, rating: 3, reviews: 453, content: 76, stockBias: 0.2, buyBoxRate: 0.0, priceChangePct: 43.2, priceGroup: "r1::HG" },
+  { id: "r1-B000I15AH4", name: "Spectracide Weed And Grass Killer Concentrate 16 Ounces, Use On Patios, Walkways And Driveways", brand: "Spectracide", category: "HG", retailer: "r1", rank: 10, price: 9.48, rating: 4.5, reviews: 400, content: 78, stockBias: 0.7, buyBoxRate: 0.87, priceChangePct: 0.0, priceGroup: "r1::HG" },
+  { id: "r1-B00004R946", name: "Spectrum Brands Farberware 8-Cup Percolator, Stainless Steel, FCP280, Black", brand: "Farberware", category: "HPC", retailer: "r1", rank: 1, price: 51.96, rating: 4.4, reviews: 2260, content: 61, stockBias: 1.0, buyBoxRate: 0.97, priceChangePct: -2.1, priceGroup: "r1::HPC" },
+  { id: "r1-B00004R93Z", name: "George Foreman GR10AWHT Champ Grill", brand: "George Foreman", category: "HPC", retailer: "r1", rank: 2, price: 28.17, rating: 4.3, reviews: 395, content: 51, stockBias: 0.9, buyBoxRate: 0.0, priceChangePct: 0.0, priceGroup: "r1::HPC" },
+  { id: "r1-B00004SC51", name: "Black & Decker CJ525 CitrusMate Plus Citrus Juicer", brand: "BLACK+DECKER", category: "HPC", retailer: "r1", rank: 3, price: 47.83, rating: 4, reviews: 332, content: 58, stockBias: 0.5, buyBoxRate: 0.0, priceChangePct: -40.2, priceGroup: "r1::HPC" },
+  { id: "r1-B00004SC4X", name: "Black & Decker EC600 Spacemaker Under-Counter Can Opener", brand: "BLACK+DECKER", category: "HPC", retailer: "r1", rank: 4, price: 148.18, rating: 4.1, reviews: 116, content: 52, stockBias: 0.97, buyBoxRate: 0.0, priceChangePct: 0.0, priceGroup: "r1::HPC" },
+  { id: "r1-B00004R940", name: "George Foreman GR20WHT XL Grill", brand: "George Foreman", category: "HPC", retailer: "r1", rank: 5, price: 63.1, rating: 3.8, reviews: 84, content: 50, stockBias: 0.0, buyBoxRate: 0.0, priceChangePct: 0.0, priceGroup: "r1::HPC" },
+  { id: "r1-B00004SC50", name: "Black & Decker HS2000 Flavor Scenter Steamer and Rice Cooker", brand: "BLACK+DECKER", category: "HPC", retailer: "r1", rank: 6, price: 98.18, rating: 3.9, reviews: 80, content: 58, stockBias: 0.07, buyBoxRate: 0.0, priceChangePct: -38.6, priceGroup: "r1::HPC" },
+  { id: "r1-B00004SC5M", name: "Black & Decker EC1200 Grand Openings Can Opener", brand: "BLACK+DECKER", category: "HPC", retailer: "r1", rank: 7, price: 49.95, rating: 3.3, reviews: 29, content: 56, stockBias: 0.27, buyBoxRate: 0.0, priceChangePct: -61.3, priceGroup: "r1::HPC" },
+  { id: "r1-B00004SPZS", name: "Black & Decker KEC500 Ergo Cordless Can Opener", brand: "BLACK+DECKER", category: "HPC", retailer: "r1", rank: 8, price: 24.99, rating: 3.8, reviews: 21, content: 56, stockBias: 0.0, buyBoxRate: 0.67, priceChangePct: 4.1, priceGroup: "r1::HPC" },
+  { id: "r1-B00004SQ00", name: "Black & Decker CTO8100 Dining-In Electronic Countertop Toaster Oven, Black", brand: "BLACK+DECKER", category: "HPC", retailer: "r1", rank: 9, price: 94.95, rating: 3, reviews: 13, content: 50, stockBias: 0.0, buyBoxRate: 0.93, priceChangePct: 1.0, priceGroup: "r1::HPC" },
+  { id: "r1-B00004SQ1I", name: "Black & Decker Ergo 200-Watt Hand Mixer", brand: "BLACK+DECKER", category: "HPC", retailer: "r1", rank: 10, price: 23.67, rating: 5, reviews: 4, content: 48, stockBias: 0.2, buyBoxRate: 0.73, priceChangePct: 2.9, priceGroup: "r1::HPC" },
+  { id: "r2-40150", name: "FURMINATOR Nail Grinder For Dogs & Cats ", brand: "FURminator", category: "GPC", retailer: "r2", rank: 1, price: 24.99, rating: 3.5102, reviews: 635, content: 65, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r2::GPC" },
+  { id: "r2-40181", name: "FURMINATOR Nail Grinder For Dogs & Cats ", brand: "FURminator", category: "GPC", retailer: "r2", rank: 2, price: 24.99, rating: 3.5102, reviews: 635, content: 65, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r2::GPC" },
+  { id: "r2-40281", name: "FURMINATOR Curry Comb For Dogs ", brand: "FURminator", category: "GPC", retailer: "r2", rank: 3, price: 8.19, rating: 4.1509, reviews: 391, content: 57, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r2::GPC" },
+  { id: "r2-40276", name: "FURMINATOR Firm Slicker Brush For Dogs, Large ", brand: "FURminator", category: "GPC", retailer: "r2", rank: 4, price: 11, rating: 4.1785, reviews: 325, content: 65, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r2::GPC" },
+  { id: "r2-42091", name: "NATURE'S MIRACLE Dog Enzymatic Urine Destroyer, 1-gal bottle ", brand: "Nature's Miracle", category: "GPC", retailer: "r2", rank: 5, price: 31.65, rating: 4.247, reviews: 251, content: 65, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -16.7, priceGroup: "r2::GPC" },
+  { id: "r2-42138", name: "NATURE'S MIRACLE House-Breaking Potty Training Spray, 8-oz bottle ", brand: "Nature's Miracle", category: "GPC", retailer: "r2", rank: 6, price: 7.01, rating: 1.9155, reviews: 142, content: 57, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r2::GPC" },
+  { id: "r2-40272", name: "FURMINATOR Nail Clippers For Dogs & Cats ", brand: "FURminator", category: "GPC", retailer: "r2", rank: 7, price: 8.47, rating: 3.568, reviews: 125, content: 65, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r2::GPC" },
+  { id: "r2-40274", name: "FURMINATOR Finishing Comb For Dogs, Large ", brand: "FURminator", category: "GPC", retailer: "r2", rank: 8, price: 9.19, rating: 4.4096, reviews: 83, content: 56, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r2::GPC" },
+  { id: "r2-40348", name: "FURMINATOR DeShedding Waterless Spray For Dogs, 8.5-oz bottle ", brand: "FURminator", category: "GPC", retailer: "r2", rank: 9, price: 7.55, rating: 4.4084, reviews: 71, content: 70, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r2::GPC" },
+  { id: "r2-40278", name: "FURMINATOR Soft Slicker Brush For Dogs, Large ", brand: "FURminator", category: "GPC", retailer: "r2", rank: 10, price: 13.15, rating: 3.9245, reviews: 53, content: 65, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 19.5, priceGroup: "r2::GPC" },
+  { id: "r3-3391780", name: "Petnation Port-A-Crate Indoor and Outdoor Home for Pets, 20\"", brand: "Petnation", category: "GPC", retailer: "r3", rank: 1, price: 36.69, rating: 4.6, reviews: 777, content: 46, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 47.5, priceGroup: "r3::GPC" },
+  { id: "r3-3391782", name: "Petnation Port-A-Crate Indoor & Outdoor Home for Pets, 32\"", brand: "Petnation", category: "GPC", retailer: "r3", rank: 2, price: 101.07, rating: 4.6, reviews: 777, content: 61, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::GPC" },
+  { id: "r3-3391783", name: "PetNation Port-A-Crate 36 Inches, Indoor And Outdoor Home For Pets", brand: "Petnation", category: "GPC", retailer: "r3", rank: 3, price: 48.72, rating: 4.6, reviews: 777, content: 61, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::GPC" },
+  { id: "r3-2684063", name: "George Foreman 6-Serving Removable Plate Electric Indoor Grill and Panini Press, Silver, GRP99", brand: "George Foreman", category: "GPC", retailer: "r3", rank: 4, price: 69.67, rating: 4.3, reviews: 459, content: 44, stockBias: 0.07, buyBoxRate: 1.0, priceChangePct: -8.7, priceGroup: "r3::GPC" },
+  { id: "r3-10291577", name: "Aqua-Tech EZ-Change Replacement #3 Aquarium Filter Cartridge, 6 Pack", brand: "Aqua-Tech", category: "GPC", retailer: "r3", rank: 5, price: 13.97, rating: 4.7, reviews: 433, content: 59, stockBias: 0.87, buyBoxRate: 0.97, priceChangePct: 0.0, priceGroup: "r3::GPC" },
+  { id: "r3-8207932", name: "Dingo Mini Bones 7 Count, Rawhide For Dogs, Made With Real Chicken", brand: "Dingo", category: "GPC", retailer: "r3", rank: 6, price: 7.47, rating: 4.9, reviews: 207, content: 61, stockBias: 0.97, buyBoxRate: 0.03, priceChangePct: 1.4, priceGroup: "r3::GPC" },
+  { id: "r3-10291763", name: "Tetra Whisper 10-30 Gallon Internal Power Filter for Aquariums", brand: "Tetra", category: "GPC", retailer: "r3", rank: 7, price: 24, rating: 4.3, reviews: 110, content: 62, stockBias: 0.87, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::GPC" },
+  { id: "r3-10291760", name: "Tetra Pond Fish Food Premium Diet for Koi and Goldfish, 1.25 lbs", brand: "Tetra", category: "GPC", retailer: "r3", rank: 8, price: 13.74, rating: 4.8, reviews: 69, content: 58, stockBias: 1.0, buyBoxRate: 0.77, priceChangePct: 0.0, priceGroup: "r3::GPC" },
+  { id: "r3-10291762", name: "Tetra Whisper Power Filter for Aquariums, 30-60 Gallon", brand: "Tetra", category: "GPC", retailer: "r3", rank: 9, price: 52, rating: 3.5, reviews: 66, content: 59, stockBias: 0.83, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::GPC" },
+  { id: "r3-4252994", name: "Jungle No More Algae Tank Buddies, 8 Ct", brand: "Jungle", category: "GPC", retailer: "r3", rank: 10, price: 4.32, rating: 3.7, reviews: 28, content: 42, stockBias: 0.83, buyBoxRate: 1.0, priceChangePct: 1.9, priceGroup: "r3::GPC" },
+  { id: "r3-12166874", name: "Hot Shot No-Pest Strip 2, Controlled Release Technology Kills Flying and Crawling Insects 2.29 Ounce ( Value Pack of 5)", brand: "Hot Shot", category: "HG", retailer: "r3", rank: 1, price: 11.13, rating: 4.3, reviews: 107, content: 62, stockBias: 1.0, buyBoxRate: 0.0, priceChangePct: 22.3, priceGroup: "r3::HG" },
+  { id: "r3-12444070", name: "Cutter Skinsations Insect Repellent, 7.5 Ounces, Pump Spray", brand: "Cutter", category: "HG", retailer: "r3", rank: 2, price: 4.18, rating: 4.3, reviews: 98, content: 62, stockBias: 0.83, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HG" },
+  { id: "r3-15136592", name: "Cutter Skinsations Insect Repellent, Pump Spray, 6 Fluid Ounce", brand: "Cutter", category: "HG", retailer: "r3", rank: 3, price: 6.34, rating: 4.2, reviews: 66, content: 62, stockBias: 1.0, buyBoxRate: 0.0, priceChangePct: -3.5, priceGroup: "r3::HG" },
+  { id: "r3-16561273", name: "Repel Insect Repellent Sportsmen Max Formula With 40% DEET 0.475 Ounce, Pen-Size Pump", brand: "Repel", category: "HG", retailer: "r3", rank: 4, price: 2.97, rating: 4.7, reviews: 46, content: 65, stockBias: 0.83, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HG" },
+  { id: "r3-12444073", name: "Hot Shot Ultra Liquid Ant Bait, 0.45 fl oz Bait Stations", brand: "Hot Shot", category: "HG", retailer: "r3", rank: 5, price: 13.94, rating: 4.4, reviews: 40, content: 62, stockBias: 1.0, buyBoxRate: 0.0, priceChangePct: 16.8, priceGroup: "r3::HG" },
+  { id: "r3-16561279", name: "Repel Insect Repellent Sportsmen Max Formula Spray Pump 40% DEET, 6 Fluid Ounce", brand: "Repel", category: "HG", retailer: "r3", rank: 6, price: 5.51, rating: 4.3, reviews: 35, content: 53, stockBias: 0.83, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HG" },
+  { id: "r3-15056078", name: "Hot Shot Ultra Clear Roach and Ant Gel Bait, Insect Killer, 2.5 Ounce", brand: "Hot Shot", category: "HG", retailer: "r3", rank: 7, price: 7.97, rating: 3.4, reviews: 27, content: 68, stockBias: 0.83, buyBoxRate: 1.0, priceChangePct: -8.8, priceGroup: "r3::HG" },
+  { id: "r3-15136591", name: "Unscented Cutter Insect Repellent, Aerosol Spray, 6-Ounce", brand: "United Industries", category: "HG", retailer: "r3", rank: 8, price: 8.13, rating: 4.7, reviews: 26, content: 68, stockBias: 0.93, buyBoxRate: 0.0, priceChangePct: 0.0, priceGroup: "r3::HG" },
+  { id: "r3-12166875", name: "Cutter Bite MD Insect Bite Relief Stick, 0.5-Fluid Ounces", brand: "Cutter", category: "HG", retailer: "r3", rank: 9, price: 8.54, rating: 4.8, reviews: 13, content: 68, stockBias: 1.0, buyBoxRate: 0.0, priceChangePct: -2.7, priceGroup: "r3::HG" },
+  { id: "r3-16561276", name: "Repel 100 Insect Repellent, Pen-Size Pump Spray, 0.475-fl oz", brand: "Repel", category: "HG", retailer: "r3", rank: 10, price: 20.7, rating: 5, reviews: 1, content: 64, stockBias: 0.27, buyBoxRate: 0.73, priceChangePct: 257.5, priceGroup: "r3::HG" },
+  { id: "r3-2684038", name: "BLACK+DECKER 3-in-1 Waffle Maker & Indoor Grill/Griddle, Stainless Steel, G48TD", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 1, price: 88.99, rating: 3.9, reviews: 864, content: 59, stockBias: 1.0, buyBoxRate: 0.0, priceChangePct: -10.1, priceGroup: "r3::HPC" },
+  { id: "r3-6528826", name: "BLACK+DECKER Classic Iron with Aluminum Soleplate, Silver, F67E", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 2, price: 30.06, rating: 4.4, reviews: 777, content: 53, stockBias: 0.83, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
+  { id: "r3-10575935", name: "Remington Travel Size Professional 1.25\" Compact Ceramic Hot Hair Rollers, 10 Piece Set, Anti-Static Technology, Ionic, Black", brand: "Remington", category: "HPC", retailer: "r3", rank: 3, price: 14.97, rating: 4, reviews: 698, content: 59, stockBias: 0.83, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
+  { id: "r3-10533967", name: "Remington Face Saver Pre-Shave Powder Stick, Prevent Shave Irritation", brand: "Remington", category: "HPC", retailer: "r3", rank: 4, price: 5.99, rating: 4.6, reviews: 426, content: 59, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
+  { id: "r3-11186328", name: "BLACK+DECKER SpaceMaker Under-Counter Toaster Oven, Black/Silver, TROS1000D", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 5, price: 119.99, rating: 3.9, reviews: 300, content: 59, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
+  { id: "r3-13724331", name: "BLACK+DECKER 2-Slice Extra Wide Slot Toaster, Black", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 6, price: 23.26, rating: 4.4, reviews: 292, content: 59, stockBias: 0.83, buyBoxRate: 1.0, priceChangePct: 0.2, priceGroup: "r3::HPC" },
+  { id: "r3-10574351", name: "BLACK+DECKER Black 12 Cup Drip Coffee Maker", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 7, price: 49.43, rating: 3.2, reviews: 233, content: 59, stockBias: 0.97, buyBoxRate: 0.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
+  { id: "r3-14320976", name: "BLACK+DECKER SpaceMaker Multi-Purpose Can Opener, Black, CO100B", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 8, price: 60.74, rating: 3.7, reviews: 179, content: 59, stockBias: 0.13, buyBoxRate: 0.87, priceChangePct: -88.7, priceGroup: "r3::HPC" },
+  { id: "r3-14320955", name: "BLACK+DECKER SmartGrind Coffee Grinder with Stainless Steel Blades, Stainless Steel, CBG100S", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 9, price: 49.99, rating: 3.8, reviews: 173, content: 59, stockBias: 0.27, buyBoxRate: 0.73, priceChangePct: 150.1, priceGroup: "r3::HPC" },
+  { id: "r3-6561226", name: "Black & Decker BD 5c Coffee Maker GlsCrf Wht", brand: "BLACK+DECKER", category: "HPC", retailer: "r3", rank: 10, price: 19.99, rating: 3.3, reviews: 127, content: 54, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r3::HPC" },
+  { id: "r4-100034451", name: "Triazicide 32 fl. oz. Concentrate Lawn Insect Killer", brand: "Spectracide", category: "HG", retailer: "r4", rank: 1, price: 8.97, rating: 4, reviews: 1440, content: 77, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r4::HG" },
+  { id: "r4-100023081", name: "10 lbs. Triazicide Lawn Insect Killer Granules", brand: "Spectracide", category: "HG", retailer: "r4", rank: 2, price: 7.97, rating: 4.1, reviews: 1403, content: 76, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r4::HG" },
+  { id: "r4-100004739", name: "2.29 oz. No-Pest Insect Strip", brand: "Hot Shot", category: "HG", retailer: "r4", rank: 3, price: 6.97, rating: 4.4, reviews: 814, content: 55, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r4::HG" },
+  { id: "r4-100012648", name: "Bag-A-Bug Japanese Beetle Trap", brand: "Spectracide", category: "HG", retailer: "r4", rank: 4, price: 6.86, rating: 4.4, reviews: 747, content: 59, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 32.7, priceGroup: "r4::HG" },
+  { id: "r4-100062166", name: "Terminate 16 oz. Termite Killing Foam", brand: "Spectracide", category: "HG", retailer: "r4", rank: 5, price: 8.97, rating: 4.2, reviews: 628, content: 66, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 5.8, priceGroup: "r4::HG" },
+  { id: "r4-100052940", name: "Bag-A-Bug Kwik Stand for Japanese Beetle Trap", brand: "Spectracide", category: "HG", retailer: "r4", rank: 6, price: 5.27, rating: 3.5, reviews: 105, content: 56, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r4::HG" },
+  { id: "r4-100056149", name: "Bag-A-Bug Japanese Beetle Trap Replacement Lure Refill (1-Count)", brand: "Spectracide", category: "HG", retailer: "r4", rank: 7, price: 5.86, rating: 4.4, reviews: 74, content: 65, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r4::HG" },
+  { id: "r4-100008212", name: "Bag-A-Bug Japanese Beetle Trap2 Replacement Bags (6-Count)", brand: "Spectracide", category: "HG", retailer: "r4", rank: 8, price: 3.78, rating: 4.7, reviews: 61, content: 56, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r4::HG" },
+  { id: "r4-100046531", name: "1.3 gal. Termite and Carpenter Ant Killer Ready-to-Use EzSpray", brand: "Spectracide", category: "HG", retailer: "r4", rank: 9, price: 24.97, rating: 3.4, reviews: 31, content: 56, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 8.6, priceGroup: "r4::HG" },
+  { id: "r4-100117730", name: "15 oz. Flying Insect Killer Aerosol Spray Clean Fresh Scent", brand: "Hot Shot", category: "HG", retailer: "r4", rank: 10, price: 4.47, rating: 2.8, reviews: 17, content: 52, stockBias: 0.9, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r4::HG" },
+  { id: "r5-48922", name: "FURminator\u00c2\u00ae Short Hair Undercoat deShedding Dog Tool | Dog brushes combs & blowdryers | PetSmart", brand: "FURminator", category: "GPC", retailer: "r5", rank: 1, price: 28.28, rating: 4.68, reviews: 188, content: 56, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -21.4, priceGroup: "r5::GPC" },
+  { id: "r5-1031024", name: "Tetra\u00c2\u00ae TetraMin Tropical Flakes Fish Food | Fish food | PetSmart", brand: "Tetra", category: "GPC", retailer: "r5", rank: 2, price: 8.99, rating: 4.77, reviews: 106, content: 69, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r5::GPC" },
+  { id: "r5-48923", name: "FURminator\u00c2\u00ae Long Hair Undercoat deShedding Dog Tool | Dog brushes combs & blowdryers | PetSmart", brand: "FURminator", category: "GPC", retailer: "r5", rank: 3, price: 28.28, rating: 4.57, reviews: 91, content: 56, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -21.4, priceGroup: "r5::GPC" },
+  { id: "r5-22522", name: "FURminator\u00c2\u00ae deShedding Ultra Premium Dog Shampoo | Dog shampoos & conditioners | PetSmart", brand: "FURminator", category: "GPC", retailer: "r5", rank: 4, price: 12.99, rating: 4.6, reviews: 68, content: 59, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r5::GPC" },
+  { id: "r5-49430", name: "FURminator\u00c2\u00ae Short Hair Undercoat deShedding Cat Tool | Cat brushes combs & blowdryers | PetSmart", brand: "FURminator", category: "GPC", retailer: "r5", rank: 5, price: 33.99, rating: 4.84, reviews: 50, content: 62, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r5::GPC" },
+  { id: "r5-1031219", name: "Tetra\u00c2\u00ae TetraFin Goldfish Flakes | Fish food | PetSmart", brand: "Tetra", category: "GPC", retailer: "r5", rank: 6, price: 7.39, rating: 4.32, reviews: 41, content: 60, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r5::GPC" },
+  { id: "r5-49429", name: "FURminator\u00c2\u00ae Long Hair Undercoat deShedding Cat Tool | Cat brushes combs & blowdryers | PetSmart", brand: "FURminator", category: "GPC", retailer: "r5", rank: 7, price: 33.99, rating: 4.71, reviews: 34, content: 62, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r5::GPC" },
+  { id: "r5-22523", name: "FURminator\u00c2\u00ae deShedding Ultra Premium Dog Conditioner | Dog shampoos & conditioners | PetSmart", brand: "FURminator", category: "GPC", retailer: "r5", rank: 8, price: 12.99, rating: 4.77, reviews: 26, content: 57, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r5::GPC" },
+  { id: "r5-1031232", name: "Tetra\u00c2\u00ae TetraPond Goldfish and Koi Pond Sticks | Fish pond care | PetSmart", brand: "Tetra", category: "GPC", retailer: "r5", rank: 9, price: 4.39, rating: 4.72, reviews: 18, content: 65, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r5::GPC" },
+  { id: "r5-22524", name: "FURminator\u00c2\u00ae deShedding Dog Spray | Dog wipes & deodorizers | PetSmart", brand: "FURminator", category: "GPC", retailer: "r5", rank: 10, price: 7.59, rating: 4.5, reviews: 4, content: 59, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r5::GPC" },
+  { id: "r6-1000207877", name: "Nature's Miracle 32-oz Cat and Dog Stain and Odor Remover Trigger Spray Bottle", brand: "Nature's Miracle", category: "GPC", retailer: "r6", rank: 1, price: 12.68, rating: 4, reviews: 53, content: 53, stockBias: 0.1, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::GPC" },
+  { id: "r6-1000735634", name: "Tetra 1 lb Pond Fish Food Sticks", brand: "Tetra", category: "GPC", retailer: "r6", rank: 2, price: 14.48, rating: 4.5, reviews: 30, content: 60, stockBias: 0.03, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::GPC" },
+  { id: "r6-1000735640", name: "Tetra Koi Vibrance 1.43 lbs Pond Fish Food Sticks", brand: "Tetra", category: "GPC", retailer: "r6", rank: 3, price: 18.48, rating: 4.5, reviews: 29, content: 68, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::GPC" },
+  { id: "r6-5002106395", name: "Tetra Koi Vibrance 16.5 pounds Pond Fish Food Sticks", brand: "Tetra", category: "GPC", retailer: "r6", rank: 4, price: 91.98, rating: 5, reviews: 26, content: 59, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::GPC" },
+  { id: "r6-5001959349", name: "Tetra Sticks 11 pounds Pond Fish Food Sticks", brand: "Tetra", category: "GPC", retailer: "r6", rank: 5, price: 62.48, rating: 5, reviews: 19, content: 66, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::GPC" },
+  { id: "r6-5001633443", name: "Nature's Miracle Stain Remover", brand: "Nature's Miracle", category: "GPC", retailer: "r6", rank: 6, price: 25.48, rating: 4.5, reviews: 18, content: 53, stockBias: 0.07, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::GPC" },
+  { id: "r6-1000387581", name: "Nature's Miracle Stain Remover", brand: "Nature's Miracle", category: "GPC", retailer: "r6", rank: 7, price: 8.47, rating: 0, reviews: 0, content: 53, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::GPC" },
+  { id: "r6-3030370", name: "Ultra-Kill Wasp and Hornet 17-oz Insect Killer Aerosol", brand: "Ultra-Kill", category: "HG", retailer: "r6", rank: 1, price: 2.78, rating: 3, reviews: 444, content: 68, stockBias: 0.1, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::HG" },
+  { id: "r6-3103667", name: "Spectracide Weed Stop For Lawns Granules 10-lb Weed and Grass Killer", brand: "Spectracide", category: "HG", retailer: "r6", rank: 2, price: 14.28, rating: 3.5, reviews: 346, content: 72, stockBias: 0.1, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::HG" },
+  { id: "r6-3120407", name: "Spectracide Bag-A-Bug Japanese Beetle Trap Outdoor Beetle Repellent", brand: "Spectracide", category: "HG", retailer: "r6", rank: 3, price: 5.98, rating: 4.5, reviews: 322, content: 71, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::HG" },
+  { id: "r6-1255457", name: "Garden Safe Multi-Purpose Garden Insect Killer 24-fl oz Garden Insect Killer Trigger Spray", brand: "Garden Safe", category: "HG", retailer: "r6", rank: 4, price: 5.98, rating: 4.5, reviews: 176, content: 61, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::HG" },
+  { id: "r6-3031685", name: "Spectracide Terminate Termite Killing Foam 16-oz Termite Killer Aerosol", brand: "Spectracide", category: "HG", retailer: "r6", rank: 5, price: 8.78, rating: 4.5, reviews: 147, content: 72, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::HG" },
+  { id: "r6-3033932", name: "Hot Shot MaxAttrax 4-Count Ant Bait Station (4-Pack)", brand: "Hot Shot", category: "HG", retailer: "r6", rank: 6, price: 2.28, rating: 3.5, reviews: 95, content: 72, stockBias: 0.03, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::HG" },
+  { id: "r6-3120411", name: "Spectracide Bag-A-Bug Kwik Stand for Japanese Beetle Traps Outdoor Beetle Repellent", brand: "Spectracide", category: "HG", retailer: "r6", rank: 7, price: 5.28, rating: 4, reviews: 69, content: 67, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::HG" },
+  { id: "r6-3047623", name: "Spectracide Bag-A-Bug Japanese Beetle Replacement Lure Outdoor Beetle Repellent", brand: "Spectracide", category: "HG", retailer: "r6", rank: 8, price: 4.98, rating: 4.5, reviews: 68, content: 68, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::HG" },
+  { id: "r6-1010093", name: "Cutter Backyard Mosquito and Bug Control 16-oz Fogger", brand: "Cutter", category: "HG", retailer: "r6", rank: 9, price: 6.98, rating: 4.1, reviews: 37, content: 37, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::HG" },
+  { id: "r6-1165507", name: "interDesign\u00c3\u201a\u00c2\u00ae Clear Sinkworks Euro Sink Saddle", brand: "interDesign\u00c2\u00ae", category: "HG", retailer: "r6", rank: 10, price: 6.37, rating: 0, reviews: 0, content: 35, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r6::HG" },
+  { id: "r7-77763", name: "Instant Ocean Marine Fast Dissolving Sea Salt, 3 lbs.", brand: "Instant Ocean", category: "GPC", retailer: "r7", rank: 1, price: 5.8, rating: 4.8, reviews: 665, content: 52, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: -3.0, priceGroup: "r7::GPC" },
+  { id: "r7-77780", name: "Instant Ocean Marine Fast Dissolving Sea Salt, 3 lbs.", brand: "Instant Ocean", category: "GPC", retailer: "r7", rank: 2, price: 12.99, rating: 4.8, reviews: 665, content: 52, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r7::GPC" },
+  { id: "r7-31933", name: "TetraPond Floating Koi Sticks, 3.31 lbs.", brand: "Tetra", category: "GPC", retailer: "r7", rank: 3, price: 5.36, rating: 4.8, reviews: 173, content: 61, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r7::GPC" },
+  { id: "r7-39918", name: "Tetra Blood Worms Freeze Dried Treat", brand: "Tetra", category: "GPC", retailer: "r7", rank: 4, price: 5.99, rating: 4.6, reviews: 93, content: 44, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r7::GPC" },
+  { id: "r7-32840", name: "TetraPond Floating Pond Sticks", brand: "Tetra", category: "GPC", retailer: "r7", rank: 5, price: 10.99, rating: 4.9, reviews: 79, content: 53, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r7::GPC" },
+  { id: "r7-39942", name: "Tetra Baby Shrimp Sun Dried Treat", brand: "Tetra", category: "GPC", retailer: "r7", rank: 6, price: 2.38, rating: 4.3, reviews: 74, content: 44, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r7::GPC" },
+  { id: "r7-78387", name: "Tetra ColorBits Tropical Granules", brand: "Tetra", category: "GPC", retailer: "r7", rank: 7, price: 5.8, rating: 4.6, reviews: 74, content: 53, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r7::GPC" },
+  { id: "r7-16578", name: "TetraCichlid Food Sticks, 2.64 oz.", brand: "Tetra", category: "GPC", retailer: "r7", rank: 8, price: 7.78, rating: 4.6, reviews: 33, content: 56, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r7::GPC" },
+  { id: "r7-16586", name: "TetraCichlid Food Sticks, 2.64 oz.", brand: "Tetra", category: "GPC", retailer: "r7", rank: 9, price: 12.79, rating: 4.6, reviews: 33, content: 56, stockBias: 1.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r7::GPC" },
+  { id: "r7-78395", name: "TetraCichlid Cichlid Flakes", brand: "Tetra", category: "GPC", retailer: "r7", rank: 10, price: 7.18, rating: 4.7, reviews: 23, content: 50, stockBias: 0.0, buyBoxRate: 1.0, priceChangePct: 0.0, priceGroup: "r7::GPC" },
 ];
 
 /* Illustrative only -- no first-class Competitor entity is resolvable from
@@ -243,19 +248,21 @@ export const competitorBrands = [
   { id: "c4", name: "Selby & Co", share: 8.4, skus: 44, price: 5.8, rating: 3.96, content: 66 },
 ];
 
-/* Real keyword strings pulled directly from the Share of Search file's
-   `keyword` column for our 6 retailers — search `volume` and `ownRank` are
+/* Real keyword strings pulled directly from the Share Of Search tab's
+   `keyword` column for our 7 retailers — search `volume` and `ownRank` are
    not in the source data (no traffic/volume field exists anywhere in the
-   crawl, per the data audit) and remain illustrative. */
+   workbook) and remain illustrative. */
 export const keywordSet = [
-  { id: "k1", term: "automatic cat litter box", volume: 90400, ownRank: 3 },
-  { id: "k2", term: "10 gallon fish tank", volume: 60200, ownRank: 5 },
-  { id: "k3", term: "chew bones for large dogs", volume: 40100, ownRank: 2 },
-  { id: "k4", term: "12 cup coffee maker", volume: 74800, ownRank: 4 },
-  { id: "k5", term: "2 slice toaster", volume: 33200, ownRank: 8 },
-  { id: "k6", term: "beard and body trimmer for men", volume: 52600, ownRank: 6 },
-  { id: "k7", term: "bug bombs for all insects indoor", volume: 28700, ownRank: 12 },
-  { id: "k8", term: "bbq grills", volume: 45300, ownRank: 9 },
+  { id: "k1", term: "1 cup coffee maker", volume: 0, ownRank: 0 }, // volume/ownRank illustrative -- no traffic data in source
+  { id: "k2", term: "2 slice toaster", volume: 0, ownRank: 0 }, // volume/ownRank illustrative -- no traffic data in source
+  { id: "k3", term: "Black And Decker Blender", volume: 0, ownRank: 0 }, // volume/ownRank illustrative -- no traffic data in source
+  { id: "k4", term: "Deshedding Brush", volume: 0, ownRank: 0 }, // volume/ownRank illustrative -- no traffic data in source
+  { id: "k5", term: "Dog Hair Remover", volume: 0, ownRank: 0 }, // volume/ownRank illustrative -- no traffic data in source
+  { id: "k6", term: "air pump for fish tank", volume: 0, ownRank: 0 }, // volume/ownRank illustrative -- no traffic data in source
+  { id: "k7", term: "chews", volume: 0, ownRank: 0 }, // volume/ownRank illustrative -- no traffic data in source
+  { id: "k8", term: "door knockers", volume: 0, ownRank: 0 }, // volume/ownRank illustrative -- no traffic data in source
+  { id: "k9", term: "good n fun dog treats", volume: 0, ownRank: 0 }, // volume/ownRank illustrative -- no traffic data in source
+  { id: "k10", term: "odor remover", volume: 0, ownRank: 0 }, // volume/ownRank illustrative -- no traffic data in source
 ];
 
 export const contentAttributes = [
@@ -280,11 +287,11 @@ export const reviewThemes = [
 export const categories = ["GPC", "HPC", "HG"];
 
 export const notificationFeed = [
-  { id: "n1", severity: "high", title: "Stock alert", text: "Spectracide Bug Stop Home Barrier out of stock all month at Lowe's", time: "12m ago", product: "r6-50040952" },
-  { id: "n2", severity: "high", title: "Price alert", text: "BLACK+DECKER 12-Cup Coffeemaker jumped 159% at Walmart the same day it went out of stock", time: "38m ago", product: "r3-46092119" },
-  { id: "n3", severity: "medium", title: "Buy box alert", text: "BLACK+DECKER 14-Cup Rice Cooker has lost the buy box to third-party resellers all month on Amazon.com", time: "1h ago", product: "r1-B016Y8JSR2" },
-  { id: "n4", severity: "medium", title: "Search alert", text: "Chewy returned zero ranked results for 59% of tracked keywords this period", time: "2h ago", product: "r2-303600" },
-  { id: "n5", severity: "low", title: "Content opportunity", text: "47 products scored under 80 on content completeness across the portfolio", time: "5h ago", product: "r5-5230281" },
+  { id: "n1", severity: "high", title: "Stock alert", text: "Tetra Koi Vibrance Pond Fish Food Sticks out of stock all month at Lowe's", time: "12m ago", product: "r6-1000735640" },
+  { id: "n2", severity: "high", title: "Price alert", text: "BLACK+DECKER SmartGrind Coffee Grinder jumped 150% at Walmart while availability dropped to 27%", time: "38m ago", product: "r3-14320955" },
+  { id: "n3", severity: "medium", title: "Buy box alert", text: "Dingo Mini Bones has lost the buy box to a third-party reseller for 29 of the last 30 days on Walmart.com", time: "1h ago", product: "r3-8207932" },
+  { id: "n4", severity: "medium", title: "Search alert", text: "Chewy returned zero ranked results for 40% of tracked keywords this period", time: "2h ago", product: "r2-40150" },
+  { id: "n5", severity: "low", title: "Content opportunity", text: "111 products scored under 80 on content completeness across the portfolio", time: "5h ago", product: "r6-1165507" },
 ];
 
 /* ── deterministic variation helpers ─────────────────────────────────── */
@@ -306,19 +313,22 @@ const rowRng = (key: string, tag: string, id: string) => rng(hash(key + "|" + ta
 const round = (v: number, p = 1) => Number(v.toFixed(p));
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-/* Derived from the real September crawl: sos = inverse of each retailer's own
-   zero-result rate on tracked keywords (Share of Search); stock/rating/content
-   = this retailer's average vs. the 36-SKU portfolio average (Content + Price
-   Data). Chewy's -34.6 sos reflects a genuine finding — 59.5% of its tracked
-   keyword searches returned zero ranked results, vs. 0% for Amazon. */
+/* Derived from the real September crawl (see build_mock_data.py): sos = this
+   retailer's average tracked-keyword result-coverage % (REAL_SOS_WEEKLY)
+   minus the portfolio average; stock/rating/content = this retailer's
+   5-week average vs. the 117-SKU portfolio average (REAL_ROLLUP_WEEKLY).
+   Chewy's -31.0 sos reflects a genuine finding — the tracked keywords
+   returned zero ranked results on Chewy 40% of the time this period,
+   vs. 0% for Amazon/Walmart/PetSmart. */
 const RETAILER_BIAS: Record<string, { sos: number; stock: number; rating: number; content: number }> = {
   all: { sos: 0, stock: 0, rating: 0, content: 0 },
-  r1: { sos: 5.0, stock: 22.3, rating: 0.38, content: 5.5 },    // Amazon.com
-  r2: { sos: -54.5, stock: 25.8, rating: 0.25, content: 1.7 },  // Chewy
-  r3: { sos: 4.6, stock: 0.2, rating: 0.22, content: -3.6 },    // Walmart
-  r4: { sos: 1.4, stock: -1.4, rating: -0.21, content: 7.9 },   // The Home Depot
-  r5: { sos: 0.6, stock: 25.8, rating: -0.74, content: -16.9 }, // PetSmart
-  r6: { sos: -4.1, stock: -70.6, rating: 0.12, content: 6.8 },  // Lowe's
+  "r1": { sos: 9.0, stock: 4.2, rating: 0.02, content: 5.4 }, // Amazon.com
+  "r2": { sos: -31.0, stock: 38.3, rating: -0.48, content: 1.1 }, // Chewy
+  "r3": { sos: 9.0, stock: 2.6, rating: -0.02, content: -2.3 }, // Walmart
+  "r4": { sos: 1.5, stock: -4.0, rating: -0.26, content: 0.6 }, // The Home Depot
+  "r5": { sos: 9.0, stock: 38.3, rating: 0.39, content: -0.7 }, // PetSmart
+  "r6": { sos: 4.0, stock: -59.5, rating: -0.02, content: -0.3 }, // Lowe's
+  "r7": { sos: -1.0, stock: 8.3, rating: 0.41, content: -9.8 }, // Petco
 };
 
 const MONTHS = ["Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"];
@@ -342,11 +352,14 @@ function series(seed: number, n: number, start: number, end: number, amp: number
 /* Longer windows show more movement — a 7-day window is nearly flat. */
 const swing: Record<string, number> = { "7d": 0.25, "4w": 0.5, "12w": 1, "6m": 1.5, "12m": 2.2 };
 
-/* Price Index needs a documented comparison set (per the data audit) — the
-   raw category code (GPC/HPC/HG) is a business-unit label, not a product
-   taxonomy, so it mixes $7 dog treats with $500 aquarium ensembles. Peer
-   groups below are hand-assigned per product (same product type, often
-   cross-retailer) as the actual comparison set. */
+/* Price Index needs a documented comparison set — the raw category code
+   (GPC/HPC/HG) is a business-unit label, not a product taxonomy, so it
+   mixes $7 dog treats with $500 aquarium ensembles. Every product's
+   priceGroup is "{retailerCode}::{CATEGORY}" (see build_mock_data.py) —
+   a deliberately coarse, fully source-traceable grouping. The previous
+   crawl slice used hand-curated, product-type-specific peer groups (e.g.
+   "Amazon.com::coffee machines"); that fine-grained curation is subjective
+   and unverifiable against raw data, so it was not reproduced here. */
 const PEER_GROUP_AVG_PRICE: Record<string, number> = {};
 for (const p of catalog as any[]) {
   const g = p.priceGroup as string;
@@ -363,205 +376,257 @@ for (const p of catalog as any[]) {
    charts for the "Last 4 weeks" period; other periods still use synthetic
    jitter since September is the only month this crawl covers. */
 export const REAL_WEEK_LABELS = ["Sep 1", "Sep 8", "Sep 15", "Sep 22", "Sep 29"];
-export const REAL_SOS_WEEK_LABELS = ["Sep 6", "Sep 13", "Sep 20", "Sep 27"];
+export const REAL_SOS_WEEK_LABELS = ["Sep 8", "Sep 15", "Sep 22", "Sep 29"];
 
 export const REAL_PRODUCT_WEEKLY: Record<string, {
   rating: number[]; reviews: number[]; price: number[]; stockRate: number[]; buyBoxRate: number[];
 }> = {
-  "r1-B07BVL8TQF": { rating: [4.8, 4.8, 4.8, 4.8, 4.8], reviews: [46471, 46674, 46850, 47245, 47521], price: [14.23, 14.23, 14.23, 14.22, 14.23], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r1-B08VXNT9DW": { rating: [4.5, 4.5, 4.5, 4.4, 4.5], reviews: [45031, 45125, 45224, 43875, 45535], price: [17.33, 16.99, 16.99, 16.99, 16.99], stockRate: [57.1, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r1-B00H2B4H2M": { rating: [4.5, 4.5, 4.5, 4.4, 4.5], reviews: [45031, 45124, 45224, 43882, 45534], price: [20.99, 20.39, 20.43, 20.82, 20.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r1-B01GJOMWVA": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [42091, 42278, 42450, 42794, 43039], price: [29.99, 20.07, 28.46, 22.86, 17.92], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r1-B01GJOMWYC": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [42091, 42278, 42450, 42794, 43039], price: [29.89, 27.24, 28.29, 29.41, 29.81], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 50] },
-  "r1-B002LAREDS": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [42091, 42278, 42450, 42806, 43039], price: [30.42, 30.9, 31.58, 32.39, 32.72], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 86, 100, 100, 100] },
-  "r1-B00MMRFUG8": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [40988, 41051, 41078, 41247, 41347], price: [17.08, 19.16, 19.16, 19.16, 19.16], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r1-B016Y8JSR2": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [39416, 39588, 39763, 40008, 40288], price: [49.74, 27.18, 27.03, 35.46, 53.75], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [0, 0, 0, 0, 0] },
-  "r1-B01B7D3YW4": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [39416, 39588, 39763, 40008, 40288], price: [30.24, 28.28, 30.19, 29.89, 28.53], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r1-B016Y8JSC2": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [39416, 39588, 39763, 40019, 40286], price: [23.8, 23.65, 25.57, 26.24, 24.84], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r1-B016Y8JSK4": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [39416, 39588, 39763, 40019, 40286], price: [18.08, 18.05, 18.05, 17.91, 16.25], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r1-B003S516XO": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [36142, 36218, 36320, 36499, 36652], price: [18.02, 19.12, 19.65, 19.05, 18.86], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r1-B00OYHF7RQ": { rating: [4.4, 4.4, 4.4, 4.4, 4.4], reviews: [35982, 36047, 36106, 36281, 36407], price: [21.99, 21.99, 21.98, 21.8, 20.69], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r1-B004N59OFU": { rating: [4.4, 4.4, 4.4, 4.4, 4.4], reviews: [35340, 35500, 35634, 35936, 36143], price: [4.97, 4.97, 4.97, 4.97, 4.97], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r1-B010AFV1LQ": { rating: [4.4, 4.4, 4.4, 4.4, 4.4], reviews: [35340, 35500, 35634, 35935, 36143], price: [13.93, 14.42, 14.94, 15.37, 15.37], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 86, 100, 100] },
-  "r1-B000HHLHDK": { rating: [4.7, 4.7, 4.7, 4.7, 4.7], reviews: [35327, 35493, 35661, 35904, 36110], price: [2.09, 2.09, 2.09, 2.09, 2.09], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r1-B07MZMLZZ3": { rating: [4.7, 4.7, 4.7, 4.7, 4.7], reviews: [34279, 34420, 34342, 34513, 34668], price: [33.9, 39.67, 35.9, 35.9, 35.9], stockRate: [57.1, 57.1, 85.7, 0.0, 0.0], buyBoxRate: [20, 0, 0, 0, 0] },
-  "r1-B0009YF4FI": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [33378, 33563, 33712, 33986, 34222], price: [9.85, 8.93, 9.97, 9.04, 10.15], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-303600": { rating: [4.486, 4.4846, 4.485, 4.4847, 4.4863], reviews: [3605, 3607, 3612, 3617, 3621], price: [10.09, 10.09, 10.09, 10.09, 10.09], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-47575": { rating: [4.602, 4.6021, 4.6021, 4.6021, 4.6007], reviews: [2457, 2458, 2458, 2458, 2459], price: [37.95, 37.95, 37.95, 37.95, 37.95], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-129721": { rating: [4.8156, 4.8157, 4.8157, 4.816, 4.8163], reviews: [1659, 1660, 1660, 1663, 1666], price: [10.52, 10.52, 10.52, 10.5, 10.5], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-107282": { rating: [4.3976, 4.3982, 4.3982, 4.3982, 4.3969], reviews: [1104, 1105, 1105, 1105, 1106], price: [8.44, 8.44, 8.44, 8.44, 8.44], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-107286": { rating: [4.1415, 4.1423, 4.1393, 4.1393, 4.1393], reviews: [1039, 1040, 1041, 1041, 1041], price: [6.74, 6.74, 6.74, 6.74, 6.74], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-53154": { rating: [4.3958, 4.392, 4.392, 4.3927, 4.3934], reviews: [902, 903, 903, 904, 905], price: [7.8, 7.2, 7.2, 7.2, 7.2], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-56726": { rating: [4.4585, 4.4585, 4.4559, 4.4554, 4.456], reviews: [892, 892, 895, 896, 897], price: [63.3, 63.3, 63.3, 63.3, 63.3], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-52987": { rating: [4.7599, 4.7603, 4.7603, 4.7603, 4.7554], reviews: [779, 780, 780, 780, 781], price: [11.0, 11.0, 11.0, 11.0, 11.0], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-191386": { rating: [4.4425, 4.4392, 4.4345, 4.4345, 4.4362], reviews: [739, 740, 741, 741, 745], price: [29.55, 29.55, 29.55, 29.55, 29.55], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-323545": { rating: [4.3884, 4.3902, 4.3902, 4.3902, 4.3902], reviews: [672, 674, 674, 674, 674], price: [5.95, 5.95, 5.95, 5.95, 5.95], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-47595": { rating: [4.2297, 4.2297, 4.2259, 4.2295, 4.2291], reviews: [640, 640, 642, 645, 646], price: [15.99, 15.99, 15.33, 14.33, 15.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r7-16578": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [32, 32, 33, 33, 33], price: [7.78, 7.78, 7.78, 7.78, 7.78], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r7-16586": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [32, 32, 33, 33, 33], price: [12.79, 12.79, 12.79, 12.79, 12.79], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r5-22522": { rating: [4.66, 4.66, 4.6, 4.6, 4.6], reviews: [67, 67, 68, 68, 68], price: [12.99, 12.99, 12.99, 12.99, 12.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r5-22523": { rating: [4.77, 4.77, 4.77, 4.77, 4.77], reviews: [26, 26, 26, 26, 26], price: [12.99, 12.99, 12.99, 12.99, 12.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r5-22524": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [4, 4, 4, 4, 4], price: [7.59, 7.59, 7.59, 7.59, 7.59], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r7-31933": { rating: [4.8, 4.8, 4.8, 4.8, 4.8], reviews: [172, 172, 173, 173, 173], price: [5.36, 5.36, 5.36, 5.36, 5.36], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r7-32840": { rating: [4.9, 4.9, 4.9, 4.9, 4.9], reviews: [79, 79, 79, 79, 79], price: [10.99, 10.99, 10.99, 10.99, 10.99], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r7-39918": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [93, 93, 93, 93, 93], price: [5.99, 5.99, 5.99, 5.99, 5.99], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r7-39942": { rating: [4.3, 4.3, 4.3, 4.3, 4.3], reviews: [74, 74, 74, 74, 74], price: [2.38, 2.38, 2.38, 2.38, 2.38], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r2-40150": { rating: [3.5142, 3.5142, 3.5102, 3.5102, 3.5102], reviews: [634, 634, 635, 635, 635], price: [24.99, 24.99, 24.99, 24.99, 24.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
   "r2-40181": { rating: [3.5142, 3.5142, 3.5102, 3.5102, 3.5102], reviews: [634, 634, 635, 635, 635], price: [24.99, 24.99, 24.99, 24.99, 24.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-52982": { rating: [4.6548, 4.6548, 4.6548, 4.6548, 4.6554], reviews: [620, 620, 620, 620, 621], price: [11.02, 11.02, 11.02, 11.02, 11.02], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-51634": { rating: [3.3818, 3.3818, 3.3779, 3.3806, 3.3806], reviews: [605, 605, 606, 607, 607], price: [34.21, 34.21, 34.21, 34.21, 34.21], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-47652": { rating: [4.4595, 4.4595, 4.4595, 4.4595, 4.4549], reviews: [531, 531, 531, 531, 532], price: [22.94, 22.94, 22.94, 22.94, 22.94], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-131749": { rating: [4.5692, 4.5692, 4.5692, 4.5692, 4.5692], reviews: [520, 520, 520, 520, 520], price: [14.49, 14.49, 14.49, 14.49, 14.49], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-128260": { rating: [4.5755, 4.5755, 4.5755, 4.5755, 4.5755], reviews: [490, 490, 490, 490, 490], price: [7.58, 7.58, 7.58, 7.58, 7.58], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-192722": { rating: [4.7537, 4.7537, 4.7537, 4.7537, 4.7537], reviews: [467, 467, 467, 467, 467], price: [12.26, 12.26, 12.26, 12.26, 12.26], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-56736": { rating: [4.2802, 4.2802, 4.2802, 4.2802, 4.2802], reviews: [464, 464, 464, 464, 464], price: [105.99, 105.99, 105.99, 105.99, 105.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r2-107284": { rating: [4.5631, 4.5631, 4.5631, 4.564, 4.564], reviews: [444, 444, 444, 445, 445], price: [9.89, 9.89, 9.89, 9.89, 9.89], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-313473640": { rating: [4.1, 4.2, 4.2, 4.2, 4.2], reviews: [4622, 4647, 4684, 4720, 4734], price: [34.2, 34.2, 34.2, 34.2, 33.25], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-311330332": { rating: [4.2, 4.2, 4.2, 4.2, 4.2], reviews: [3093, 3104, 3120, 3128, 3134], price: [47.55, 47.55, 47.55, 48.26, 50.05], stockRate: [0.0, 71.4, 14.3, 14.3, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-205755526": { rating: [4.2, 4.2, 4.2, 4.2, 4.2], reviews: [3093, 3104, 3120, 3128, 3134], price: [17.47, 17.47, 17.47, 17.47, 17.47], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-100211822": { rating: [3.9, 3.9, 3.9, 3.9, 3.9], reviews: [2884, 2898, 2913, 2934, 2942], price: [9.99, 9.99, 9.99, 9.99, 9.48], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-313473669": { rating: [3.8, 3.8, 3.8, 3.8, 3.8], reviews: [2706, 2722, 2745, 2766, 2785], price: [22.57, 22.57, 22.57, 22.57, 22.57], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-100578850": { rating: [4, 4, 4, 4, 4], reviews: [2610, 2642, 2689, 2733, 2760], price: [3.47, 3.47, 3.47, 3.47, 3.47], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-203131746": { rating: [4, 4, 4, 4, 4], reviews: [2607, 2639, 2686, 2730, 2757], price: [6.97, 6.97, 6.97, 6.97, 6.97], stockRate: [71.4, 57.1, 57.1, 14.3, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-313861639": { rating: [3.9, 3.9, 3.9, 4, 4], reviews: [2519, 2551, 2598, 2642, 2669], price: [32.16, 32.16, 32.16, 32.16, 32.16], stockRate: [42.9, 28.6, 57.1, 85.7, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-205844053": { rating: [3.8, 3.8, 3.8, 3.8, 3.8], reviews: [2421, 2426, 2455, 2485, 2495], price: [24.97, 24.97, 24.97, 24.97, 24.97], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-205844055": { rating: [3.8, 3.8, 3.8, 3.8, 3.8], reviews: [2421, 2426, 2455, 2485, 2495], price: [13.97, 13.97, 13.97, 13.97, 14.47], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-100352378": { rating: [3.7, 3.7, 3.7, 3.7, 3.7], reviews: [2114, 2123, 2141, 2155, 2163], price: [12.97, 12.97, 12.97, 12.97, 12.97], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-204706227": { rating: [3.7, 3.7, 3.7, 3.7, 3.7], reviews: [2114, 2123, 2141, 2155, 2163], price: [9.98, 9.98, 9.98, 9.98, 9.98], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-315285692": { rating: [4.1, 4.1, 4.1, 4.1, 4.1], reviews: [1956, 1996, 2008, 2022, 2030], price: [10.94, 10.94, 10.94, 10.99, 11.12], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-203842344": { rating: [4.1, 4.1, 4.1, 4.1, 4.1], reviews: [1959, 1976, 1987, 2001, 2009], price: [6.97, 6.97, 6.97, 6.97, 6.97], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-206498775": { rating: [4.1, 4.1, 4.1, 4.1, 4.1], reviews: [1959, 1976, 1987, 2001, 2009], price: [4.26, 4.47, 4.47, 4.47, 4.47], stockRate: [85.7, 71.4, 42.9, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-202056480": { rating: [4.2, 4.2, 4.2, 4.2, 4.2], reviews: [1889, 1900, 1930, 1948, 1953], price: [16.68, 16.68, 16.68, 16.68, 16.68], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-100352290": { rating: [3.7, 3.7, 3.7, 3.7, 3.7], reviews: [1893, 1903, 1919, 1929, 1938], price: [9.97, 9.97, 9.97, 9.97, 9.97], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r4-202561604": { rating: [3.6, 3.6, 3.6, 3.6, 3.6], reviews: [1793, 1798, 1804, 1805, 1811], price: [10.97, 10.97, 10.97, 10.97, 10.97], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-50040952": { rating: [4, 4, 4, 4, 4], reviews: [1650, 1653, 1656, 1656, 1668], price: [6.98, 6.98, 6.98, 6.98, 6.98], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-1000373169": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [1566, 1580, 1591, 1591, 1604], price: [8.48, 8.48, 8.48, 8.48, 8.48], stockRate: [14.3, 0.0, 14.3, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-50243433": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [1566, 1580, 1591, 1591, 1604], price: [17.98, 17.98, 17.98, 17.98, 17.98], stockRate: [14.3, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-999989720": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [1568, 1580, 1591, 1597, 1604], price: [4.98, 4.98, 4.98, 4.98, 4.98], stockRate: [0.0, 0.0, 14.3, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-50260191": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [1534, 1548, 1559, 1564, 1570], price: [11.48, 11.48, 11.48, 11.48, 11.48], stockRate: [14.3, 0.0, 14.3, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-999930408": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [1536, 1548, 1559, 1559, 1570], price: [14.84, 14.98, 14.98, 14.98, 14.98], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-1003171818": { rating: [4, 4, 4, 4, 4], reviews: [1511, 1519, 1523, 1532, 1535], price: [11.28, 11.28, 11.28, 11.28, 11.28], stockRate: [14.3, 28.6, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-1000309991": { rating: [4, 4, 4, 4, 4], reviews: [1491, 1499, 1502, 1502, 1514], price: [8.48, 8.48, 8.48, 8.48, 8.48], stockRate: [0.0, 0.0, 14.3, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-1000309995": { rating: [4, 4, 4, 4, 4], reviews: [1496, 1499, 1502, 1502, 1514], price: [4.98, 4.98, 4.98, 4.98, 4.98], stockRate: [0.0, 0.0, 14.3, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-50328417": { rating: [4, 4, 4, 4, 4], reviews: [1491, 1499, 1502, 1502, 1514], price: [14.48, 14.48, 14.48, 14.48, 14.48], stockRate: [0.0, 0.0, 14.3, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-50236519": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [1459, 1462, 1466, 1472, 1476], price: [7.98, 7.98, 7.98, 7.98, 7.98], stockRate: [14.3, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-1000769722": { rating: [4, 4, 4, 4, 4], reviews: [1352, 1359, 1361, 1363, 1365], price: [7.48, 7.48, 7.48, 7.48, 7.48], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-50065981": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [1166, 1171, 1178, 1178, 1184], price: [17.48, 17.48, 17.48, 17.48, 17.48], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-5005476109": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [1137, 1145, 1155, 1161, 1168], price: [14.28, 14.28, 14.28, 14.28, 14.28], stockRate: [0.0, 0.0, 28.6, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-4736729": { rating: [4, 4, 4, 4, 4], reviews: [1157, 1163, 1164, 1166, 1168], price: [9.98, 9.98, 9.98, 9.98, 9.98], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-1000321887": { rating: [4, 4, 4, 4, 4], reviews: [1158, 1162, 1164, 1164, 1167], price: [8.98, 8.98, 8.98, 8.98, 8.98], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-999912917": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [1135, 1140, 1147, 1147, 1152], price: [17.48, 17.48, 17.48, 17.48, 17.48], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-50328425": { rating: [4, 4, 4, 4, 4], reviews: [1121, 1121, 1121, 1121, 1121], price: [8.64, 8.73, 8.6, 8.69, 8.98], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-1000383881": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [941, 942, 943, 943, 943], price: [12.98, 12.98, 12.98, 12.98, 12.98], stockRate: [14.3, 0.0, 42.9, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r6-5001952515": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [876, 879, 883, 883, 893], price: [13.98, 13.98, 13.98, 13.98, 13.98], stockRate: [14.3, 0.0, 28.6, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5230281": { rating: [2.52, 2.51, 2.52, 2.52, 2.52], reviews: [299, 300, 301, 301, 301], price: [10.99, 10.99, 10.99, 10.99, 10.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5174325": { rating: [3.74, 3.74, 3.74, 3.74, 3.74], reviews: [276, 279, 279, 279, 281], price: [21.69, 21.69, 21.69, 21.69, 21.69], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5154527": { rating: [3.14, 3.14, 3.14, 3.14, 3.14], reviews: [229, 229, 229, 229, 229], price: [99.99, 99.99, 99.99, 99.99, 99.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5248474": { rating: [3.48, 3.47, 3.48, 3.47, 3.47], reviews: [218, 220, 219, 220, 220], price: [329.99, 329.99, 329.99, 329.99, 329.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5306082": { rating: [4, 4.01, 4.02, 4.02, 4.02], reviews: [194, 195, 198, 198, 198], price: [392.85, 499.99, 499.99, 499.99, 499.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5158650": { rating: [3.76, 3.76, 3.76, 3.76, 3.77], reviews: [196, 196, 197, 197, 198], price: [32.99, 32.99, 32.99, 32.99, 32.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-48922": { rating: [4.69, 4.69, 4.68, 4.68, 4.68], reviews: [183, 183, 184, 188, 188], price: [35.99, 35.99, 32.69, 28.28, 28.28], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5084949": { rating: [3.01, 3.01, 3.01, 3.01, 3.01], reviews: [187, 187, 187, 187, 187], price: [14.99, 14.99, 14.99, 14.99, 14.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5154528": { rating: [3.47, 3.47, 3.47, 3.47, 3.47], reviews: [178, 178, 178, 179, 179], price: [139.99, 139.99, 139.99, 139.99, 139.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5307990": { rating: [4.79, 4.79, 4.8, 4.8, 4.8], reviews: [170, 170, 171, 171, 171], price: [10.99, 10.99, 10.99, 10.99, 10.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5134180": { rating: [2.38, 2.49, 2.72, 2.85, 2.96], reviews: [116, 121, 134, 142, 151], price: [14.99, 14.99, 13.08, 12.32, 12.32], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5286669": { rating: [2.09, 2.08, 2.1, 2.1, 2.1], reviews: [143, 144, 145, 146, 146], price: [199.99, 199.99, 199.99, 199.99, 199.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5178067": { rating: [3.96, 3.96, 3.96, 3.96, 3.96], reviews: [141, 141, 141, 141, 141], price: [23.99, 23.99, 23.99, 23.99, 23.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5154725": { rating: [1.67, 1.67, 1.67, 1.67, 1.67], reviews: [134, 134, 135, 135, 135], price: [7.66, 7.17, 7.17, 7.17, 7.17], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5094985": { rating: [3.13, 3.13, 3.13, 3.13, 3.13], reviews: [131, 131, 131, 131, 131], price: [16.99, 16.99, 16.99, 16.99, 16.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5162190": { rating: [2.06, 2.06, 2.06, 2.06, 2.09], reviews: [114, 114, 114, 114, 115], price: [35.39, 35.39, 35.39, 35.39, 35.39], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5099366": { rating: [3.42, 3.42, 3.42, 3.42, 3.42], reviews: [112, 112, 112, 112, 112], price: [2.09, 2.09, 2.09, 2.09, 2.09], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-1031503": { rating: [4.76, 4.77, 4.77, 4.77, 4.77], reviews: [102, 105, 105, 105, 106], price: [7.69, 7.69, 7.69, 7.69, 7.69], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5272047": { rating: [3.39, 3.37, 3.37, 3.37, 3.39], reviews: [94, 95, 95, 95, 96], price: [87.99, 87.99, 87.99, 87.99, 87.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r5-5254042": { rating: [4.14, 4.14, 4.15, 4.16, 4.16], reviews: [91, 91, 92, 93, 93], price: [32.99, 32.99, 32.99, 32.99, 32.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r3-46092119": { rating: [4.3, 4.3, 4.3, 4.3, 4.3], reviews: [3376, 3376, 3376, 3376, 3376], price: [17.88, 17.88, 17.88, 42.33, 46.4], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r3-39791215": { rating: [4.3, 4.3, 4.3, 4.3, 4.3], reviews: [1999, 1999, 2003, 2003, 2003], price: [29.03, 29.81, 29.96, 29.96, 29.96], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r3-49840437": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [1610, 1610, 1618, 1620, 1626], price: [10.36, 10.36, 10.36, 10.36, 10.36], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r3-43966519": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [1512, 1512, 1512, 1512, 1512], price: [99.95, 129.77, 99.92, 99.92, 99.92], stockRate: [14.3, 71.4, 71.4, 100.0, 100.0], buyBoxRate: [100, 57, 57, 71, 0] },
-  "r3-28920902": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [1430, 1436, 1440, 1446, 1451], price: [20.0, 20.0, 20.0, 20.0, 20.0], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r3-200093306": { rating: [4.8, 4.8, 4.8, 4.8, 4.8], reviews: [1432, 1433, 1434, 1434, 1435], price: [18.75, 19.78, 28.34, 19.78, 19.78], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 29, 100, 100] },
-  "r3-981923626": { rating: [4.2, 4.2, 4.2, 4.2, 4.2], reviews: [1356, 1356, 1356, 1356, 1356], price: [48.98, 48.96, 48.95, 48.95, 48.95], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [0, 0, 0, 0, 0] },
-  "r3-20564657": { rating: [4.4, 4.4, 4.4, 4.4, 4.4], reviews: [1330, 1331, 1332, 1332, 1332], price: [24.99, 24.99, 24.99, 24.99, 55.99], stockRate: [28.6, 14.3, 42.9, 100.0, 100.0], buyBoxRate: [100, 100, 86, 100, 0] },
-  "r3-43920730": { rating: [4.8, 4.8, 4.8, 4.8, 4.8], reviews: [1218, 1220, 1225, 1227, 1227], price: [10.98, 10.98, 10.98, 10.98, 10.98], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r3-14978527": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [1146, 1148, 1152, 1159, 1159], price: [19.84, 19.84, 19.08, 19.84, 19.84], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r3-772119289": { rating: [4.4, 4.4, 4.4, 4.4, 4.4], reviews: [1041, 1041, 1042, 1042, 1052], price: [41.88, 41.61, 41.88, 41.61, 41.88], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 86, 100, 86, 100] },
-  "r3-22569723": { rating: [4.1, 4.1, 4.1, 4.1, 4.1], reviews: [1049, 1049, 1049, 1049, 1049], price: [13.6, 13.6, 13.38, 13.38, 13.6], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 86, 86, 100] },
-  "r3-164464324": { rating: [4.4, 4.4, 4.4, 4.4, 4.4], reviews: [1025, 1025, 1026, 1026, 1026], price: [29.99, 29.99, 29.99, 29.99, 29.99], stockRate: [100.0, 100.0, 28.6, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r3-51822911": { rating: [4, 4, 4, 4, 4], reviews: [1001, 1001, 1001, 1001, 1001], price: [49.98, 49.98, 48.56, 49.7, 49.98], stockRate: [100.0, 100.0, 28.6, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r3-51800328": { rating: [4.3, 4.3, 4.3, 4.3, 4.3], reviews: [963, 963, 963, 963, 963], price: [39.92, 39.92, 39.92, 39.92, 39.92], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r3-16816451": { rating: [4.3, 4.3, 4.3, 4.3, 4.3], reviews: [948, 948, 950, 951, 951], price: [28.56, 28.56, 28.56, 28.56, 28.56], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r3-14321489": { rating: [4.3, 4.3, 4.3, 4.3, 4.3], reviews: [899, 899, 901, 902, 903], price: [21.15, 21.15, 21.15, 21.15, 21.15], stockRate: [100.0, 100.0, 28.6, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r3-2684038": { rating: [3.9, 3.9, 3.9, 3.9, 3.9], reviews: [864, 864, 864, 864, 864], price: [99.0, 88.68, 82.38, 82.85, 88.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [0, 0, 0, 0, 0] },
-  "r3-24194217": { rating: [4.8, 4.8, 4.8, 4.8, 4.8], reviews: [856, 856, 856, 856, 856], price: [4.94, 4.94, 4.94, 4.94, 4.94], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
-  "r3-213639374": { rating: [4.2, 4.2, 4.2, 4.2, 4.2], reviews: [806, 806, 806, 806, 806], price: [17.97, 17.97, 17.97, 17.97, 17.97], stockRate: [100.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r2-40272": { rating: [3.568, 3.568, 3.568, 3.568, 3.568], reviews: [125, 125, 125, 125, 125], price: [8.47, 8.47, 8.47, 8.47, 8.47], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r2-40274": { rating: [4.4096, 4.4096, 4.4096, 4.4096, 4.4096], reviews: [83, 83, 83, 83, 83], price: [9.19, 9.19, 9.19, 9.19, 9.19], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r2-40276": { rating: [4.1785, 4.1785, 4.1785, 4.1785, 4.1785], reviews: [325, 325, 325, 325, 325], price: [11, 11, 11, 11, 11], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r2-40278": { rating: [3.9245, 3.9245, 3.9245, 3.9245, 3.9245], reviews: [53, 53, 53, 53, 53], price: [13.15, 11, 13.15, 13.15, 13.15], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r2-40281": { rating: [4.1509, 4.1509, 4.1509, 4.1509, 4.1509], reviews: [391, 391, 391, 391, 391], price: [8.19, 8.19, 8.19, 8.19, 8.19], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r2-40348": { rating: [4.4, 4.4084, 4.4084, 4.4084, 4.4084], reviews: [70, 71, 71, 71, 71], price: [7.55, 7.55, 7.55, 6.04, 7.55], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r2-42091": { rating: [4.247, 4.247, 4.247, 4.247, 4.247], reviews: [251, 251, 251, 251, 251], price: [37.99, 31.65, 31.65, 31.65, 31.65], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r2-42138": { rating: [1.9155, 1.9155, 1.9155, 1.9155, 1.9155], reviews: [142, 142, 142, 142, 142], price: [8.49, 8.49, 7.01, 7.01, 7.01], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r5-48922": { rating: [4.69, 4.69, 4.68, 4.68, 4.68], reviews: [183, 183, 184, 188, 188], price: [35.99, 35.99, 28.28, 28.28, 28.28], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r5-48923": { rating: [4.56, 4.56, 4.56, 4.57, 4.57], reviews: [88, 88, 89, 90, 91], price: [35.99, 35.99, 28.28, 28.28, 28.28], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r5-49429": { rating: [4.71, 4.71, 4.71, 4.71, 4.71], reviews: [34, 34, 34, 34, 34], price: [33.99, 33.99, 33.99, 33.99, 33.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r5-49430": { rating: [4.84, 4.84, 4.84, 4.84, 4.84], reviews: [49, 49, 49, 50, 50], price: [33.99, 33.99, 33.99, 33.99, 33.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r7-77763": { rating: [4.8, 4.8, 4.8, 4.8, 4.8], reviews: [663, 663, 663, 664, 665], price: [6.58, 12.99, 5.8, 12.99, 5.8], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r7-77780": { rating: [4.8, 4.8, 4.8, 4.8, 4.8], reviews: [663, 663, 663, 664, 665], price: [12.99, 12.99, 12.99, 12.99, 12.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r7-78387": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [74, 74, 74, 74, 74], price: [5.8, 5.8, 5.8, 5.8, 5.8], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r7-78395": { rating: [4.7, 4.7, 4.7, 4.7, 4.7], reviews: [23, 23, 23, 23, 23], price: [7.18, 7.18, 7.18, 7.18, 7.18], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-1010093": { rating: [4, 4.1, 4.1, 4.1, 4.1], reviews: [36, 37, 37, 37, 37], price: [6.98, 6.98, 6.98, 6.98, 6.98], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r5-1031024": { rating: [4.76, 4.77, 4.77, 4.77, 4.77], reviews: [102, 105, 105, 105, 106], price: [8.99, 8.99, 8.99, 8.99, 8.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r5-1031219": { rating: [4.32, 4.32, 4.32, 4.32, 4.32], reviews: [41, 41, 41, 41, 41], price: [7.39, 7.39, 7.39, 7.39, 7.39], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r5-1031232": { rating: [4.72, 4.72, 4.72, 4.72, 4.72], reviews: [18, 18, 18, 18, 18], price: [4.39, 4.39, 4.39, 4.39, 4.39], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-1165507": { rating: [0, 0, 0, 0, 0], reviews: [0, 0, 0, 0, 0], price: [6.37, 6.37, 6.37, 6.37, 6.37], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-1255457": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [176, 176, 176, 176, 176], price: [5.98, 5.98, 5.98, 5.98, 5.98], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-2684038": { rating: [3.9, 3.9, 3.9, 3.9, 3.9], reviews: [864, 864, 864, 864, 864], price: [99, 83.35, 79.99, 90, 88.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r3-2684063": { rating: [4.3, 4.3, 4.3, 4.3, 4.3], reviews: [458, 459, 459, 459, 459], price: [84.4, 84.27, 69.67, 69.67, 69.67], stockRate: [0.0, 0.0, 14.3, 14.3, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-3030370": { rating: [3, 3, 3, 3, 3], reviews: [421, 423, 430, 440, 444], price: [2.78, 2.78, 2.78, 2.78, 2.78], stockRate: [0.0, 0.0, 42.9, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-3031685": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [146, 147, 147, 147, 147], price: [8.78, 8.78, 8.78, 8.78, 8.78], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-3033932": { rating: [3.5, 3.5, 3.5, 3.5, 3.5], reviews: [92, 93, 93, 93, 95], price: [2.28, 2.28, 2.28, 2.28, 2.28], stockRate: [0.0, 0.0, 14.3, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-3047623": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [68, 68, 68, 68, 68], price: [4.98, 4.98, 4.98, 4.98, 4.98], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-3103667": { rating: [3.5, 3.5, 3.5, 3.5, 3.5], reviews: [340, 343, 343, 344, 346], price: [14.28, 14.28, 14.28, 14.28, 14.28], stockRate: [0.0, 0.0, 42.9, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-3120407": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [321, 321, 322, 322, 322], price: [5.98, 5.98, 5.98, 5.98, 5.98], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-3120411": { rating: [4, 4, 4, 4, 4], reviews: [69, 69, 69, 69, 69], price: [5.28, 5.28, 5.28, 5.28, 5.28], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-3391780": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [777, 777, 777, 777, 777], price: [24.88, 39.99, 36.28, 36.69, 36.69], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-3391782": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [777, 777, 777, 777, 777], price: [101.07, 101.07, 101.07, 101.07, 101.07], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-3391783": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [777, 777, 777, 777, 777], price: [48.72, 48.72, 48.72, 48.72, 48.72], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-4252994": { rating: [3.7, 3.7, 3.7, 3.7, 3.7], reviews: [28, 28, 28, 28, 28], price: [4.32, 4.32, 4.32, 4.32, 4.32], stockRate: [100.0, 100.0, 28.6, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-6528826": { rating: [4.3, 4.3, 4.4, 4.4, 4.4], reviews: [775, 776, 777, 777, 777], price: [30.06, 30.06, 30.06, 30.06, 30.06], stockRate: [100.0, 100.0, 28.6, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-6561226": { rating: [3.3, 3.3, 3.3, 3.3, 3.3], reviews: [127, 127, 127, 127, 127], price: [19.99, 19.99, 19.99, 19.99, 19.99], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-8207932": { rating: [4.9, 4.9, 4.9, 4.9, 4.9], reviews: [207, 207, 207, 207, 207], price: [7.33, 7.34, 7.47, 7.47, 7.47], stockRate: [100.0, 100.0, 85.7, 100.0, 100.0], buyBoxRate: [0, 0, 14, 0, 0] },
+  "r3-10291577": { rating: [4.7, 4.7, 4.7, 4.7, 4.7], reviews: [433, 433, 433, 433, 433], price: [13.97, 13.97, 13.97, 13.97, 13.97], stockRate: [100.0, 100.0, 42.9, 100.0, 100.0], buyBoxRate: [100, 100, 86, 100, 100] },
+  "r3-10291760": { rating: [4.8, 4.8, 4.8, 4.8, 4.8], reviews: [68, 68, 68, 69, 69], price: [13.74, 13.74, 13.74, 13.74, 13.74], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 14, 86, 100] },
+  "r3-10291762": { rating: [3.5, 3.5, 3.5, 3.5, 3.5], reviews: [66, 66, 66, 66, 66], price: [52, 52, 52, 52, 52], stockRate: [100.0, 100.0, 28.6, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-10291763": { rating: [4.3, 4.3, 4.3, 4.3, 4.3], reviews: [110, 110, 110, 110, 110], price: [24, 24, 24, 24, 24], stockRate: [100.0, 100.0, 85.7, 57.1, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-10533967": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [426, 426, 426, 426, 426], price: [5.99, 5.99, 5.99, 5.99, 5.99], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-10574351": { rating: [3.2, 3.2, 3.2, 3.2, 3.2], reviews: [233, 233, 233, 233, 233], price: [53.74, 48.34, 48.34, 49.43, 49.43], stockRate: [100.0, 100.0, 100.0, 85.7, 100.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r3-10575935": { rating: [4, 4, 4, 4, 4], reviews: [696, 696, 697, 697, 698], price: [16.19, 14.97, 14.97, 14.97, 14.97], stockRate: [100.0, 100.0, 28.6, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-11186328": { rating: [3.9, 3.9, 3.9, 3.9, 3.9], reviews: [300, 300, 300, 300, 300], price: [119.99, 119.99, 119.99, 119.99, 119.99], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-12166874": { rating: [4.3, 4.3, 4.3, 4.3, 4.3], reviews: [107, 107, 107, 107, 107], price: [8.49, 9.1, 9.3, 11.35, 11.13], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r3-12166875": { rating: [4.8, 4.8, 4.8, 4.8, 4.8], reviews: [13, 13, 13, 13, 13], price: [8.78, 8.21, 8.56, 8.54, 8.54], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r3-12444070": { rating: [4.3, 4.3, 4.3, 4.3, 4.3], reviews: [97, 97, 97, 98, 98], price: [4.18, 3.97, 4.18, 4.18, 4.18], stockRate: [100.0, 100.0, 28.6, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-12444073": { rating: [4.4, 4.4, 4.4, 4.4, 4.4], reviews: [40, 40, 40, 40, 40], price: [14.16, 13.94, 14.16, 14.16, 13.94], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r3-13724331": { rating: [4.4, 4.4, 4.4, 4.4, 4.4], reviews: [287, 287, 288, 290, 292], price: [23.26, 23.26, 23.26, 23.26, 23.26], stockRate: [100.0, 100.0, 28.6, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-14320955": { rating: [3.8, 3.8, 3.8, 3.8, 3.8], reviews: [173, 173, 173, 173, 173], price: [19.99, 19.99, 19.99, 49.99, 49.99], stockRate: [0.0, 0.0, 0.0, 85.7, 100.0], buyBoxRate: [100, 100, 100, 14, 0] },
+  "r3-14320976": { rating: [3.7, 3.7, 3.7, 3.7, 3.7], reviews: [179, 179, 179, 179, 179], price: [48.3, 48.26, 48.26, 60.74, 60.74], stockRate: [57.1, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [43, 100, 100, 100, 100] },
+  "r3-15056078": { rating: [3.4, 3.4, 3.4, 3.4, 3.4], reviews: [27, 27, 27, 27, 27], price: [8.7, 7.97, 7.97, 8.37, 7.97], stockRate: [100.0, 100.0, 28.6, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-15136591": { rating: [4.7, 4.7, 4.7, 4.7, 4.7], reviews: [26, 26, 26, 26, 26], price: [8.78, 8.13, 8.13, 8.13, 8.13], stockRate: [71.4, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r3-15136592": { rating: [4.2, 4.2, 4.2, 4.2, 4.2], reviews: [66, 66, 66, 66, 66], price: [6.48, 6.45, 6.41, 6.36, 6.34], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r3-16561273": { rating: [4.7, 4.7, 4.7, 4.7, 4.7], reviews: [46, 46, 46, 46, 46], price: [2.97, 2.97, 2.97, 2.97, 2.97], stockRate: [100.0, 100.0, 28.6, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r3-16561276": { rating: [5, 5, 5, 5, 5], reviews: [1, 1, 1, 1, 1], price: [5.79, 5.79, 5.79, 20.7, 20.7], stockRate: [28.6, 14.3, 0.0, 42.9, 100.0], buyBoxRate: [71, 86, 100, 57, 0] },
+  "r3-16561279": { rating: [4.3, 4.3, 4.3, 4.3, 4.3], reviews: [35, 35, 35, 35, 35], price: [5.51, 5.51, 5.51, 5.51, 5.51], stockRate: [100.0, 100.0, 28.6, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r4-100004739": { rating: [4.4, 4.4, 4.4, 4.4, 4.4], reviews: [799, 799, 802, 811, 814], price: [6.97, 6.97, 6.97, 6.97, 6.97], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r4-100008212": { rating: [4.7, 4.7, 4.7, 4.7, 4.7], reviews: [61, 61, 61, 61, 61], price: [3.78, 3.78, 3.78, 3.78, 3.78], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r4-100012648": { rating: [4.4, 4.4, 4.4, 4.4, 4.4], reviews: [721, 721, 721, 730, 747], price: [6.81, 6.86, 6.86, 6.86, 6.86], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r4-100023081": { rating: [4.1, 4.1, 4.1, 4.1, 4.1], reviews: [1356, 1364, 1384, 1393, 1403], price: [7.97, 7.97, 7.97, 7.97, 7.97], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r4-100034451": { rating: [4, 4, 4, 4, 4], reviews: [1394, 1405, 1415, 1424, 1440], price: [8.97, 8.97, 8.97, 8.97, 8.97], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r4-100046531": { rating: [3.4, 3.4, 3.4, 3.4, 3.4], reviews: [31, 31, 31, 31, 31], price: [22.99, 22.99, 24.97, 24.97, 24.97], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r4-100052940": { rating: [3.4, 3.4, 3.4, 3.4, 3.5], reviews: [98, 98, 98, 100, 105], price: [5.27, 5.27, 5.27, 5.27, 5.27], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r4-100056149": { rating: [4.5, 4.5, 4.5, 4.5, 4.4], reviews: [71, 71, 71, 71, 74], price: [5.86, 5.86, 5.86, 5.86, 5.86], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r4-100062166": { rating: [4.3, 4.3, 4.3, 4.2, 4.2], reviews: [606, 611, 620, 627, 628], price: [8.48, 8.48, 8.97, 8.97, 8.97], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r4-100117730": { rating: [2.8, 2.8, 2.8, 2.8, 2.8], reviews: [17, 17, 17, 17, 17], price: [4.47, 4.47, 4.47, 4.47, 4.47], stockRate: [100.0, 100.0, 100.0, 85.7, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-1000207877": { rating: [4, 4, 4, 4, 4], reviews: [53, 53, 53, 53, 53], price: [12.68, 12.68, 12.68, 12.68, 12.68], stockRate: [28.6, 0.0, 14.3, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-1000387581": { rating: [0, 0, 0, 0, 0], reviews: [0, 0, 0, 0, 0], price: [8.47, 8.47, 8.47, 8.47, 8.47], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-1000735634": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [30, 30, 30, 30, 30], price: [14.48, 14.48, 14.48, 14.48, 14.48], stockRate: [14.3, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-1000735640": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [29, 29, 29, 29, 29], price: [18.48, 18.48, 18.48, 18.48, 18.48], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-5001633443": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [16, 16, 16, 16, 18], price: [25.48, 25.48, 25.48, 25.48, 25.48], stockRate: [0.0, 0.0, 28.6, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-5001959349": { rating: [5, 5, 5, 5, 5], reviews: [19, 19, 19, 19, 19], price: [62.36, 62.36, 62.48, 62.48, 62.48], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r6-5002106395": { rating: [5, 5, 5, 5, 5], reviews: [26, 26, 26, 26, 26], price: [91.98, 91.98, 91.98, 91.98, 91.98], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r1-B00002NC7W": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [1268, 1270, 1274, 1288, 1294], price: [5.99, 5.99, 5.99, 5.99, 5.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r1-B00004R93Z": { rating: [4.3, 4.3, 4.3, 4.3, 4.3], reviews: [395, 394, 394, 395, 395], price: [28.17, 28.17, 28.17, 28.17, 28.17], stockRate: [100.0, 57.1, 100.0, 100.0, 100.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r1-B00004R940": { rating: [3.8, 3.8, 3.8, 3.8, 3.8], reviews: [84, 84, 84, 84, 84], price: [63.1, 63.1, 63.1, 63.1, 63.1], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r1-B00004R946": { rating: [4.4, 4.4, 4.4, 4.4, 4.4], reviews: [2215, 2225, 2240, 2252, 2260], price: [53.72, 53.72, 52.4, 51.96, 51.96], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 86, 100] },
+  "r1-B00004SC4X": { rating: [4, 4, 4, 4.1, 4.1], reviews: [114, 115, 115, 116, 116], price: [148.18, 148.18, 148.18, 148.18, 148.18], stockRate: [100.0, 85.7, 100.0, 100.0, 100.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r1-B00004SC50": { rating: [3.9, 3.9, 3.9, 3.9, 3.9], reviews: [81, 81, 81, 81, 80], price: [98.18, 98.18, 98.18, 98.18, 98.18], stockRate: [28.6, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r1-B00004SC51": { rating: [3.9, 3.9, 3.9, 4, 4], reviews: [331, 331, 331, 332, 332], price: [79.99, 79.99, 67.83, 47.83, 47.83], stockRate: [0.0, 14.3, 85.7, 85.7, 100.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r1-B00004SC5M": { rating: [3.3, 3.3, 3.3, 3.3, 3.3], reviews: [29, 29, 29, 29, 29], price: [19.99, 129.95, 49.95, 49.95, 49.95], stockRate: [28.6, 14.3, 71.4, 0.0, 0.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r1-B00004SPZS": { rating: [3.8, 3.8, 3.8, 3.8, 3.8], reviews: [21, 21, 21, 21, 21], price: [24, 24.99, 24.99, 24.99, 24.99], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [100, 100, 86, 0, 0] },
+  "r1-B00004SQ00": { rating: [3, 3, 3, 3, 3], reviews: [13, 13, 13, 13, 13], price: [94, 94.95, 94.95, 94.95, 94.95], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [71, 100, 100, 100, 100] },
+  "r1-B00004SQ1I": { rating: [5, 5, 5, 5, 5], reviews: [4, 4, 4, 4, 4], price: [23.67, 23.67, 23.67, 23.67, 23.67], stockRate: [14.3, 71.4, 0.0, 0.0, 0.0], buyBoxRate: [57, 29, 100, 100, 100] },
+  "r1-B000084EMZ": { rating: [4.8, 4.8, 4.8, 4.8, 4.8], reviews: [2294, 2304, 2311, 2328, 2339], price: [22.64, 22.64, 22.64, 22.64, 22.64], stockRate: [42.9, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r1-B000084EN5": { rating: [4.8, 4.8, 4.8, 4.8, 4.8], reviews: [11112, 11166, 11193, 11263, 11315], price: [27.19, 27.19, 27.19, 27.19, 27.19], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r1-B000255N8C": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [23, 23, 23, 23, 23], price: [5.56, 5.66, 5.73, 5.69, 5.69], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r1-B000255NK0": { rating: [4.7, 4.7, 4.7, 4.7, 4.7], reviews: [111, 111, 111, 111, 110], price: [18.57, 18.57, 18.57, 18.57, 18.57], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r1-B000255NKA": { rating: [4.8, 4.8, 4.8, 4.8, 4.8], reviews: [7068, 7088, 7120, 7164, 7201], price: [12.99, 12.99, 12.99, 12.99, 12.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r1-B000255NLE": { rating: [4.1, 4.1, 4.1, 4.1, 4.1], reviews: [878, 880, 878, 881, 882], price: [68.6, 65.64, 79.99, 79.99, 69.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 50] },
+  "r1-B000255OAE": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [222, 222, 223, 223, 224], price: [8.92, 8.88, 9.37, 8.59, 8.83], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [14, 0, 43, 71, 50] },
+  "r1-B000255OAO": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [185, 185, 185, 185, 185], price: [9.23, 9.23, 9.23, 9.23, 9.23], stockRate: [0.0, 0.0, 0.0, 28.6, 0.0], buyBoxRate: [0, 0, 0, 29, 0] },
+  "r1-B000255QWA": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [602, 605, 611, 615, 618], price: [10, 10, 6.59, 6.59, 6.59], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r1-B0002561OM": { rating: [4.4, 4.4, 4.4, 4.4, 4.4], reviews: [490, 490, 490, 490, 490], price: [3.99, 3.99, 3.99, 3.99, 3.99], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r1-B000BQU0LC": { rating: [4.4, 4.4, 4.5, 4.5, 4.5], reviews: [9126, 766, 775, 788, 795], price: [3.78, 3.78, 3.78, 3.78, 3.78], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r1-B000BQURQA": { rating: [4.4, 4.4, 4.4, 4.4, 4.2], reviews: [9126, 8369, 8382, 8410, 1305], price: [6.49, 5.28, 6.49, 6.49, 5.28], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r1-B000BWY6K2": { rating: [4.3, 4.3, 4.3, 4.3, 4.3], reviews: [6057, 6172, 6243, 6358, 6447], price: [6.99, 6.98, 6.98, 6.98, 6.98], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r1-B000HHO110": { rating: [4.3, 4.3, 4.3, 4.3, 4.3], reviews: [5682, 5790, 5873, 6006, 6124], price: [5.98, 7.97, 7.97, 7.97, 7.97], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r1-B000HM68HK": { rating: [4.4, 4.4, 4.4, 4.5, 4.5], reviews: [1078, 1085, 1092, 420, 4921], price: [13.62, 13.62, 13.62, 13.62, 13.62], stockRate: [0.0, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r1-B000HSZH0S": { rating: [3, 3, 3, 3, 3], reviews: [454, 453, 452, 454, 453], price: [69, 69, 69, 69, 69], stockRate: [85.7, 0.0, 0.0, 0.0, 0.0], buyBoxRate: [0, 0, 0, 0, 0] },
+  "r1-B000I15AH4": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [382, 385, 393, 398, 400], price: [9.48, 9.48, 9.48, 9.48, 9.48], stockRate: [42.9, 85.7, 42.9, 100.0, 100.0], buyBoxRate: [100, 100, 43, 100, 100] },
+  "r1-B000I1B0JQ": { rating: [4.5, 4.5, 4.5, 4.5, 4.5], reviews: [1338, 1340, 1339, 1345, 1348], price: [8.08, 8.08, 8.08, 8.08, 8.08], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
+  "r1-B000IO1TDU": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [1651, 1677, 1685, 1722, 1757], price: [5.97, 5.98, 5.98, 5.98, 5.98], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100] },
 };
 
-export const REAL_SOS_WEEKLY: Record<string, number[]> = {};
+export const REAL_SOS_WEEKLY: Record<string, number[]> = {
+  "r1": [100.0, 100.0, 100.0, 100.0],
+  "r2": [60.0, 60.0, 60.0, 60.0],
+  "r3": [100.0, 100.0, 100.0, 100.0],
+  "r4": [90.0, 90.0, 90.0, 100.0],
+  "r5": [100.0, 100.0, 100.0, 100.0],
+  "r6": [100.0, 100.0, 100.0, 80.0],
+  "r7": [90.0, 90.0, 90.0, 90.0],
+  "portfolio": [91.4, 91.4, 91.4, 90.0],
+};
 
-/* Genuine cross-retailer matches within our own 116-SKU sample — same brand
+/* Genuine cross-retailer matches within our own 117-SKU sample — same brand
    plus >=45% product-name token overlap (title/model number match, not just
-   a shared brand word). Only 31 of 116 products have a real match; the rest
-   genuinely are not tracked at any other retailer in this sample, which the
-   product page states honestly instead of fabricating "Live" everywhere. */
+   a shared brand word), regenerated by build_mock_data.py. Products with no
+   entry here genuinely are not tracked at any other retailer in this sample,
+   which the product page states honestly instead of fabricating "Live"
+   everywhere. */
 /* Real third-party marketplace sellers that actually won the buy box on a
-   tracked product, pulled from the real "Buy box seller" field in Price
-   Data. Home Depot is deliberately excluded -- its seller field is a
-   store-location name (e.g. "Cumberland"), not a competing marketplace
-   seller, so there is no real third-party signal for that retailer in this
-   sample. These are one-off arbitrage resellers, not persistent competitor
-   brands with their own ratings/content/price -- which is exactly why the
-   Competitors page below still uses an illustrative brand set: no
-   first-class Competitor entity is resolvable from this crawl. */
+   tracked product, pulled from the real "Buy box seller" field in the Price
+   tab. Home Depot AND Lowe's are deliberately excluded -- both retailers'
+   seller fields are store/location names (e.g. "Cumberland",
+   "Fairbanks Lowe's"), not competing marketplace sellers, so there is no
+   real third-party signal for either retailer in this sample. These are
+   one-off arbitrage resellers, not persistent competitor brands with their
+   own ratings/content/price -- which is exactly why the Competitors page
+   below still uses an illustrative brand set: no first-class Competitor
+   entity is resolvable from this crawl. */
 export const REAL_BUYBOX_COMPETITOR: Record<string, { seller: string; daysWon: number }> = {
-  "r1-B01GJOMWYC": { seller: "Ron's Home and Hardware", daysWon: 1 },
-  "r1-B002LAREDS": { seller: "Norse Lands LLC", daysWon: 1 },
-  "r1-B016Y8JSR2": { seller: "Havetz Deals for You", daysWon: 18 },
-  "r1-B010AFV1LQ": { seller: "California Distribution Inc", daysWon: 1 },
-  "r1-B07MZMLZZ3": { seller: "Petersman Sales Limited", daysWon: 8 },
-  "r3-43966519": { seller: "CCFF", daysWon: 7 },
-  "r3-200093306": { seller: "ABID TRADERS INC", daysWon: 3 },
-  "r3-981923626": { seller: "Cornerstone Goods", daysWon: 21 },
-  "r3-20564657": { seller: "ROYAL CARE COSMETICS, LLC", daysWon: 3 },
-  "r3-772119289": { seller: "THE REAL DEAL", daysWon: 2 },
-  "r3-22569723": { seller: "SANTIFA", daysWon: 2 },
+  "r1-B00004R93Z": { seller: "J & T Vintage", daysWon: 13 },
+  "r1-B00004R946": { seller: "THE REAL DEAL", daysWon: 1 },
+  "r1-B00004SC4X": { seller: "bestdealsongo", daysWon: 10 },
+  "r1-B00004SC51": { seller: "Lohart Industries", daysWon: 17 },
+  "r1-B000255NLE": { seller: "JDC WHOLESALE", daysWon: 1 },
+  "r1-B000255OAE": { seller: "Monster Pets", daysWon: 18 },
+  "r1-B000HSZH0S": { seller: "MaxWarehouse", daysWon: 6 },
+  "r1-B00004SQ1I": { seller: "Rewrite the Stars", daysWon: 6 },
+  "r1-B00004SC5M": { seller: "Sale2Mail", daysWon: 18 },
+  "r1-B00004SC50": { seller: "\njerseys4thewin", daysWon: 1 },
+  "r3-8207932": { seller: "AmericaRx Smart Shop", daysWon: 29 },
+  "r3-12444073": { seller: "ABC Shops", daysWon: 17 },
+  "r3-12166874": { seller: "Grace Ecommerce LLC", daysWon: 11 },
+  "r3-15136591": { seller: "Pharmapacks", daysWon: 27 },
   "r3-2684038": { seller: "YPGP Ltd.", daysWon: 9 },
+  "r3-12166875": { seller: "Commercial Supply Company LLC", daysWon: 14 },
+  "r3-10291760": { seller: "Genius Lifestyle", daysWon: 7 },
+  "r3-10291577": { seller: "National Discount Centers", daysWon: 1 },
+  "r3-16561276": { seller: "Champion Values", daysWon: 5 },
+  "r3-14320976": { seller: "Western Family", daysWon: 4 },
+  "r3-14320955": { seller: "ELECTRONIC WAREHOUSE OUTLET", daysWon: 8 },
+  "r3-10574351": { seller: "ELECTRONIC WAREHOUSE OUTLET", daysWon: 28 },
+  "r3-15136592": { seller: "Holly Tree Wholesale", daysWon: 14 },
 };
 
 export const CROSS_RETAILER_MATCH: Record<string, Record<string, string>> = {
-  "r3-14978527": { "r1": "r1-B003S516XO" },
-  "r1-B003S516XO": { "r3": "r3-14978527" },
-  "r3-200093306": { "r2": "r2-129721", "r1": "r1-B07BVL8TQF" },
-  "r2-129721": { "r3": "r3-200093306" },
-  "r5-5134180": { "r2": "r2-51634" },
-  "r2-51634": { "r5": "r5-5134180" },
-  "r5-5158650": { "r2": "r2-47575" },
-  "r2-47575": { "r5": "r5-5158650" },
-  "r3-981923626": { "r1": "r1-B002LAREDS" },
-  "r1-B002LAREDS": { "r3": "r3-981923626" },
-  "r6-50065981": { "r4": "r4-205755526" },
-  "r4-205755526": { "r6": "r6-50065981" },
-  "r3-46092119": { "r1": "r1-B002LAREDS" },
-  "r1-B01GJOMWYC": { "r3": "r3-46092119" },
-  "r1-B07BVL8TQF": { "r3": "r3-200093306" },
-  "r3-43920730": { "r1": "r1-B07BVL8TQF" },
-  "r3-164464324": { "r1": "r1-B00H2B4H2M" },
-  "r1-B00H2B4H2M": { "r3": "r3-164464324" },
-  "r6-50236519": { "r4": "r4-202056480" },
-  "r4-202056480": { "r6": "r6-50236519" },
-  "r4-311330332": { "r6": "r6-50065981" },
-  "r6-999912917": { "r4": "r4-205755526" },
-  "r6-5001952515": { "r4": "r4-202056480" },
-  "r6-1000383881": { "r4": "r4-202561604" },
-  "r4-202561604": { "r6": "r6-1000383881" },
-  "r2-192722": { "r3": "r3-200093306" },
-  "r6-1003171818": { "r4": "r4-206498775" },
-  "r4-206498775": { "r6": "r6-1003171818" },
-  "r2-191386": { "r5": "r5-5158650" },
-  "r2-47595": { "r5": "r5-5158650" },
-  "r5-5178067": { "r2": "r2-47595" },
+  "r1-B000255NKA": { "r7": "r7-77780" },
+  "r7-77763": { "r1": "r1-B000255NK0" },
+  "r7-77780": { "r1": "r1-B000255NK0" },
+  "r1-B000255NK0": { "r7": "r7-77780" },
+  "r1-B000255QWA": { "r3": "r3-10291762" },
+  "r3-10291763": { "r1": "r1-B000255QWA" },
+  "r3-10291762": { "r1": "r1-B000255QWA" },
+  "r3-10291760": { "r5": "r5-1031232", "r6": "r6-5001959349" },
+  "r5-1031219": { "r3": "r3-10291760", "r6": "r6-5001959349" },
+  "r5-1031232": { "r3": "r3-10291760", "r6": "r6-5001959349", "r7": "r7-32840" },
+  "r6-1000735634": { "r3": "r3-10291760", "r5": "r5-1031232", "r7": "r7-16586" },
+  "r6-1000735640": { "r3": "r3-10291760", "r5": "r5-1031232", "r7": "r7-16586" },
+  "r6-5002106395": { "r3": "r3-10291760", "r5": "r5-1031232", "r7": "r7-16586" },
+  "r6-5001959349": { "r3": "r3-10291760", "r5": "r5-1031232", "r7": "r7-16586" },
+  "r5-1031024": { "r6": "r6-5001959349", "r7": "r7-78387" },
+  "r7-78387": { "r5": "r5-1031024" },
+  "r7-31933": { "r5": "r5-1031232", "r6": "r6-1000735640" },
+  "r7-32840": { "r5": "r5-1031232", "r6": "r6-5001959349" },
+  "r7-16578": { "r6": "r6-5001959349" },
+  "r7-16586": { "r6": "r6-5001959349" },
+  "r1-B0002561OM": { "r3": "r3-4252994" },
+  "r3-4252994": { "r1": "r1-B0002561OM" },
+  "r1-B000BWY6K2": { "r6": "r6-1255457" },
+  "r6-1255457": { "r1": "r1-B000BWY6K2" },
+  "r1-B000HM68HK": { "r4": "r4-100023081", "r6": "r6-3103667" },
+  "r4-100034451": { "r1": "r1-B000HM68HK" },
+  "r4-100023081": { "r1": "r1-B000HM68HK" },
+  "r6-3103667": { "r1": "r1-B000I15AH4" },
+  "r1-B000BQURQA": { "r4": "r4-100052940", "r6": "r6-3120411" },
+  "r4-100052940": { "r1": "r1-B00002NC7W", "r6": "r6-3047623" },
+  "r6-3120411": { "r1": "r1-B00002NC7W", "r4": "r4-100008212" },
+  "r1-B00002NC7W": { "r4": "r4-100008212", "r6": "r6-3047623" },
+  "r4-100012648": { "r1": "r1-B00002NC7W", "r6": "r6-3047623" },
+  "r4-100056149": { "r1": "r1-B00002NC7W", "r6": "r6-3047623" },
+  "r4-100008212": { "r1": "r1-B00002NC7W", "r6": "r6-3047623" },
+  "r6-3120407": { "r1": "r1-B00002NC7W", "r4": "r4-100008212" },
+  "r6-3047623": { "r1": "r1-B00002NC7W", "r4": "r4-100008212" },
+  "r1-B000I15AH4": { "r6": "r6-3103667" },
+  "r4-100062166": { "r6": "r6-3031685" },
+  "r6-3031685": { "r4": "r4-100062166" },
+  "r3-12166874": { "r4": "r4-100004739" },
+  "r4-100004739": { "r3": "r3-12166874" },
+  "r3-12444073": { "r6": "r6-3033932" },
+  "r6-3033932": { "r3": "r3-15056078" },
+  "r3-15056078": { "r6": "r6-3033932" },
+  "r1-B00004R93Z": { "r3": "r3-2684063" },
+  "r3-2684063": { "r1": "r1-B00004R940" },
+  "r1-B00004R940": { "r3": "r3-2684063" },
+  "r1-B00004SC4X": { "r3": "r3-14320976" },
+  "r3-11186328": { "r1": "r1-B00004SQ00" },
+  "r3-14320976": { "r1": "r1-B00004SPZS" },
+  "r1-B00004SC5M": { "r3": "r3-14320976" },
+  "r1-B00004SPZS": { "r3": "r3-14320976" },
+  "r1-B00004SQ00": { "r3": "r3-11186328" },
+  "r2-42091": { "r6": "r6-1000387581" },
+  "r6-1000207877": { "r2": "r2-42138" },
+  "r6-5001633443": { "r2": "r2-42138" },
+  "r6-1000387581": { "r2": "r2-42138" },
+  "r2-42138": { "r6": "r6-1000387581" },
 };
 
 
 export const REAL_ROLLUP_WEEKLY: Record<string, {
   stockRate: number[]; buyBoxRate: number[]; rating: number[]; content: number[];
 }> = {
-  "portfolio": { stockRate: [74.63, 74.14, 73.65, 74.26, 75.0], buyBoxRate: [96.72, 95.94, 95.21, 96.06, 94.4], rating: [4.15, 4.15, 4.15, 4.15, 4.16], content: [81.9, 81.9, 81.8, 81.8, 81.8] },
-  "r1": { stockRate: [95.23, 97.62, 99.21, 94.44, 94.44], buyBoxRate: [90.0, 88.11, 88.11, 88.89, 86.11], rating: [4.54, 4.54, 4.54, 4.53, 4.54], content: [87.6, 87.6, 87.3, 87.3, 87.3] },
-  "r2": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.39, 4.39, 4.39, 4.39, 4.39], content: [83.5, 83.5, 83.5, 83.5, 83.5] },
-  "r3": { stockRate: [77.15, 74.28, 65.0, 80.0, 80.0], buyBoxRate: [90.0, 87.15, 82.9, 87.15, 80.0], rating: [4.38, 4.38, 4.38, 4.38, 4.38], content: [78.2, 78.2, 78.2, 78.2, 78.2] },
-  "r4": { stockRate: [72.22, 73.81, 70.63, 73.02, 77.78], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [3.94, 3.94, 3.94, 3.95, 3.95], content: [89.8, 89.8, 89.8, 89.8, 89.8] },
-  "r5": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [3.38, 3.38, 3.4, 3.4, 3.41], content: [64.9, 64.9, 64.9, 64.9, 64.9] },
-  "r6": { stockRate: [5.01, 1.43, 9.29, 0.0, 0.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.28, 4.28, 4.28, 4.28, 4.28], content: [88.6, 88.6, 88.6, 88.6, 88.6] },
+  "portfolio": { stockRate: [62.76, 61.9, 57.51, 63.13, 63.25], buyBoxRate: [82.53, 83.03, 82.79, 82.42, 81.2], rating: [4.26, 4.26, 4.26, 4.26, 4.26], content: [61.13, 61.13, 61.21, 61.24, 61.32] },
+  "r1": { stockRate: [64.77, 64.28, 66.67, 67.14, 66.67], buyBoxRate: [61.4, 60.97, 62.4, 62.87, 60.0], rating: [4.27, 4.27, 4.28, 4.29, 4.28], content: [66.73, 66.73, 66.5, 66.63, 66.63] },
+  "r2": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [3.78, 3.78, 3.78, 3.78, 3.78], content: [61.4, 61.4, 63.0, 63.0, 63.0] },
+  "r3": { stockRate: [68.57, 67.14, 42.87, 69.52, 73.33], buyBoxRate: [70.47, 72.87, 70.47, 68.57, 66.67], rating: [4.24, 4.24, 4.24, 4.24, 4.24], content: [58.87, 58.87, 58.87, 58.87, 58.87] },
+  "r4": { stockRate: [60.0, 60.0, 60.0, 58.57, 50.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.0, 4.0, 4.0, 3.99, 3.99], content: [61.8, 61.8, 61.8, 61.8, 61.8] },
+  "r5": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.65, 4.65, 4.65, 4.65, 4.65], content: [60.5, 60.5, 60.5, 60.5, 60.5] },
+  "r6": { stockRate: [2.52, 0.0, 8.41, 0.0, 0.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.23, 4.24, 4.24, 4.24, 4.24], content: [60.88, 60.88, 60.88, 60.88, 60.88] },
+  "r7": { stockRate: [70.0, 70.0, 70.0, 70.0, 70.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.67, 4.67, 4.67, 4.67, 4.67], content: [51.2, 51.2, 51.2, 51.2, 52.1] },
 };
 
 
@@ -647,15 +712,18 @@ function realRollupSeries(period: string, retailer: string, field: "stockRate" |
   return row ? row[field].slice(1) : null;
 }
 
-/* Deliberately NOT wired to real data. The real Share of Search file gives a
-   "% of tracked-keyword searches that returned any ranked result" per
-   retailer per week (e.g. Amazon 100%, Chewy ~40% — consistent with the
-   59.5% zero-result rate found in the audit). That is a genuinely real
-   number, but it is not the same metric as this "Search Visibility / share
-   of search among competitors" KPI (0–~50% scale, compared against a 40%
-   target) — swapping one in for the other would misrepresent both. Left
-   synthetic here; REAL_SOS_WEEKLY stays empty on purpose. A real "Keyword
-   Result Coverage" chart would be the honest way to surface that number. */
+/* REAL_SOS_WEEKLY holds "% of tracked-keyword searches that returned any
+   ranked result" per retailer per week (e.g. Amazon/Walmart/PetSmart 100%,
+   Chewy ~60% -- i.e. 40% of Chewy's tracked-keyword searches this period
+   returned zero ranked results). This is a genuine, real number computed by
+   build_mock_data.py from the Share Of Search tab, but it is a different
+   metric than "Search Visibility / share of search among competitors"
+   (which the KPI label above implies, compared against a 40% target) --
+   the Share Of Search tab is 10 generic keywords per retailer, not a
+   per-SKU competitive-share measurement, so this substitution is a
+   documented simplification, not a literal match. Retailer/portfolio-level
+   only -- there is no reliable way to attribute a keyword-level result to
+   one specific tracked SKU, so per-product search rank stays synthetic. */
 function realRollupSeriesSos(period: string, retailer: string): number[] | null {
   if (period !== "4w") return null;
   const row = REAL_SOS_WEEKLY[retailer === "all" ? "portfolio" : retailer];
@@ -689,9 +757,15 @@ function snapshot(retailer: string, period: string) {
   const bias = RETAILER_BIAS[retailer] || RETAILER_BIAS.all;
   const sw = swing[period] || 1;
 
-  const sos = realRollupSeriesSos(period, retailer) ?? series(seed + 1, n, 34.2 - 5 * sw + bias.sos, 34.2 + bias.sos, 0.9, 1);
-  const leader = series(seed + 2, n, 41 + 2 * sw, 36.1, 0.8, 1);
-  const riser = series(seed + 3, n, 25.2 - 11 * sw, 25.2, 1.1, 1);
+  /* Anchors rescaled to the real portfolio keyword-coverage baseline (~90%,
+     see REAL_SOS_WEEKLY) rather than the old ~34% synthetic "share of
+     search among competitors" scale -- leader/riser stay illustrative
+     (competitorBrands has no real counterpart), but must sit near the real
+     sos value or the "Gap to Leader" comparison reads as nonsense once sos
+     is real for the "4w" period. */
+  const sos = realRollupSeriesSos(period, retailer) ?? series(seed + 1, n, 90 - 3 * sw + bias.sos, 90 + bias.sos, 0.9, 1);
+  const leader = series(seed + 2, n, 93 + 1 * sw, 95, 0.6, 1);
+  const riser = series(seed + 3, n, 78 - 8 * sw, 78, 1.1, 1);
   const stockVals = realRollupSeries(period, retailer, "stockRate")
     ?? series(seed + 4, n, 96.4 + 1.4 * sw + bias.stock, 96.4 + bias.stock, 0.5, 1).map((v) => round(clamp(v, 88, 100), 1));
   const ratingVals = realRollupSeries(period, retailer, "rating")
@@ -907,13 +981,19 @@ export function fetchSnapshot({ retailer = "all", period = "12w" }: { retailer?:
    disagree about a SKU. Maps 1:1 onto /digital-shelf/* endpoints.
    ─────────────────────────────────────────────────────────────────────── */
 
+/* base = real portfolio-wide average of each bucket's score, computed by
+   build_mock_data.py's content-completeness rubric from the latest Content
+   tab row per product (see the rubric table in the migration plan / repo
+   docs for exactly which raw columns feed each bucket). Not illustrative —
+   these are the same real per-product scores averaged in REAL_ROLLUP_WEEKLY
+   .content, just broken out by component. */
 const CONTENT_COMPONENTS = [
-  { id: "title", name: "Title", weight: 20, base: 91, hint: "Retailer title spec, keyword placement" },
-  { id: "description", name: "Description", weight: 15, base: 83, hint: "Bullet copy length and structure" },
-  { id: "images", name: "Images", weight: 25, base: 96, hint: "Hero resolution and gallery depth" },
-  { id: "attributes", name: "Attributes", weight: 20, base: 74, hint: "Structured fields feeding filters" },
-  { id: "keywords", name: "Keywords", weight: 12, base: 68, hint: "Coverage of tracked search terms" },
-  { id: "specs", name: "Specifications", weight: 8, base: 88, hint: "Nutrition, ingredients, dimensions" },
+  { id: "title", name: "Title", weight: 20, base: 94, hint: "Retailer title spec, keyword placement" },
+  { id: "description", name: "Description", weight: 15, base: 87, hint: "Bullet copy length and structure" },
+  { id: "images", name: "Images", weight: 25, base: 72, hint: "Hero resolution and gallery depth" },
+  { id: "attributes", name: "Attributes", weight: 20, base: 10, hint: "Structured fields feeding filters" },
+  { id: "keywords", name: "Keywords", weight: 12, base: 54, hint: "Coverage of tracked search terms" },
+  { id: "specs", name: "Specifications", weight: 8, base: 37, hint: "Nutrition, ingredients, dimensions" },
 ];
 
 function shelfData(retailer: string, period: string) {
@@ -931,7 +1011,8 @@ function shelfData(retailer: string, period: string) {
   /* Same seeds as the overview snapshot so shared KPIs read identically —
      and the same real-data-for-"4w" substitution, so the two pages never
      disagree about whether a number is real. */
-  const sos = realRollupSeriesSos(period, retailer) ?? series(seed + 1, n, 34.2 - 5 * sw + bias.sos, 34.2 + bias.sos, 0.9, 1);
+  /* Same rescaled anchor as snapshot() above -- see the comment there. */
+  const sos = realRollupSeriesSos(period, retailer) ?? series(seed + 1, n, 90 - 3 * sw + bias.sos, 90 + bias.sos, 0.9, 1);
   const stockVals = realRollupSeries(period, retailer, "stockRate")
     ?? series(seed + 4, n, 96.4 + 1.4 * sw + bias.stock, 96.4 + bias.stock, 0.5, 1).map((v) => round(clamp(v, 88, 100), 1));
   const contentVals = (realRollupSeries(period, retailer, "content")?.map((v) => Math.round(v)))
