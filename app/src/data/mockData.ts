@@ -322,13 +322,13 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
    vs. 0% for Amazon/Walmart/PetSmart. */
 const RETAILER_BIAS: Record<string, { sos: number; stock: number; rating: number; content: number }> = {
   all: { sos: 0, stock: 0, rating: 0, content: 0 },
-  "r1": { sos: 9.0, stock: 4.2, rating: 0.02, content: 5.4 }, // Amazon.com
-  "r2": { sos: -31.0, stock: 38.3, rating: -0.48, content: 1.1 }, // Chewy
-  "r3": { sos: 9.0, stock: 2.6, rating: -0.02, content: -2.3 }, // Walmart
-  "r4": { sos: 1.5, stock: -4.0, rating: -0.26, content: 0.6 }, // The Home Depot
-  "r5": { sos: 9.0, stock: 38.3, rating: 0.39, content: -0.7 }, // PetSmart
-  "r6": { sos: 4.0, stock: -59.5, rating: -0.02, content: -0.3 }, // Lowe's
-  "r7": { sos: -1.0, stock: 8.3, rating: 0.41, content: -9.8 }, // Petco
+  "r1": { sos: 9.0, stock: 5.3, rating: 0.02, content: 5.4 }, // Amazon.com
+  "r2": { sos: -31.0, stock: 39.4, rating: -0.48, content: 1.1 }, // Chewy
+  "r3": { sos: 9.0, stock: 3.7, rating: -0.02, content: -2.3 }, // Walmart
+  "r4": { sos: 1.5, stock: -2.9, rating: -0.26, content: 0.6 }, // The Home Depot
+  "r5": { sos: 9.0, stock: 39.4, rating: 0.39, content: -0.7 }, // PetSmart
+  "r6": { sos: 4.0, stock: -58.4, rating: -0.02, content: -0.3 }, // Lowe's
+  "r7": { sos: -1.0, stock: -7.9, rating: 0.41, content: -9.8 }, // Petco
 };
 
 const MONTHS = ["Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"];
@@ -377,12 +377,14 @@ for (const p of catalog as any[]) {
    jitter since September is the only month this crawl covers. */
 export const REAL_WEEK_LABELS = ["Sep 1", "Sep 8", "Sep 15", "Sep 22", "Sep 29"];
 export const REAL_SOS_WEEK_LABELS = ["Sep 8", "Sep 15", "Sep 22", "Sep 29"];
-/* ISO dates behind the labels above, for the custom date-range filter. Content
-   crawl weeks vs. Share Of Search crawl weeks intentionally use the same
-   Sep 8-29 window (the "Last 4 weeks" period already trims Content's Sep 1
-   point via .slice(1) for exactly this reason -- Share Of Search has no Sep 1
-   data point to pair it with, so a custom range narrows *within* Sep 8-29
-   rather than adding a 5th standalone checkpoint). */
+/* ISO dates behind the labels above, for the custom date-range filter.
+   Content/Price-derived metrics (Availability, Price Index, Content
+   Completeness, Buy Box, Rating) have a real weekly checkpoint going back to
+   Sep 1; Share Of Search does not (its crawl starts Sep 8), so it gets its
+   own, shorter date list. A date range matches each metric family against
+   its own real window and pools across whichever checkpoints fall inside it
+   -- see matchRangeWeeks() and realRangeValue() below. */
+export const REAL_WEEK_DATES = ["2022-09-01", "2022-09-08", "2022-09-15", "2022-09-22", "2022-09-29"];
 export const REAL_SOS_WEEK_DATES = ["2022-09-08", "2022-09-15", "2022-09-22", "2022-09-29"];
 
 export const REAL_PRODUCT_WEEKLY: Record<string, {
@@ -625,15 +627,20 @@ export const CROSS_RETAILER_MATCH: Record<string, Record<string, string>> = {
 
 export const REAL_ROLLUP_WEEKLY: Record<string, {
   stockRate: number[]; buyBoxRate: number[]; rating: number[]; content: number[];
+  /* raw daily-row counts behind stockRate/buyBoxRate that week -- pool
+     (sum numerator / sum denominator), never average, when combining
+     multiple weeks (e.g. for a custom date range); see the comment above
+     this table's construction in build_mock_data.py for why. */
+  stockRateWeight: number[]; buyBoxRateWeight: number[];
 }> = {
-  "portfolio": { stockRate: [62.76, 61.9, 57.51, 63.13, 63.25], buyBoxRate: [82.53, 83.03, 82.79, 82.42, 81.2], rating: [4.26, 4.26, 4.26, 4.26, 4.26], content: [61.13, 61.13, 61.21, 61.24, 61.32] },
-  "r1": { stockRate: [64.77, 64.28, 66.67, 67.14, 66.67], buyBoxRate: [61.4, 60.97, 62.4, 62.87, 60.0], rating: [4.27, 4.27, 4.28, 4.29, 4.28], content: [66.73, 66.73, 66.5, 66.63, 66.63] },
-  "r2": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [3.78, 3.78, 3.78, 3.78, 3.78], content: [61.4, 61.4, 63.0, 63.0, 63.0] },
-  "r3": { stockRate: [68.57, 67.14, 42.87, 69.52, 73.33], buyBoxRate: [70.47, 72.87, 70.47, 68.57, 66.67], rating: [4.24, 4.24, 4.24, 4.24, 4.24], content: [58.87, 58.87, 58.87, 58.87, 58.87] },
-  "r4": { stockRate: [60.0, 60.0, 60.0, 58.57, 50.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.0, 4.0, 4.0, 3.99, 3.99], content: [61.8, 61.8, 61.8, 61.8, 61.8] },
-  "r5": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.65, 4.65, 4.65, 4.65, 4.65], content: [60.5, 60.5, 60.5, 60.5, 60.5] },
-  "r6": { stockRate: [2.52, 0.0, 8.41, 0.0, 0.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.23, 4.24, 4.24, 4.24, 4.24], content: [60.88, 60.88, 60.88, 60.88, 60.88] },
-  "r7": { stockRate: [70.0, 70.0, 70.0, 70.0, 70.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.67, 4.67, 4.67, 4.67, 4.67], content: [51.2, 51.2, 51.2, 51.2, 52.1] },
+  "portfolio": { stockRate: [61.98, 60.75, 56.08, 62.13, 62.16], buyBoxRate: [81.88, 82.11, 81.95, 81.51, 80.18], rating: [4.26, 4.26, 4.26, 4.26, 4.26], content: [61.13, 61.13, 61.21, 61.24, 61.32], stockRateWeight: [789, 777, 781, 779, 222], buyBoxRateWeight: [789, 777, 781, 779, 222] },
+  "r1": { stockRate: [64.76, 64.29, 66.67, 67.14, 66.67], buyBoxRate: [61.43, 60.95, 62.38, 62.86, 60.0], rating: [4.27, 4.27, 4.28, 4.29, 4.28], content: [66.73, 66.73, 66.5, 66.63, 66.63], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [210, 210, 210, 210, 60] },
+  "r2": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [3.78, 3.78, 3.78, 3.78, 3.78], content: [61.4, 61.4, 63.0, 63.0, 63.0], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20] },
+  "r3": { stockRate: [68.57, 67.14, 42.86, 69.52, 73.33], buyBoxRate: [70.48, 72.86, 70.48, 68.57, 66.67], rating: [4.24, 4.24, 4.24, 4.24, 4.24], content: [58.87, 58.87, 58.87, 58.87, 58.87], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [210, 210, 210, 210, 60] },
+  "r4": { stockRate: [60.0, 60.0, 60.0, 58.57, 50.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.0, 4.0, 4.0, 3.99, 3.99], content: [61.8, 61.8, 61.8, 61.8, 61.8], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20] },
+  "r5": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.65, 4.65, 4.65, 4.65, 4.65], content: [60.5, 60.5, 60.5, 60.5, 60.5], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20] },
+  "r6": { stockRate: [2.52, 0.0, 8.4, 0.0, 0.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.23, 4.24, 4.24, 4.24, 4.24], content: [60.88, 60.88, 60.88, 60.88, 60.88], stockRateWeight: [119, 119, 119, 119, 34], buyBoxRateWeight: [119, 119, 119, 119, 34] },
+  "r7": { stockRate: [60.0, 50.0, 50.0, 53.33, 50.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.67, 4.67, 4.67, 4.67, 4.67], content: [51.2, 51.2, 51.2, 51.2, 52.1], stockRateWeight: [40, 28, 32, 30, 8], buyBoxRateWeight: [40, 28, 32, 30, 8] },
 };
 
 
@@ -711,17 +718,79 @@ function poolFor(retailer: string, key: string) {
 
 export type DateRange = { start: string; end: string };
 
-/* Resolves a custom date range to indices into the 4-point real window
-   (REAL_SOS_WEEK_DATES / REAL_SOS_WEEK_LABELS: Sep 8/15/22/29). If nothing in
-   the range overlaps that window (e.g. a range outside September 2022),
-   falls back to the full 4-week window rather than showing nothing —
-   `matched: false` tells the caller to surface that substitution instead of
-   silently presenting it as an exact match. */
-function matchRangeWeeks(range: DateRange | null | undefined): { idx: number[]; matched: boolean } {
+/* Resolves a custom date range to indices into a real-week date list (either
+   REAL_WEEK_DATES, the 5-point Sep 1-29 window Content/Price metrics have,
+   or REAL_SOS_WEEK_DATES, the shorter 4-point Sep 8-29 window Share Of
+   Search has). If nothing in the range overlaps that window (e.g. a range
+   outside September 2022), falls back to the full window rather than
+   showing nothing — `matched: false` tells the caller to surface that
+   substitution instead of silently presenting it as an exact match. */
+function matchRangeWeeks(range: DateRange | null | undefined, dates: string[]): { idx: number[]; matched: boolean } {
   if (!range) return { idx: [], matched: false };
-  const idx = REAL_SOS_WEEK_DATES.map((d, i) => (d >= range.start && d <= range.end ? i : -1)).filter((i) => i >= 0);
+  const idx = dates.map((d, i) => (d >= range.start && d <= range.end ? i : -1)).filter((i) => i >= 0);
   if (idx.length) return { idx, matched: true };
-  return { idx: [0, 1, 2, 3], matched: false };
+  return { idx: dates.map((_, i) => i), matched: false };
+}
+
+/* Headline KPI value + delta for a custom date range, pooled across every
+   matched real week -- this is the number the KPI card's big number and
+   delta actually show, distinct from `vals` (the spark/trend-chart series,
+   which stays on the narrower Sep 8-29 window shared with Search Visibility
+   so every chart on the page still shares one x-axis). stockRate/buyBoxRate
+   are rates over a day-count that varies week to week, so they MUST be
+   pooled from raw counts (stockRateWeight/buyBoxRateWeight), never averaged
+   as percentages -- averaging e.g. "8.4% over 119 rows" and "0% over 34
+   rows" as if they were equally-weighted observations is simply wrong: pool
+   to (0.084*119 + 0*34) / (119+34) = 7.4%, not their (8.4+0)/2 = 4.2%
+   midpoint. rating/content have a constant per-week product count, so plain
+   averaging is already correct for those two. */
+function realRangeValue(retailer: string, field: "stockRate" | "buyBoxRate" | "rating" | "content", idx: number[]): { value: number; delta: number } | null {
+  const row = REAL_ROLLUP_WEEKLY[retailer === "all" ? "portfolio" : retailer];
+  if (!row || !idx.length) return null;
+  const weights = field === "stockRate" ? row.stockRateWeight : field === "buyBoxRate" ? row.buyBoxRateWeight : null;
+  let value: number;
+  if (weights) {
+    const totalWeight = idx.reduce((s, i) => s + weights[i], 0);
+    value = totalWeight
+      ? (idx.reduce((s, i) => s + (row[field][i] / 100) * weights[i], 0) / totalWeight) * 100
+      : idx.reduce((s, i) => s + row[field][i], 0) / idx.length;
+  } else {
+    value = idx.reduce((s, i) => s + row[field][i], 0) / idx.length;
+  }
+  const delta = row[field][idx[idx.length - 1]] - row[field][idx[0]];
+  return { value, delta };
+}
+
+/* Same pooling principle as realRangeValue, applied to Share Of Search
+   (constant 10-keyword denominator every week, so plain averaging across
+   matched weeks is already the correct pooled result -- no weight array
+   needed) and to Price Index (a ratio of continuous values, not a
+   count-based rate, so averaging across weeks is standard practice). */
+function realRangeValueSos(retailer: string, idx: number[]): { value: number; delta: number } | null {
+  const row = REAL_SOS_WEEKLY[retailer === "all" ? "portfolio" : retailer];
+  if (!row || !idx.length) return null;
+  const value = idx.reduce((s, i) => s + row[i], 0) / idx.length;
+  const delta = row[idx[idx.length - 1]] - row[idx[0]];
+  return { value, delta };
+}
+
+function realRangeValuePriceIndex(retailer: string, idx: number[]): { value: number; delta: number } | null {
+  const ids = Object.keys(REAL_PRODUCT_WEEKLY).filter((id) => retailer === "all" || id.startsWith(retailer + "-"));
+  if (!ids.length || !idx.length) return null;
+  const perWeek = idx.map((wi) => {
+    let sum = 0, count = 0;
+    for (const id of ids) {
+      const prod = (catalog as any[]).find((x) => x.id === id);
+      const avg = prod && PEER_GROUP_AVG_PRICE[prod.priceGroup];
+      if (!avg) continue;
+      sum += (REAL_PRODUCT_WEEKLY[id].price[wi] / avg) * 100;
+      count++;
+    }
+    return count ? sum / count : 100;
+  });
+  const value = perWeek.reduce((s, v) => s + v, 0) / perWeek.length;
+  const delta = perWeek[perWeek.length - 1] - perWeek[0];
+  return { value, delta };
 }
 
 /* Real portfolio/retailer-level trend series for the "Last 4 weeks" period —
@@ -782,7 +851,13 @@ function realPriceIndexWeekly(period: string, retailer: string, rangeIdx?: numbe
 function snapshot(retailer: string, period: string, dateRange?: DateRange | null) {
   const key = retailer + "|" + period + (dateRange ? "|" + dateRange.start + ".." + dateRange.end : "");
   const seed = hash(key);
-  const rangeMatch = dateRange ? matchRangeWeeks(dateRange) : null;
+  const rangeMatch = dateRange ? matchRangeWeeks(dateRange, REAL_SOS_WEEK_DATES) : null;
+  /* Wider than rangeMatch (Sep 1-29 vs. Sep 8-29) -- feeds the pooled KPI
+     headline value/delta below for the metrics that genuinely have a Sep 1
+     checkpoint (everything except Search Visibility). The chart/spark series
+     stays on rangeMatch's narrower window so every trend chart on the page
+     keeps sharing one x-axis. */
+  const wideMatch = dateRange ? matchRangeWeeks(dateRange, REAL_WEEK_DATES) : null;
   const labels = rangeMatch ? rangeMatch.idx.map((i) => REAL_SOS_WEEK_LABELS[i]) : labelsFor(period);
   const n = labels.length;
   const bias = RETAILER_BIAS[retailer] || RETAILER_BIAS.all;
@@ -811,10 +886,16 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
   const last = (a: number[]) => a[a.length - 1];
   const first = (a: number[]) => a[0];
 
-  const kpi = (id: string, label: string, unit: string, vals: number[], target: number, digits: number) => ({
+  /* A custom date range is a "summarize this window" request, not a
+     "what's the latest snapshot" one -- `range` (from realRangeValue /
+     realRangeValueSos / realRangeValuePriceIndex, pooled correctly per the
+     comment on those functions) is what the KPI card's big number and delta
+     actually show whenever a date range is active; `vals` remains the
+     spark/trend-chart series either way. */
+  const kpi = (id: string, label: string, unit: string, vals: number[], target: number, digits: number, range?: { value: number; delta: number } | null) => ({
     id, label, unit, target,
-    value: last(vals),
-    delta: round(last(vals) - first(vals), digits),
+    value: range ? round(range.value, digits) : last(vals),
+    delta: round((range ? range.delta : last(vals) - first(vals)), digits),
     spark: vals,
   });
 
@@ -835,12 +916,12 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       : null,
     generatedAt: "Today 06:40 UTC",
     kpis: [
-      kpi("sos", "Search Visibility", "%", sos, 40, 1),
-      kpi("instock", "Availability", "%", stockVals, 98, 1),
-      kpi("pidx", "Price Index", "", priceIdx, 100, 1),
-      kpi("content", "Content Completeness", "/100", contentVals, 95, 0),
-      kpi("buybox", "Buy Box Presence", "%", buyBoxSeries, 95, 0),
-      kpi("rating", "Average Rating", "", ratingVals, 4.5, 2),
+      kpi("sos", "Search Visibility", "%", sos, 40, 1, dateRange ? realRangeValueSos(retailer, rangeMatch!.idx) : null),
+      kpi("instock", "Availability", "%", stockVals, 98, 1, dateRange ? realRangeValue(retailer, "stockRate", wideMatch!.idx) : null),
+      kpi("pidx", "Price Index", "", priceIdx, 100, 1, dateRange ? realRangeValuePriceIndex(retailer, wideMatch!.idx) : null),
+      kpi("content", "Content Completeness", "/100", contentVals, 95, 0, dateRange ? realRangeValue(retailer, "content", wideMatch!.idx) : null),
+      kpi("buybox", "Buy Box Presence", "%", buyBoxSeries, 95, 0, dateRange ? realRangeValue(retailer, "buyBoxRate", wideMatch!.idx) : null),
+      kpi("rating", "Average Rating", "", ratingVals, 4.5, 2, dateRange ? realRangeValue(retailer, "rating", wideMatch!.idx) : null),
       { id: "oos", label: "Out of Stock SKUs", unit: "", target: 0, value: oos, delta: Math.round((r() - 0.5) * 4), spark: series(seed + 8, n, oos + 1, oos, 0.7, 0).map((v) => clamp(v, 0, 20)) },
       { id: "rank", label: "Avg Search Rank", unit: "", target: 5, value: avgRank, delta: round((r() - 0.5) * 2, 1), spark: series(seed + 9, n, avgRank + 1.4 * sw, avgRank, 0.5, 1) },
       { id: "reviews", label: "Review Count", unit: "", target: 20000, value: reviewVolume, delta: Math.round(reviewVolume * 0.04), spark: series(seed + 10, n, reviewVolume * 0.94, reviewVolume, reviewVolume * 0.01, 0) },
@@ -1034,7 +1115,8 @@ const CONTENT_COMPONENTS = [
 function shelfData(retailer: string, period: string, dateRange?: DateRange | null) {
   const key = retailer + "|" + period + (dateRange ? "|" + dateRange.start + ".." + dateRange.end : "");
   const seed = hash(key);
-  const rangeMatch = dateRange ? matchRangeWeeks(dateRange) : null;
+  const rangeMatch = dateRange ? matchRangeWeeks(dateRange, REAL_SOS_WEEK_DATES) : null;
+  const wideMatch = dateRange ? matchRangeWeeks(dateRange, REAL_WEEK_DATES) : null;
   const labels = rangeMatch ? rangeMatch.idx.map((i) => REAL_SOS_WEEK_LABELS[i]) : labelsFor(period);
   const n = labels.length;
   const bias = RETAILER_BIAS[retailer] || RETAILER_BIAS.all;
@@ -1060,9 +1142,12 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
   const buyBox = realRollupSeries(period, retailer, "buyBoxRate", rangeMatch?.idx)?.map((v) => Math.round(v))
     ?? series(seed + 22, n, buyNow + 2 * sw, buyNow, 1.2, 0).map((v) => clamp(Math.round(v), 40, 100));
 
-  const kpi = (id: string, label: string, unit: string, vals: number[], target: number, digits: number) => ({
-    id, label, unit, target, value: last(vals),
-    delta: round(last(vals) - first(vals), digits), spark: vals,
+  /* Same reasoning as snapshot() -- `range` (pooled, see realRangeValue's
+     comment) drives the KPI card's headline value/delta under a custom
+     date range; `vals` stays the spark/trend-chart series either way. */
+  const kpi = (id: string, label: string, unit: string, vals: number[], target: number, digits: number, range?: { value: number; delta: number } | null) => ({
+    id, label, unit, target, value: range ? round(range.value, digits) : last(vals),
+    delta: round((range ? range.delta : last(vals) - first(vals)), digits), spark: vals,
   });
 
   const byRetailer = retailers.slice(1).map((rt) => {
@@ -1186,16 +1271,16 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
   return {
     retailer, period, labels,
     dateRange: dateRange
-      ? { start: dateRange.start, end: dateRange.end, matched: rangeMatch!.matched,
-          note: rangeMatch!.matched ? null : "No crawl data for the exact range selected — showing the full Sep 8–29 crawl instead." }
+      ? { start: dateRange.start, end: dateRange.end, matched: wideMatch!.matched,
+          note: wideMatch!.matched ? null : "No crawl data for the exact range selected — showing the full Sep 1–29 crawl instead." }
       : null,
     generatedAt: "Today 06:40 UTC",
     kpis: [
-      kpi("sos", "Search Visibility", "%", sos, 40, 1),
-      kpi("instock", "Availability", "%", stockVals, 98, 1),
-      kpi("pidx", "Price Index", "", priceIdx, 100, 1),
-      kpi("content", "Content Completeness", "/100", contentVals, 95, 0),
-      kpi("buybox", "Buy Box Presence", "%", buyBox, 95, 0),
+      kpi("sos", "Search Visibility", "%", sos, 40, 1, dateRange ? realRangeValueSos(retailer, rangeMatch!.idx) : null),
+      kpi("instock", "Availability", "%", stockVals, 98, 1, dateRange ? realRangeValue(retailer, "stockRate", wideMatch!.idx) : null),
+      kpi("pidx", "Price Index", "", priceIdx, 100, 1, dateRange ? realRangeValuePriceIndex(retailer, wideMatch!.idx) : null),
+      kpi("content", "Content Completeness", "/100", contentVals, 95, 0, dateRange ? realRangeValue(retailer, "content", wideMatch!.idx) : null),
+      kpi("buybox", "Buy Box Presence", "%", buyBox, 95, 0, dateRange ? realRangeValue(retailer, "buyBoxRate", wideMatch!.idx) : null),
     ],
     visibility: {
       labels, previous: sos.map((v, i) => round(v - 2.4 - (i % 3) * 0.3, 1)), target: 40,
@@ -1468,11 +1553,15 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
   return new Promise<any>((resolve, reject) => setTimeout(() => {
     const base = catalog.find((p) => p.id === id);
     if (!base) return reject(new Error("Product not found: " + id));
-    const rangeMatch = dateRange ? matchRangeWeeks(dateRange) : null;
+    /* Per-product real data (REAL_PRODUCT_WEEKLY) has a genuine Sep 1
+       checkpoint, unlike the retailer-level Search Visibility rollup, so a
+       date range matches against the full 5-point REAL_WEEK_DATES here
+       (direct 0-4 indexing, no +1 offset needed). */
+    const rangeMatch = dateRange ? matchRangeWeeks(dateRange, REAL_WEEK_DATES) : null;
     const key = retailer + "|" + period + (dateRange ? "|" + dateRange.start + ".." + dateRange.end : "");
     const p: any = withSalesMetrics(withShelfMetrics(productFor(base, key)), key);
     p.opportunity = scoreOpportunity(p);
-    const labels = rangeMatch ? rangeMatch.idx.map((i) => REAL_SOS_WEEK_LABELS[i]) : labelsFor(period);
+    const labels = rangeMatch ? rangeMatch.idx.map((i) => REAL_WEEK_LABELS[i]) : labelsFor(period);
     const n = labels.length;
     const seed = hash(id + key);
     const sw = swing[period] || 1;
@@ -1493,7 +1582,7 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
        rank exists (see the Placement matching note). */
     const real = REAL_PRODUCT_WEEKLY[id];
     const useReal = !!real && (dateRange ? true : period === "4w");
-    const realIdx = rangeMatch ? rangeMatch.idx.map((i) => i + 1) : [1, 2, 3, 4];
+    const realIdx = rangeMatch ? rangeMatch.idx : [1, 2, 3, 4];
     const trends = useReal
       ? {
           rank: series(seed + 1, n, clamp(p.searchRank + 3 * sw, 1, 40), p.searchRank, 1.2, 0).map((v) => clamp(Math.round(v), 1, 40)),
@@ -1516,7 +1605,7 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
       dataSource: useReal ? "real" : "illustrative",
       dateRange: dateRange
         ? { start: dateRange.start, end: dateRange.end, matched: rangeMatch!.matched,
-            note: rangeMatch!.matched ? null : "No crawl data for the exact range selected — showing the full Sep 8–29 crawl instead." }
+            note: rangeMatch!.matched ? null : "No crawl data for the exact range selected — showing the full Sep 1–29 crawl instead." }
         : null,
       /* Real where a genuine cross-retailer match exists in our own sample
          (same brand, >=45% name overlap — see CROSS_RETAILER_MATCH); honest

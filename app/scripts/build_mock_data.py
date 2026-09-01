@@ -245,6 +245,13 @@ def main():
     catalog = []
     real_product_weekly = {}
     component_bucket_totals = defaultdict(list)
+    # pid -> (code, native_id) with native_id in its ORIGINAL type (int or
+    # str, whatever the Excel cell held) -- pid itself is always a string
+    # ("r6-1165507"), so re-deriving native_id by splitting that string would
+    # silently coerce an int id to a str and break price_by_product lookups
+    # (dict keys are typed tuples). Used by the REAL_ROLLUP_WEEKLY pooling
+    # below to look back up each scope's raw daily rows correctly.
+    pid_to_key = {}
 
     content_score_by_week = {}  # pid -> {week: score}
     # pre-fill (raw, with None gaps) rating/reviews series -- used only for
@@ -258,6 +265,7 @@ def main():
         latest_dk = max(weeks.keys())
         latest = weeks[latest_dk]
         pid = f"{code}-{native_id}"
+        pid_to_key[pid] = (code, native_id)
 
         content_score, buckets = content_completeness(latest)
         for b, v in buckets.items():
@@ -402,20 +410,60 @@ def main():
         vals = [v for v in vals if v is not None]
         return round(sum(vals) / len(vals), 2) if vals else None
 
+    # stockRate/buyBoxRate are *rates over a day count that varies week to
+    # week* (the final real week is only Sep 29-30, 2 days, vs. 7 for the
+    # others; a handful of products also have date gaps). Averaging each
+    # product's already-computed weekly percentage -- unweighted -- is only
+    # correct within a single week (every product in a retailer shares that
+    # week's day count). Combining *across* weeks (which the date-range
+    # filter does) requires pooling the raw counts (sum in-stock rows / sum
+    # total rows), never averaging the percentages themselves -- e.g. a week
+    # with 8.41% over 119 rows and a week with 0% over 34 rows do not average
+    # to their midpoint; they pool to 10 in-stock rows out of 153. Computed
+    # directly from the raw daily Price rows (not from real_product_weekly's
+    # per-product series, and not using LOCF-filled values) so the weekly
+    # percentage AND the weight behind it both come from genuine observations
+    # only. rating/content are unaffected -- every product contributes
+    # exactly one real observation per week either way, so equal-weight
+    # averaging is already correct for those two.
     real_rollup_weekly = {}
     for scope in ["portfolio"] + list(RETAILER_NAMES.keys()):
         ids = [pid for pid in real_product_weekly if scope == "portfolio" or pid.startswith(scope + "-")]
         if not ids:
             continue
-        stockRate, buyBoxRate, rating, content = [], [], [], []
-        for wi in range(5):
-            stockRate.append(avg([real_product_weekly[i]["stockRate"][wi] for i in ids]))
-            buyBoxRate.append(avg([real_product_weekly[i]["buyBoxRate"][wi] for i in ids]))
+        id_pairs = [pid_to_key[pid] for pid in ids]
+
+        stockRate, buyBoxRate, stockWeight, buyBoxWeight, rating, content = [], [], [], [], [], []
+        for wi, wk_start in enumerate(CONTENT_WEEKS):
+            wk_end = CONTENT_WEEKS[wi + 1] if wi + 1 < len(CONTENT_WEEKS) else "2022-10-06"
+            in_stock_n, total_n, buybox_n, buybox_d = 0, 0, 0, 0
+            for code, native_id in id_pairs:
+                for r in price_by_product.get((code, native_id), []):
+                    if not (wk_start <= date_key(r.get("Crawl date")) < wk_end):
+                        continue
+                    flag = is_in_stock(r.get("Stock status"))
+                    if flag is not None:
+                        total_n += 1
+                        in_stock_n += 1 if flag else 0
+                    buybox_d += 1
+                    buybox_n += 1 if is_own_seller(r.get("Buy box seller"), code) else 0
+            # weight 0 means "no genuine observation this week" -- excluded
+            # from any pooled sum automatically, but the rate itself still
+            # needs a number (TS type is number[], not (number|null)[]), so
+            # carry the previous week's rate forward for display continuity
+            # only, same convention as fill_series() elsewhere in this file.
+            stockRate.append(round(100.0 * in_stock_n / total_n, 2) if total_n else (stockRate[-1] if stockRate else 100.0))
+            stockWeight.append(total_n)
+            buyBoxRate.append(round(100.0 * buybox_n / buybox_d, 2) if buybox_d else (buyBoxRate[-1] if buyBoxRate else 100.0))
+            buyBoxWeight.append(buybox_d)
             rating.append(avg([raw_rating_by_product[i][wi] for i in ids if i in raw_rating_by_product]))
         for wi in range(5):
             wk = CONTENT_WEEKS[wi]
             content.append(avg([content_score_by_week[i][wk] for i in ids if i in content_score_by_week]))
-        real_rollup_weekly[scope] = {"stockRate": stockRate, "buyBoxRate": buyBoxRate, "rating": rating, "content": content}
+        real_rollup_weekly[scope] = {
+            "stockRate": stockRate, "buyBoxRate": buyBoxRate, "rating": rating, "content": content,
+            "stockRateWeight": stockWeight, "buyBoxRateWeight": buyBoxWeight,
+        }
 
     # ── RETAILER_BIAS ────────────────────────────────────────────────────────
     portfolio_avg = {k: avg(real_rollup_weekly["portfolio"][k]) for k in ["stockRate", "buyBoxRate", "rating", "content"]}
@@ -572,9 +620,18 @@ def main():
 
     out.append("export const REAL_ROLLUP_WEEKLY: Record<string, {")
     out.append("  stockRate: number[]; buyBoxRate: number[]; rating: number[]; content: number[];")
+    out.append("  /* raw daily-row counts behind stockRate/buyBoxRate that week -- pool")
+    out.append("     (sum numerator / sum denominator), never average, when combining")
+    out.append("     multiple weeks (e.g. for a custom date range); see the comment above")
+    out.append("     this table's construction in build_mock_data.py for why. */")
+    out.append("  stockRateWeight: number[]; buyBoxRateWeight: number[];")
     out.append("}> = {")
     for scope, v in real_rollup_weekly.items():
-        out.append(f'  {json.dumps(scope)}: {{ stockRate: {json.dumps(v["stockRate"])}, buyBoxRate: {json.dumps(v["buyBoxRate"])}, rating: {json.dumps(v["rating"])}, content: {json.dumps(v["content"])} }},')
+        out.append(
+            f'  {json.dumps(scope)}: {{ stockRate: {json.dumps(v["stockRate"])}, buyBoxRate: {json.dumps(v["buyBoxRate"])}, '
+            f'rating: {json.dumps(v["rating"])}, content: {json.dumps(v["content"])}, '
+            f'stockRateWeight: {json.dumps(v["stockRateWeight"])}, buyBoxRateWeight: {json.dumps(v["buyBoxRateWeight"])} }},'
+        )
     out.append("};")
     out.append("")
 
