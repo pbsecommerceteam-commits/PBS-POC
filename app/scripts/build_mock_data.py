@@ -363,6 +363,15 @@ def main():
             "retailer": code,
             "rank": None,  # filled below
             "price": round(all_prices[-1], 2) if all_prices else None,
+            # Average selling price across every observed daily row this
+            # month -- used only for Price Index (product's own ASP divided
+            # by its peer group's average ASP), never for the "current
+            # price" shown on product cards/tables. Averaging each side of
+            # that ratio over the same period avoids comparing one
+            # product's stale end-of-month snapshot against peers' ASPs
+            # (or vice versa), the same day-count-consistency principle as
+            # REAL_ROLLUP_WEEKLY's pooling.
+            "avgSellingPrice": round(sum(all_prices) / len(all_prices), 2) if all_prices else None,
             "rating": latest.get("Rating"),
             "reviews": latest.get("Total reviews"),
             "content": content_score,
@@ -404,6 +413,9 @@ def main():
             # price posted) for the entire crawl month.
             if p["price"] is not None and p["id"] in real_product_weekly:
                 real_product_weekly[p["id"]]["price"] = [p["price"]] * 5
+        if p["avgSellingPrice"] is None:
+            # Same peer-average fallback, applied to ASP for the same reason.
+            p["avgSellingPrice"] = p["price"]
 
     # ── REAL_ROLLUP_WEEKLY (portfolio + per retailer) ───────────────────────
     def avg(vals):
@@ -583,10 +595,11 @@ def main():
     out.append("export const catalog = [")
     for p in catalog:
         out.append(
-            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s },"
+            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s },"
             % (
                 ts_str(p["id"]), ts_str(p["name"]), ts_str(p["brand"]), ts_str(p["category"]), ts_str(p["retailer"]),
-                ts_num(p["rank"], 1), ts_num(p["price"], 0), ts_num(p["rating"], 0), ts_num(p["reviews"], 0),
+                ts_num(p["rank"], 1), ts_num(p["price"], 0), ts_num(p["avgSellingPrice"], p["price"] or 0),
+                ts_num(p["rating"], 0), ts_num(p["reviews"], 0),
                 ts_num(p["content"], 0), ts_num(p["stockBias"], 1.0), ts_num(p["buyBoxRate"], 1.0),
                 ts_num(p["priceChangePct"], 0.0), ts_str(p["priceGroup"]),
             )
