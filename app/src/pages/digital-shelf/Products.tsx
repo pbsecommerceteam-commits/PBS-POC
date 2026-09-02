@@ -30,7 +30,7 @@ export default function DigitalShelfProducts() {
   const focusPredicate = {
     rank: (p: Product) => p.searchRank > 10,
     avail: (p: Product) => p.inStockRate < 90,
-    price: (p: Product) => p.priceIndex != null && p.priceIndex > 1.1,
+    price: (p: Product) => p.priceIndex > 1.1,
     content: (p: Product) => p.contentScore < 80,
   }[shelfFocus];
 

@@ -30,8 +30,7 @@ export interface Product {
   searchRank: number;
   rankDelta: number;
   price: number;
-  /** null when this SKU has no cross-retailer match (see CROSS_RETAILER_MATCH) -- "not tracked", not 0 or 100. */
-  priceIndex: number | null;
+  priceIndex: number;
   stockStatus: StockStatus;
   inStockRate: number;
   rating: number;

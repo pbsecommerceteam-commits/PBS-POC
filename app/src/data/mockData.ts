@@ -632,34 +632,19 @@ function catalogAsp(id: string): number | null {
   return p ? ((p.avgSellingPrice ?? p.price) as number) : null;
 }
 
-/* Price Index compares a product's price directly against the SAME item's
-   price at other retailers, via CROSS_RETAILER_MATCH (same brand, >=45%
-   name overlap -- see the comment where that table is used below). This
-   replaces an earlier "average of this product's own retailer+category
-   peer group" design: that comparison set is self-referential (the
-   benchmark is built from the exact products being measured against it),
-   so the average priceIndex across any peer group -- and therefore the
-   whole portfolio -- mathematically converges to ~100 no matter what the
-   real prices are, which can never surface genuine competitive pressure at
-   the aggregate level. Cross-retailer matching gives an external
-   benchmark instead, at the cost of coverage: only products with a
-   genuine match get a value (roughly half the catalog) -- unmatched
-   products return null rather than fabricating a comparison, and every
-   caller below must treat null as "not tracked", not zero or 100.
-   `priceOf` lets callers substitute a specific week's real price (see
-   realRangeValuePriceIndex/realPriceIndexWeekly) instead of the default
-   whole-period average selling price. */
-function itemPriceIndex(id: string, priceOf: (id: string) => number | null = catalogAsp): number | null {
-  const matches = CROSS_RETAILER_MATCH[id];
-  if (!matches) return null;
-  const ownPrice = priceOf(id);
-  if (ownPrice == null) return null;
-  const competitorPrices = Object.values(matches)
-    .map((mid) => priceOf(mid))
-    .filter((v): v is number => v != null);
-  if (!competitorPrices.length) return null;
-  const competitorAvg = competitorPrices.reduce((a, v) => a + v, 0) / competitorPrices.length;
-  return competitorAvg ? round(ownPrice / competitorAvg, 3) : null;
+/* Price Index compares a product's price to ITS OWN average selling price
+   for the period -- purely item-level, no other product or retailer
+   involved. >100 means it's currently priced above its own typical price
+   this period (e.g. a recent hike); <100 means it's currently priced below
+   its own norm (e.g. a markdown). This is not the same tautology a
+   peer-group design has: each product's own "now vs. its own average" is
+   independent of every other product's, so averaging it across the
+   portfolio is not mathematically forced toward 100 -- it genuinely
+   reflects whether pricing, in aggregate, is trending up or down against
+   this period's norm. Always available (every catalog product has both a
+   price and an avgSellingPrice), so there's no "not tracked" case here. */
+function itemPriceIndex(price: number, asp: number | null): number {
+  return round(price / (asp || price), 3);
 }
 
 function productFor(p: (typeof catalog)[number], key: string) {
@@ -676,7 +661,7 @@ function productFor(p: (typeof catalog)[number], key: string) {
     searchRank: clamp(Math.round(p.rank + (r() - 0.5) * 6), 1, 40),
     rankDelta: Math.round((r() - 0.5) * 9),
     price: round(p.price * (0.99 + r() * 0.02), 2),
-    priceIndex: itemPriceIndex(p.id),
+    priceIndex: itemPriceIndex(p.price, (p as any).avgSellingPrice ?? null),
     stockStatus: status as "In Stock" | "Low Stock" | "Out of Stock",
     inStockRate: round(clamp(
       p.stockBias * 100 + (r() - 0.5) * 2 -
@@ -696,7 +681,7 @@ function withShelfMetrics(q: any) {
   q.searchVisibility = clamp(Math.round(90 - (q.searchRank - 1) * 3.4), 6, 96);
   q.shelfScore = clamp(Math.round(
     q.searchVisibility * 0.25 + q.inStockRate * 0.3 + q.contentScore * 0.25 +
-    (q.rating / 5) * 100 * 0.2 - Math.max(0, (q.priceIndex ?? 1) - 1.05) * 40
+    (q.rating / 5) * 100 * 0.2 - Math.max(0, q.priceIndex - 1.05) * 40
   ), 20, 100);
   return q;
 }
@@ -793,15 +778,19 @@ function realRangeValueSos(retailer: string, idx: number[]): { value: number; de
 }
 
 /* Weekly real Price Index -- item-level (see itemPriceIndex above), using
-   that week's own REAL_PRODUCT_WEEKLY price for both a product and its
-   matched competitor(s) rather than the whole-period ASP, so the trend
-   reflects that specific week's competitive gap. Only matched-and-priced
-   pairs contribute; a week with none returns null (caller decides the
-   fallback) rather than fabricating 100. */
+   that week's own REAL_PRODUCT_WEEKLY price against the item's own
+   whole-period average selling price, so the trend shows how much a given
+   week's real price deviated from that item's norm for the month. Every
+   product with weekly price data contributes; there's no "not tracked"
+   case since avgSellingPrice always exists for a product with any price
+   history. */
 function weeklyItemPriceIndex(ids: string[], wi: number): number | null {
-  const priceOf = (id: string) => REAL_PRODUCT_WEEKLY[id]?.price[wi] ?? null;
   const ratios = ids
-    .map((id) => itemPriceIndex(id, priceOf))
+    .map((id) => {
+      const wp = REAL_PRODUCT_WEEKLY[id]?.price[wi];
+      const asp = catalogAsp(id);
+      return wp != null && asp ? itemPriceIndex(wp, asp) : null;
+    })
     .filter((v): v is number => v != null);
   return ratios.length ? (ratios.reduce((a, v) => a + v, 0) / ratios.length) * 100 : null;
 }
@@ -939,11 +928,8 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
 
   const r = rng(seed + 7);
   /* Same seeds/formula as shelfData() so Price Index and Buy Box Presence
-     read identically wherever they appear. Only matched products (see
-     itemPriceIndex) have a priceIndex to average; unmatched ones are
-     excluded rather than fabricated. */
-  const priceMatched = pool.filter((p) => p.priceIndex != null);
-  const idxNow = priceMatched.length ? round((priceMatched.reduce((a, p) => a + p.priceIndex, 0) / priceMatched.length) * 100, 1) : 100;
+     read identically wherever they appear. */
+  const idxNow = round((pool.reduce((a, p) => a + p.priceIndex, 0) / (pool.length || 1)) * 100, 1);
   const priceIdx = realPriceIndexWeekly(period, retailer, rangeMatch?.idx) ?? series(seed + 21, n, idxNow - 1.8 * sw, idxNow, 0.6, 1);
   const buyNow = round((pool.filter((p) => p.buyBox).length / (pool.length || 1)) * 100, 0);
   const buyBoxSeries = realRollupSeries(period, retailer, "buyBoxRate", rangeMatch?.idx)?.map((v) => Math.round(v))
@@ -1078,9 +1064,8 @@ function deriveInsights(s: any) {
   const topCat = s.categoryPerformance.slice().sort((a: any, b: any) => b.sos - a.sos)[0];
   const lowAvail = s.products.filter((p: any) => p.inStockRate < 95);
   const weakContent = s.products.filter((p: any) => p.contentScore < 80);
-  const pricedProducts = s.products.filter((p: any) => p.priceIndex != null);
-  const ownIndex = pricedProducts.length
-    ? pricedProducts.reduce((a: number, p: any) => a + p.priceIndex, 0) / pricedProducts.length : 1;
+  const ownIndex = s.products.length
+    ? s.products.reduce((a: number, p: any) => a + p.priceIndex, 0) / s.products.length : 1;
   const byIndex = s.competitors.slice().sort((a: any, b: any) => a.priceIndex - b.priceIndex);
   const cheapest = byIndex[0];
   const undercut = round(((ownIndex - cheapest.priceIndex) / ownIndex) * 100, 1);
@@ -1181,8 +1166,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
   const contentVals = (realRollupSeries(period, retailer, "content", rangeMatch?.idx)?.map((v) => Math.round(v)))
     ?? series(seed + 6, n, 87 - 8 * sw + bias.content, 87 + bias.content, 1.2, 0).map((v) => clamp(Math.round(v), 40, 100));
 
-  const pricedPool = pool.filter((p) => p.priceIndex != null);
-  const idxNow = pricedPool.length ? round(avg(pricedPool, (p) => p.priceIndex, 3) * 100, 1) : 100;
+  const idxNow = round(avg(pool, (p) => p.priceIndex, 3) * 100, 1);
   const priceIdx = realPriceIndexWeekly(period, retailer, rangeMatch?.idx) ?? series(seed + 21, n, idxNow - 1.8 * sw, idxNow, 0.6, 1);
   const buyNow = round((pool.filter((p) => p.buyBox).length / (pool.length || 1)) * 100, 0);
   const buyBox = realRollupSeries(period, retailer, "buyBoxRate", rangeMatch?.idx)?.map((v) => Math.round(v))
@@ -1208,8 +1192,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     const availability = realAvailability != null ? round(realAvailability, 1) : (own.length ? avg(own, (p) => p.inStockRate, 1) : round(clamp(96 + b.stock, 85, 100), 1));
     const content = realContent != null ? Math.round(realContent) : (own.length ? Math.round(avg(own, (p) => p.contentScore, 0)) : clamp(Math.round(85 + b.content), 40, 100));
     const rating = realRating != null ? round(realRating, 2) : (own.length ? avg(own, (p) => p.rating, 2) : round(clamp(4.3 + b.rating, 3.4, 5), 2));
-    const ownPriced = own.filter((p) => p.priceIndex != null);
-    const priceIndex = ownPriced.length ? round(avg(ownPriced, (p) => p.priceIndex, 3) * 100, 1) : round(98 + rr() * 8, 1);
+    const priceIndex = own.length ? round(avg(own, (p) => p.priceIndex, 3) * 100, 1) : round(98 + rr() * 8, 1);
     const buyBoxPresence = realBuyBox != null ? Math.round(realBuyBox) : (own.length ? Math.round((own.filter((p) => p.buyBox).length / own.length) * 100) : Math.round(60 + rr() * 30));
     const shelfScore = clamp(Math.round(
       (visibility / 45) * 25 + (availability / 100) * 30 + (content / 100) * 25 + (rating / 5) * 20
@@ -1231,8 +1214,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     const visibility = inCat.length ? avg(inCat, (p) => p.searchVisibility, 1) : round(20 + rr() * 30, 1);
     const availability = inCat.length ? avg(inCat, (p) => p.inStockRate, 1) : round(93 + rr() * 6, 1);
     const content = inCat.length ? Math.round(avg(inCat, (p) => p.contentScore, 0)) : Math.round(70 + rr() * 25);
-    const inCatPriced = inCat.filter((p) => p.priceIndex != null);
-    const priceIndex = inCatPriced.length ? round(avg(inCatPriced, (p) => p.priceIndex, 3) * 100, 1) : round(96 + rr() * 10, 1);
+    const priceIndex = inCat.length ? round(avg(inCat, (p) => p.priceIndex, 3) * 100, 1) : round(96 + rr() * 10, 1);
     const rating = inCat.length ? avg(inCat, (p) => p.rating, 2) : round(clamp(4.3 + rr() * 0.3, 3.4, 5), 2);
     const overall = inCat.length ? Math.round(avg(inCat, (p) => p.shelfScore, 0)) : Math.round(55 + rr() * 30);
     return {
@@ -1295,7 +1277,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
 
   const lowRank = pool.filter((p) => p.searchRank > 10);
   const lowAvail = pool.filter((p) => p.inStockRate < 90);
-  const highPrice = pool.filter((p) => p.priceIndex != null && p.priceIndex > 1.1);
+  const highPrice = pool.filter((p) => p.priceIndex > 1.1);
   const weakContent = pool.filter((p) => p.contentScore < 80);
   const opportunities = [
     { id: "o-rank", focus: "rank", title: "Improve Search Visibility",
@@ -1309,7 +1291,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
       why: "Out-of-stock days suppress rank as well as sales, so the loss compounds after the gap is closed.",
       action: "Flag the replenishment gap with the retailer team and confirm forecast cover for the next cycle." },
     { id: "o-price", focus: "price", title: "Review Price Position",
-      problem: highPrice.length + " products are priced more than 10% above their matched competitor.",
+      problem: highPrice.length + " products are priced more than 10% above their own period average.",
       impact: highPrice.length > 4 ? "Medium" : "Low", count: highPrice.length,
       why: "Shoppers comparing on price filter these lines out before they reach the product page.",
       action: "Review promotional cover on these lines before the next price file goes out." },
@@ -1344,7 +1326,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     categories: byCategory,
     keywords,
     pricing: {
-      own: ownPrice, matchedCompetitorAvg: catAvg, index: idxNow,
+      own: ownPrice, periodAvg: catAvg, index: idxNow,
       lowest: compPrices[0], highest: compPrices[compPrices.length - 1],
       competitors: compPrices,
       verdict: idxNow > 105 ? "above" : idxNow < 95 ? "below" : "inline",
@@ -1480,7 +1462,7 @@ function salesData(retailer: string, period: string, dateRange?: DateRange | nul
   const headwinds = sorted.filter((c) => c.delta < 0).slice(-3).reverse().map((c) => {
     const inCat = pool.filter((p) => p.category === c.category);
     const availPain = inCat.filter((p) => p.inStockRate < 95).length;
-    const pricePain = inCat.filter((p) => p.priceIndex != null && p.priceIndex > 1.08).length;
+    const pricePain = inCat.filter((p) => p.priceIndex > 1.08).length;
     return {
       label: c.category, delta: c.delta, growth: c.growth,
       driver: availPain >= pricePain ? "lower availability" : "price increases",
@@ -1532,7 +1514,7 @@ function salesData(retailer: string, period: string, dateRange?: DateRange | nul
   const topCat = byCategory.slice().sort((a, b) => b.growth - a.growth)[0];
   const topRetailer = byRetailer.slice().sort((a, b) => b.growth - a.growth)[0];
   const decliners = pool.filter((p) => p.salesGrowth < 0);
-  const pricey = pool.filter((p) => p.priceIndex != null && p.priceIndex > 1.1 && p.sales > total / (pool.length || 1));
+  const pricey = pool.filter((p) => p.priceIndex > 1.1 && p.sales > total / (pool.length || 1));
   const opportunities = [
     { id: "so-share", focus: "", target: "category", title: "Gain share in " + topCat.category,
       problem: topCat.category + " is growing " + topCat.growth.toFixed(1) + "%, but your share sits " +
@@ -1552,7 +1534,7 @@ function salesData(retailer: string, period: string, dateRange?: DateRange | nul
       impact: "Medium", count: topRetailer.skus, action: "Take the range extension case to this account first this quarter.",
       cta: "View retailer", value: topRetailer.id },
     { id: "so-price", focus: "price", target: "products", title: "Review pricing",
-      problem: pricey.length + " high-volume products are priced materially above their matched competitor.",
+      problem: pricey.length + " high-volume products are priced materially above their own period average.",
       why: "Price-led comparison shopping removes these lines from consideration before the page is seen.",
       impact: "Medium", count: pricey.length, action: "Model a promotional price on the highest-volume lines before the next price file.",
       cta: "View products", value: "" },
@@ -1727,7 +1709,7 @@ export function toCsv(rows: any[]) {
   };
   const lines = [cols.join(",")].concat(rows.map((p) => [
     p.id.toUpperCase(), p.name, p.brand, p.category, p.retailerName, p.searchRank, p.rankDelta,
-    p.searchVisibility, p.price.toFixed(2), p.priceIndex != null ? (p.priceIndex * 100).toFixed(0) : "", p.stockStatus, p.inStockRate,
+    p.searchVisibility, p.price.toFixed(2), (p.priceIndex * 100).toFixed(0), p.stockStatus, p.inStockRate,
     p.rating.toFixed(2), p.reviews, p.contentScore, p.shelfScore, p.opportunity,
   ].map(cell).join(",")));
   return lines.join("\n");

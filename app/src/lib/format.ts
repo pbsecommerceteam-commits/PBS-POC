@@ -89,9 +89,9 @@ export function kpiCard(k: { id: string; label: string; unit: string; value: num
     : inverted
     ? (k.value <= k.target ? 1.2 : k.target === 0 ? 0.5 : k.target / Math.max(k.value, 0.01))
     : k.value / (k.target || 1);
-  /* Price Index has no target -- it's a competitive read (are you priced
-     above/below matched competitors), not a goal to hit, so it gets no
-     status band and no "Target ___" line, unlike every other KPI here. */
+  /* Price Index has no target -- it's a read of current pricing against
+     this period's own average, not a goal to hit, so it gets no status
+     band and no "Target ___" line, unlike every other KPI here. */
   const statusText = k.id === "pidx" ? ""
     : growthKind
     ? (k.value < 0 ? "Declining" : diff >= 0 ? "Ahead of benchmark" : diff >= -1 ? "Near benchmark" : "Behind benchmark")
@@ -111,7 +111,7 @@ export function kpiCard(k: { id: string; label: string; unit: string; value: num
     statusColor: ratio >= 1 ? "var(--color-accent-800)"
       : ratio >= 0.95 ? "var(--color-accent-500)" : "var(--color-neutral-600)",
     goalText: k.id === "reviews" ? "Target 20k"
-      : k.id === "pidx" ? "vs. matched competitor price"
+      : k.id === "pidx" ? "vs. this period's average"
       : isMoney ? "Previous " + money(k.value - k.delta)
       : k.id === "catgrowth" ? "Portfolio " + k.target.toFixed(1) + "%"
       : "Target " + k.target + k.unit,

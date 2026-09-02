@@ -10,8 +10,8 @@ export default function DigitalShelfBenchmarks() {
 
   const pr = sh.pricing;
   const priceRows = [
-    { label: "Your average price", value: pr.own, kind: "own" },
-    { label: "Matched competitor avg.", value: pr.matchedCompetitorAvg, kind: "cat" },
+    { label: "Your current price", value: pr.own, kind: "own" },
+    { label: "Your period average price", value: pr.periodAvg, kind: "cat" },
     { label: "Lowest competitor — " + pr.lowest.name, value: pr.lowest.price, kind: "low" },
     { label: "Highest competitor — " + pr.highest.name, value: pr.highest.price, kind: "high" },
   ];
@@ -23,8 +23,8 @@ export default function DigitalShelfBenchmarks() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(380px,1fr))", gap: "var(--app-gap)" }}>
         <Card padding="20px 22px">
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-            <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Price intelligence</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Your shelf price against the same items' price at matched competitor retailers; named rivals below are illustrative — no resolvable competitor entity in the raw crawl</div></div>
-            <Badge tone={pr.verdict === "inline" ? "positive" : "warning"}>{pr.verdict === "above" ? "Above competitor" : pr.verdict === "below" ? "Below competitor" : "In line"}</Badge>
+            <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Price intelligence</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Your current shelf price against your own average selling price this period; named rivals below are illustrative — no resolvable competitor entity in the raw crawl</div></div>
+            <Badge tone={pr.verdict === "inline" ? "positive" : "warning"}>{pr.verdict === "above" ? "Above average" : pr.verdict === "below" ? "Below average" : "In line"}</Badge>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {priceRows.map((r) => (
@@ -40,9 +40,9 @@ export default function DigitalShelfBenchmarks() {
             ))}
           </div>
           <div className="sl-muted" style={{ fontSize: 12.5, lineHeight: 1.55, marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border-subtle)" }}>
-            {pr.verdict === "above" ? `Your portfolio is priced ${Math.abs(pr.gap).toFixed(1)}% above matched competitor listings — index ${pr.index.toFixed(1)}.`
-              : pr.verdict === "below" ? `Your portfolio is priced ${Math.abs(pr.gap).toFixed(1)}% below matched competitor listings — index ${pr.index.toFixed(1)}.`
-              : `Your portfolio is within 5% of matched competitor listings — index ${pr.index.toFixed(1)}.`}
+            {pr.verdict === "above" ? `Your portfolio is currently priced ${Math.abs(pr.gap).toFixed(1)}% above its own period average — index ${pr.index.toFixed(1)}.`
+              : pr.verdict === "below" ? `Your portfolio is currently priced ${Math.abs(pr.gap).toFixed(1)}% below its own period average — index ${pr.index.toFixed(1)}.`
+              : `Your portfolio is within 5% of its own period average — index ${pr.index.toFixed(1)}.`}
           </div>
         </Card>
 
