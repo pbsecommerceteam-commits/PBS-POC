@@ -221,7 +221,7 @@ def main():
 
         desc = row.get("Product description") or ""
         desc_len = row.get("Description no of chars") or 0
-        check_description = bool(desc) and desc_len <= 2000
+        check_description = bool(desc) and 200 <= desc_len <= 2000
 
         rating = row.get("Rating")
         check_rating = rating is not None and rating >= 4.0
