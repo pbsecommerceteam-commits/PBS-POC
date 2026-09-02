@@ -55,7 +55,7 @@ export default function SalesShareProducts() {
       <><span style={{ fontWeight: 600 }}>#{p.searchRank}</span><span style={{ fontSize: 11.5, marginLeft: 5, color: deltaColor(p.rankDelta) }}>{p.rankDelta === 0 ? "—" : (p.rankDelta > 0 ? "↑" : "↓") + Math.abs(p.rankDelta)}</span>
       <div className="sl-table-sub">{p.searchVisibility}% visibility</div></>
     ) },
-    { key: "price", label: "Price", align: "right", sortable: true, render: (p) => (<><span>${p.price.toFixed(2)}</span><div className="sl-table-sub">Index {(p.priceIndex * 100).toFixed(0)}</div></>) },
+    { key: "price", label: "Price", align: "right", sortable: true, render: (p) => (<><span>${p.price.toFixed(2)}</span><div className="sl-table-sub">{p.priceIndex != null ? "Index " + (p.priceIndex * 100).toFixed(0) : "Not tracked"}</div></>) },
     { key: "inStockRate", label: "Availability", align: "right", sortable: true, render: (p) => (<><Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge><div className="sl-table-sub">{p.inStockRate.toFixed(1)}%</div></>) },
     { key: "rating", label: "Rating", align: "right", sortable: true, render: (p) => (<><span style={{ fontWeight: 500 }}>{p.rating.toFixed(2)}</span><div className="sl-table-sub">{p.reviews.toLocaleString()} reviews</div></>) },
     { key: "buyBox", label: "Buy box", render: (p) => <Badge tone={p.buyBox ? "positive" : "neutral"}>{p.buyBox ? "Held" : "Lost"}</Badge> },

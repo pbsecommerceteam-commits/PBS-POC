@@ -24,9 +24,11 @@ export function KpiCard({ k }: { k: KpiVM }) {
       </svg>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border-subtle)" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: k.statusColor, fontWeight: 500 }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", flex: "none", background: k.statusColor }}></span>{k.statusText}
-        </span>
+        {k.statusText ? (
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: k.statusColor, fontWeight: 500 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", flex: "none", background: k.statusColor }}></span>{k.statusText}
+          </span>
+        ) : <span />}
         <span className="sl-faint" style={{ fontSize: 11.5 }}>{k.goalText}</span>
       </div>
     </Card>
