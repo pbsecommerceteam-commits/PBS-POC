@@ -462,7 +462,7 @@ def main():
         )
 
         stockRate, buyBoxRate, stockWeight, buyBoxWeight, rating, content = [], [], [], [], [], []
-        avgPrice, avgPriceWeight = [], []
+        avgPrice, avgPriceWeight, avgPriceSum = [], [], []
         for wi, wk_start in enumerate(CONTENT_WEEKS):
             wk_end = CONTENT_WEEKS[wi + 1] if wi + 1 < len(CONTENT_WEEKS) else "2022-10-06"
             in_stock_n, total_n, buybox_n, buybox_d = 0, 0, 0, 0
@@ -501,13 +501,21 @@ def main():
             rating.append(avg([raw_rating_by_product[i][wi] for i in ids if i in raw_rating_by_product]))
             avgPrice.append(round(price_sum / price_n, 2) if price_n else (avgPrice[-1] if avgPrice else 0.0))
             avgPriceWeight.append(price_n)
+            # Raw (unrounded) dollar sum behind avgPrice this week -- pooling
+            # multiple weeks from this (sum of sums / sum of counts) is exact,
+            # unlike reconstructing from the already-rounded-to-cents avgPrice
+            # above (round(a)*w_a + round(b)*w_b, pooled, can drift a cent
+            # from the true flat average once the per-week roundings don't
+            # cancel out). avgPrice itself is kept for single-week display
+            # (the "4w" period and the weekly trend chart).
+            avgPriceSum.append(round(price_sum, 4))
         for wi in range(5):
             wk = CONTENT_WEEKS[wi]
             content.append(avg([content_score_by_week[i][wk] for i in ids if i in content_score_by_week]))
         real_rollup_weekly[scope] = {
             "stockRate": stockRate, "buyBoxRate": buyBoxRate, "rating": rating, "content": content,
             "stockRateWeight": stockWeight, "buyBoxRateWeight": buyBoxWeight,
-            "avgPrice": avgPrice, "avgPriceWeight": avgPriceWeight,
+            "avgPrice": avgPrice, "avgPriceWeight": avgPriceWeight, "avgPriceSum": avgPriceSum,
         }
 
     # ── RETAILER_BIAS ────────────────────────────────────────────────────────
@@ -667,18 +675,21 @@ def main():
     out.append("export const REAL_ROLLUP_WEEKLY: Record<string, {")
     out.append("  stockRate: number[]; buyBoxRate: number[]; rating: number[]; content: number[]; avgPrice: number[];")
     out.append("  /* raw daily-row counts behind stockRate/buyBoxRate/avgPrice that week --")
-    out.append("     pool (sum numerator / sum denominator, or sum of prices / count of prices),")
-    out.append("     never average, when combining multiple weeks (e.g. for a custom date")
-    out.append("     range); see the comment above this table's construction in")
-    out.append("     build_mock_data.py for why. */")
-    out.append("  stockRateWeight: number[]; buyBoxRateWeight: number[]; avgPriceWeight: number[];")
+    out.append("     pool (sum numerator / sum denominator), never average, when combining")
+    out.append("     multiple weeks (e.g. for a custom date range); see the comment above")
+    out.append("     this table's construction in build_mock_data.py for why. avgPriceSum is")
+    out.append("     the raw (unrounded) dollar total behind avgPrice that week -- pool")
+    out.append("     avgPriceSum/avgPriceWeight across weeks for an exact result; pooling the")
+    out.append("     already-rounded-to-cents avgPrice instead can drift a cent from the true")
+    out.append("     flat average once per-week roundings don't cancel out. */")
+    out.append("  stockRateWeight: number[]; buyBoxRateWeight: number[]; avgPriceWeight: number[]; avgPriceSum: number[];")
     out.append("}> = {")
     for scope, v in real_rollup_weekly.items():
         out.append(
             f'  {json.dumps(scope)}: {{ stockRate: {json.dumps(v["stockRate"])}, buyBoxRate: {json.dumps(v["buyBoxRate"])}, '
             f'rating: {json.dumps(v["rating"])}, content: {json.dumps(v["content"])}, avgPrice: {json.dumps(v["avgPrice"])}, '
             f'stockRateWeight: {json.dumps(v["stockRateWeight"])}, buyBoxRateWeight: {json.dumps(v["buyBoxRateWeight"])}, '
-            f'avgPriceWeight: {json.dumps(v["avgPriceWeight"])} }},'
+            f'avgPriceWeight: {json.dumps(v["avgPriceWeight"])}, avgPriceSum: {json.dumps(v["avgPriceSum"])} }},'
         )
     out.append("};")
     out.append("")

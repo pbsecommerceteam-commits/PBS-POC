@@ -611,20 +611,23 @@ export const CROSS_RETAILER_MATCH: Record<string, Record<string, string>> = {
 export const REAL_ROLLUP_WEEKLY: Record<string, {
   stockRate: number[]; buyBoxRate: number[]; rating: number[]; content: number[]; avgPrice: number[];
   /* raw daily-row counts behind stockRate/buyBoxRate/avgPrice that week --
-     pool (sum numerator / sum denominator, or sum of prices / count of prices),
-     never average, when combining multiple weeks (e.g. for a custom date
-     range); see the comment above this table's construction in
-     build_mock_data.py for why. */
-  stockRateWeight: number[]; buyBoxRateWeight: number[]; avgPriceWeight: number[];
+     pool (sum numerator / sum denominator), never average, when combining
+     multiple weeks (e.g. for a custom date range); see the comment above
+     this table's construction in build_mock_data.py for why. avgPriceSum is
+     the raw (unrounded) dollar total behind avgPrice that week -- pool
+     avgPriceSum/avgPriceWeight across weeks for an exact result; pooling the
+     already-rounded-to-cents avgPrice instead can drift a cent from the true
+     flat average once per-week roundings don't cancel out. */
+  stockRateWeight: number[]; buyBoxRateWeight: number[]; avgPriceWeight: number[]; avgPriceSum: number[];
 }> = {
-  "portfolio": { stockRate: [62.3, 61.24, 56.77, 62.58, 62.61], buyBoxRate: [82.32, 82.73, 82.48, 82.16, 80.87], rating: [4.26, 4.26, 4.26, 4.26, 4.26], content: [61.13, 61.13, 61.21, 61.24, 61.32], avgPrice: [24.42, 21.72, 21.97, 21.39, 21.59], stockRateWeight: [809, 805, 805, 807, 230], buyBoxRateWeight: [809, 805, 805, 807, 230], avgPriceWeight: [755, 743, 743, 746, 212] },
-  "r1": { stockRate: [64.76, 64.29, 66.67, 67.14, 66.67], buyBoxRate: [61.43, 60.95, 62.38, 62.86, 60.0], rating: [4.27, 4.27, 4.28, 4.29, 4.28], content: [66.73, 66.73, 66.5, 66.63, 66.63], avgPrice: [30.67, 30.65, 30.49, 27.73, 27.8], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [210, 210, 210, 210, 60], avgPriceWeight: [165, 158, 161, 156, 44] },
-  "r2": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [3.78, 3.78, 3.78, 3.78, 3.78], content: [61.4, 61.4, 63.0, 63.0, 63.0], avgPrice: [15.09, 14.64, 14.54, 14.52, 14.62], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20] },
-  "r3": { stockRate: [68.57, 67.14, 42.86, 69.52, 73.33], buyBoxRate: [70.48, 72.86, 70.48, 68.57, 66.67], rating: [4.24, 4.24, 4.24, 4.24, 4.24], content: [58.87, 58.87, 58.87, 58.87, 58.87], avgPrice: [38.53, 29.13, 29.94, 30.16, 30.82], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [210, 210, 210, 210, 60], avgPriceWeight: [210, 210, 210, 210, 60] },
-  "r4": { stockRate: [60.0, 60.0, 60.0, 58.57, 50.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.0, 4.0, 4.0, 3.99, 3.99], content: [61.8, 61.8, 61.8, 61.8, 61.8], avgPrice: [8.06, 8.16, 8.41, 8.41, 8.41], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20] },
-  "r5": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.65, 4.65, 4.65, 4.65, 4.65], content: [60.5, 60.5, 60.5, 60.5, 60.5], avgPrice: [19.43, 19.43, 18.55, 17.89, 17.89], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20] },
-  "r6": { stockRate: [2.52, 0.0, 8.4, 0.0, 0.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.23, 4.24, 4.24, 4.24, 4.24], content: [60.88, 60.88, 60.88, 60.88, 60.88], avgPrice: [17.13, 16.99, 17.52, 18.21, 18.21], stockRateWeight: [119, 119, 119, 119, 34], buyBoxRateWeight: [119, 119, 119, 119, 34], avgPriceWeight: [110, 109, 106, 112, 32] },
-  "r7": { stockRate: [65.0, 62.5, 62.5, 63.79, 62.5], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.67, 4.67, 4.67, 4.67, 4.67], content: [51.2, 51.2, 51.2, 51.2, 52.1], avgPrice: [7.03, 6.62, 6.51, 6.95, 6.51], stockRateWeight: [60, 56, 56, 58, 16], buyBoxRateWeight: [60, 56, 56, 58, 16], avgPriceWeight: [60, 56, 56, 58, 16] },
+  "portfolio": { stockRate: [62.3, 61.24, 56.77, 62.58, 62.61], buyBoxRate: [82.32, 82.73, 82.48, 82.16, 80.87], rating: [4.26, 4.26, 4.26, 4.26, 4.26], content: [61.13, 61.13, 61.21, 61.24, 61.32], avgPrice: [24.42, 21.72, 21.97, 21.39, 21.59], stockRateWeight: [809, 805, 805, 807, 230], buyBoxRateWeight: [809, 805, 805, 807, 230], avgPriceWeight: [755, 743, 743, 746, 212], avgPriceSum: [18438.73, 16138.77, 16324.02, 15958.81, 4577.51] },
+  "r1": { stockRate: [64.76, 64.29, 66.67, 67.14, 66.67], buyBoxRate: [61.43, 60.95, 62.38, 62.86, 60.0], rating: [4.27, 4.27, 4.28, 4.29, 4.28], content: [66.73, 66.73, 66.5, 66.63, 66.63], avgPrice: [30.67, 30.65, 30.49, 27.73, 27.8], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [210, 210, 210, 210, 60], avgPriceWeight: [165, 158, 161, 156, 44], avgPriceSum: [5061.08, 4842.33, 4909.67, 4325.34, 1223.39] },
+  "r2": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [3.78, 3.78, 3.78, 3.78, 3.78], content: [61.4, 61.4, 63.0, 63.0, 63.0], avgPrice: [15.09, 14.64, 14.54, 14.52, 14.62], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20], avgPriceSum: [1056.29, 1024.98, 1017.99, 1016.2, 292.38] },
+  "r3": { stockRate: [68.57, 67.14, 42.86, 69.52, 73.33], buyBoxRate: [70.48, 72.86, 70.48, 68.57, 66.67], rating: [4.24, 4.24, 4.24, 4.24, 4.24], content: [58.87, 58.87, 58.87, 58.87, 58.87], avgPrice: [38.53, 29.13, 29.94, 30.16, 30.82], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [210, 210, 210, 210, 60], avgPriceWeight: [210, 210, 210, 210, 60], avgPriceSum: [8090.51, 6117.77, 6287.62, 6334.55, 1848.94] },
+  "r4": { stockRate: [60.0, 60.0, 60.0, 58.57, 50.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.0, 4.0, 4.0, 3.99, 3.99], content: [61.8, 61.8, 61.8, 61.8, 61.8], avgPrice: [8.06, 8.16, 8.41, 8.41, 8.41], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20], avgPriceSum: [564.43, 571.09, 588.63, 588.63, 168.18] },
+  "r5": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.65, 4.65, 4.65, 4.65, 4.65], content: [60.5, 60.5, 60.5, 60.5, 60.5], avgPrice: [19.43, 19.43, 18.55, 17.89, 17.89], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20], avgPriceSum: [1360.1, 1360.1, 1298.42, 1252.16, 357.76] },
+  "r6": { stockRate: [2.52, 0.0, 8.4, 0.0, 0.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.23, 4.24, 4.24, 4.24, 4.24], content: [60.88, 60.88, 60.88, 60.88, 60.88], avgPrice: [17.13, 16.99, 17.52, 18.21, 18.21], stockRateWeight: [119, 119, 119, 119, 34], buyBoxRateWeight: [119, 119, 119, 119, 34], avgPriceWeight: [110, 109, 106, 112, 32], avgPriceSum: [1884.53, 1851.67, 1857.27, 2039.11, 582.74] },
+  "r7": { stockRate: [65.0, 62.5, 62.5, 63.79, 62.5], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.67, 4.67, 4.67, 4.67, 4.67], content: [51.2, 51.2, 51.2, 51.2, 52.1], avgPrice: [7.03, 6.62, 6.51, 6.95, 6.51], stockRateWeight: [60, 56, 56, 58, 16], buyBoxRateWeight: [60, 56, 56, 58, 16], avgPriceWeight: [60, 56, 56, 58, 16], avgPriceSum: [421.79, 370.83, 364.42, 402.82, 104.12] },
 };
 
 
@@ -770,8 +773,12 @@ function realRangeValueAvgPrice(retailer: string, idx: number[]): { value: numbe
   const row = REAL_ROLLUP_WEEKLY[retailer === "all" ? "portfolio" : retailer];
   if (!row || !idx.length) return null;
   const totalWeight = idx.reduce((s, i) => s + row.avgPriceWeight[i], 0);
+  // Pool from avgPriceSum (raw, unrounded weekly dollar totals) rather than
+  // reconstructing from the already-rounded-to-cents avgPrice -- pooling
+  // rounded numbers can drift a cent from the true flat average once the
+  // per-week roundings don't cancel out (see the comment on this table).
   const value = totalWeight
-    ? idx.reduce((s, i) => s + row.avgPrice[i] * row.avgPriceWeight[i], 0) / totalWeight
+    ? idx.reduce((s, i) => s + row.avgPriceSum[i], 0) / totalWeight
     : idx.reduce((s, i) => s + row.avgPrice[i], 0) / idx.length;
   const delta = row.avgPrice[idx[idx.length - 1]] - row.avgPrice[idx[0]];
   return { value, delta };
