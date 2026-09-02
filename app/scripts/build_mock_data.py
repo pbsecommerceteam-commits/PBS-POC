@@ -62,10 +62,6 @@ REAL_WEEK_LABELS = ["Sep 1", "Sep 8", "Sep 15", "Sep 22", "Sep 29"]
 SOS_WEEKS = ["2022-09-08", "2022-09-15", "2022-09-22", "2022-09-29"]
 REAL_SOS_WEEK_LABELS = ["Sep 8", "Sep 15", "Sep 22", "Sep 29"]
 
-CONTENT_COMPONENT_WEIGHTS = {
-    "title": 20, "description": 15, "images": 25, "attributes": 20, "keywords": 12, "specs": 8,
-}
-
 OOS_MARKERS = ("out of stock", "unavailable", "temporarily out")
 
 
@@ -200,46 +196,46 @@ def main():
         return v
 
     def content_completeness(row):
+        # 8 equally-weighted (12.5% each) pass/fail checks -- score is simply
+        # (number passing / 8) * 100. Every check reads directly from a raw
+        # crawled field (including per-bullet text/length, e.g. "Bullet 3",
+        # "Bullet 3 length", and Rating -- fields the previous continuous
+        # 0-100-per-component rubric never used).
         title = row.get("Title") or ""
         title_len = row.get("Title no of chars") or 0
-        title_score = 100 if (title and title_len >= 40) else (60 if title else 0)
+        check_title = bool(title) and title_len <= 75
+
+        n_images = row.get("No of images") or 0
+        check_images = n_images >= 5
+
+        n_bullets = row.get("No of bullets") or 0
+        check_bullet_count = n_bullets >= 5
+
+        bullets = [row.get(f"Bullet {i}") for i in range(1, 11)]
+        bullets = [b for b in bullets if b]
+        bullet_lengths = [row.get(f"Bullet {i} length") for i in range(1, 11) if row.get(f"Bullet {i}")]
+        check_bullet_caps = bool(bullets) and all(b[:1].isupper() for b in bullets)
+        check_bullet_length = bool(bullet_lengths) and all(
+            bl is not None and 150 <= bl <= 200 for bl in bullet_lengths
+        )
 
         desc = row.get("Product description") or ""
         desc_len = row.get("Description no of chars") or 0
-        bullets = row.get("No of bullets") or 0
-        desc_part = (1.0 if (desc and desc_len >= 60) else 0.0) * 60 + (1.0 if bullets >= 5 else 0.0) * 40
+        check_description = bool(desc) and desc_len <= 2000
 
-        front_img = row.get("Front image")
-        n_images = row.get("No of images") or 0
-        n_videos = row.get("No of videos") or 0
-        img360 = row.get("Image 360")
-        images_part = (
-            (40 if front_img else 0)
-            + (35 if n_images >= 4 else 0)
-            + (15 if n_videos and n_videos > 0 else 0)
-            + (10 if img360 else 0)
-        )
-
-        variant_slots = 0
-        for i in range(1, 23):
-            if row.get(f"Varient label {i}") or row.get(f"Varient value {i}"):
-                variant_slots += 1
-        cat_present = any(row.get(f"Category {i}") for i in range(1, 5))
-        attrs_part = (variant_slots / 22.0) * 70 + (30 if cat_present else 0)
+        rating = row.get("Rating")
+        check_rating = rating is not None and rating >= 4.0
 
         enhanced = str(row.get("Enhanced content") or "").strip().lower() == "yes"
-        keywords_part = 100 if enhanced else 40
+        check_enhanced = enhanced
 
-        ingredients = row.get("Ingredients list")
-        n_questions = row.get("No of questions") or 0
-        specs_part = (70 if ingredients else 0) + (30 if n_questions and n_questions > 0 else 0)
-
-        buckets = {
-            "title": title_score, "description": desc_part, "images": images_part,
-            "attributes": attrs_part, "keywords": keywords_part, "specs": specs_part,
+        checks = {
+            "title": check_title, "images": check_images, "bulletCount": check_bullet_count,
+            "bulletCaps": check_bullet_caps, "bulletLength": check_bullet_length,
+            "description": check_description, "rating": check_rating, "enhanced": check_enhanced,
         }
-        total = sum(buckets[b] * CONTENT_COMPONENT_WEIGHTS[b] for b in buckets) / 100.0
-        return round(total), buckets
+        score = int(sum(checks.values()) / len(checks) * 100 + 0.5)
+        return score, checks
 
     # ── build catalog + REAL_PRODUCT_WEEKLY ─────────────────────────────────
     catalog = []
