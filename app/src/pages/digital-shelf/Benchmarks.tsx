@@ -40,9 +40,9 @@ export default function DigitalShelfBenchmarks() {
             ))}
           </div>
           <div className="sl-muted" style={{ fontSize: 12.5, lineHeight: 1.55, marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border-subtle)" }}>
-            {pr.verdict === "above" ? `Your portfolio is currently priced ${Math.abs(pr.gap).toFixed(1)}% above its own period average — index ${pr.index.toFixed(1)}.`
-              : pr.verdict === "below" ? `Your portfolio is currently priced ${Math.abs(pr.gap).toFixed(1)}% below its own period average — index ${pr.index.toFixed(1)}.`
-              : `Your portfolio is within 5% of its own period average — index ${pr.index.toFixed(1)}.`}
+            {pr.verdict === "above" ? `Your portfolio is currently priced ${Math.abs(pr.gap).toFixed(1)}% above its own period average of $${pr.periodAvg.toFixed(2)}.`
+              : pr.verdict === "below" ? `Your portfolio is currently priced ${Math.abs(pr.gap).toFixed(1)}% below its own period average of $${pr.periodAvg.toFixed(2)}.`
+              : `Your portfolio is within 5% of its own period average of $${pr.periodAvg.toFixed(2)}.`}
           </div>
         </Card>
 

@@ -78,7 +78,7 @@ export interface KpiVM {
  *  KpiCard component renders. Ported verbatim from Component#kpiCard. */
 export function kpiCard(k: { id: string; label: string; unit: string; value: number; delta: number; target: number; spark: number[] }, sparkFn: (vals: number[]) => { d: string; area: string }): KpiVM {
   const inverted = ["oos", "rank", "gap", "issues", "pidx"].indexOf(k.id) >= 0;
-  const digits = k.id === "rating" ? 2 : (k.id === "rank" || k.id === "pidx" || k.unit === "%") ? 1 : 0;
+  const digits = k.id === "rating" || k.id === "pidx" ? 2 : (k.id === "rank" || k.unit === "%") ? 1 : 0;
   const up = k.delta >= 0;
   const good = inverted ? !up : up;
   const sp = sparkFn(k.spark);
@@ -89,9 +89,9 @@ export function kpiCard(k: { id: string; label: string; unit: string; value: num
     : inverted
     ? (k.value <= k.target ? 1.2 : k.target === 0 ? 0.5 : k.target / Math.max(k.value, 0.01))
     : k.value / (k.target || 1);
-  /* Price Index has no target -- it's a read of current pricing against
-     this period's own average, not a goal to hit, so it gets no status
-     band and no "Target ___" line, unlike every other KPI here. */
+  /* Average Price has no target -- it's a real dollar figure, not a goal
+     to hit, so it gets no status band and no "Target ___" line, unlike
+     every other KPI here. */
   const statusText = k.id === "pidx" ? ""
     : growthKind
     ? (k.value < 0 ? "Declining" : diff >= 0 ? "Ahead of benchmark" : diff >= -1 ? "Near benchmark" : "Behind benchmark")
@@ -101,17 +101,19 @@ export function kpiCard(k: { id: string; label: string; unit: string; value: num
   return {
     label: k.label, unit: k.unit,
     valueText: isMoney ? money(k.value)
+      : k.id === "pidx" ? "$" + k.value.toFixed(2)
       : k.id === "reviews" ? k.value.toLocaleString()
       : k.value.toFixed(digits).replace("-", "−"),
     deltaText: isMoney
       ? (up ? "↑ " : "↓ ") + money(Math.abs(k.delta))
+      : k.id === "pidx" ? (k.delta === 0 ? "→ " : up ? "↑ " : "↓ ") + "$" + Math.abs(k.delta).toFixed(2)
       : (k.delta === 0 ? "→ " : up ? "↑ " : "↓ ") + Math.abs(k.delta).toFixed(digits) + (k.unit === "%" ? " pts" : ""),
     deltaColor: deltaColor(good ? 1 : -1),
     statusText,
     statusColor: ratio >= 1 ? "var(--color-accent-800)"
       : ratio >= 0.95 ? "var(--color-accent-500)" : "var(--color-neutral-600)",
     goalText: k.id === "reviews" ? "Target 20k"
-      : k.id === "pidx" ? "vs. this period's average"
+      : k.id === "pidx" ? "Previous $" + (k.value - k.delta).toFixed(2)
       : isMoney ? "Previous " + money(k.value - k.delta)
       : k.id === "catgrowth" ? "Portfolio " + k.target.toFixed(1) + "%"
       : "Target " + k.target + k.unit,
