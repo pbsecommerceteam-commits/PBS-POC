@@ -81,7 +81,7 @@ export const alertTypes = [
   { id: "price", name: "Price change", condition: "Shelf price moves by more than", unit: "%", preset: "5" },
   { id: "rank", name: "Search rank change", condition: "Search rank drops below position", unit: "", preset: "10" },
   { id: "rating", name: "Rating change", condition: "Average rating falls below", unit: "", preset: "4.2" },
-  { id: "content", name: "Content completeness", condition: "Content completeness falls below", unit: "/100", preset: "80" },
+  { id: "content", name: "Content completeness", condition: "Content completeness falls below", unit: "%", preset: "80" },
   { id: "competitor", name: "Competitor movement", condition: "Competitor share of search rises above", unit: "%", preset: "30" },
 ];
 
@@ -1122,7 +1122,7 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       kpi("sos", "Search Visibility", "%", sos, 40, 1, realRangeValueSos(retailer, dateRange ? rangeMatch!.idx : DEFAULT_NARROW_IDX, category)),
       kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1, realRangeValue(retailer, "stockRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2, realRangeValueAvgPrice(retailer, dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
-      kpi("content", "Content Completeness", "/100", contentVals, 95, 0, realRangeValue(retailer, "content", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
+      kpi("content", "Content Completeness", "%", contentVals, 95, 0, realRangeValue(retailer, "content", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("buybox", "Buy Box Ownership 1P", "%", buyBoxSeries, 95, 1, realRangeValue(retailer, "buyBoxRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("rating", "Average Rating", "", ratingVals, 4.5, 2, realRangeValue(retailer, "rating", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       { id: "oos", label: "Out of Stock SKUs", unit: "", target: 0, value: oos, delta: Math.round((r() - 0.5) * 4), spark: series(seed + 8, n, oos + 1, oos, 0.7, 0).map((v) => clamp(v, 0, 20)) },
@@ -1531,7 +1531,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
       kpi("sos", "Search Visibility", "%", sos, 40, 1, realRangeValueSos(retailer, dateRange ? rangeMatch!.idx : DEFAULT_NARROW_IDX, category)),
       kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1, realRangeValue(retailer, "stockRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2, realRangeValueAvgPrice(retailer, dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
-      kpi("content", "Content Completeness", "/100", contentVals, 95, 0, realRangeValue(retailer, "content", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
+      kpi("content", "Content Completeness", "%", contentVals, 95, 0, realRangeValue(retailer, "content", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("buybox", "Buy Box Ownership 1P", "%", buyBox, 95, 1, realRangeValue(retailer, "buyBoxRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
     ],
     visibility: {

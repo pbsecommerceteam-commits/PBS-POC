@@ -32,7 +32,7 @@ export default function Settings() {
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Thresholds</h3>
           <div className="field"><label>Availability threshold (%)</label><input className="input" type="number" defaultValue={95} min={0} max={100} /></div>
           <div className="field"><label>Share of search target (%)</label><input className="input" type="number" defaultValue={40} min={0} max={100} /></div>
-          <div className="field"><label>Content completeness target</label><input className="input" type="number" defaultValue={95} min={0} max={100} /></div>
+          <div className="field"><label>Content completeness target (%)</label><input className="input" type="number" defaultValue={95} min={0} max={100} /></div>
           <button className="btn btn-secondary btn-block" onClick={openAlert}>Configure an alert</button>
         </Card>
 

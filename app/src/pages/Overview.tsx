@@ -70,7 +70,7 @@ export default function Overview() {
     { key: "contentScore", label: "Content completeness", align: "right", sortable: true, render: (p) => (
       <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
         <span className="sl-progress-track" style={{ width: 40 }}><span className="sl-progress-fill" style={{ width: p.contentScore + "%" }}></span></span>
-        <span style={{ fontWeight: 600, minWidth: 22 }}>{p.contentScore}</span>
+        <span style={{ fontWeight: 600, minWidth: 30 }}>{p.contentScore}%</span>
       </div>
     ) },
     { key: "opportunity", label: "Opportunity", sortable: true, render: (p) => <Badge tone={opportunityTone(p.opportunity)}>{p.opportunity}</Badge> },
@@ -126,7 +126,7 @@ export default function Overview() {
                   <td><div className="sl-table-name">{r.name}</div><div className="sl-table-sub">{r.skus} tracked SKUs</div></td>
                   <td style={{ textAlign: "right", whiteSpace: "nowrap" }}><span style={{ fontWeight: 600 }}>{pct(r.sos)}</span> <span style={{ fontSize: 11.5, marginLeft: 6, color: deltaColor(r.sosDelta) }}>{delta(r.sosDelta)}</span></td>
                   <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{pct(r.inStock)} <span style={{ fontSize: 11.5, marginLeft: 6, color: deltaColor(r.inStockDelta) }}>{delta(r.inStockDelta)}</span></td>
-                  <td style={{ textAlign: "right" }}>{r.content}</td>
+                  <td style={{ textAlign: "right" }}>{r.content}%</td>
                   <td style={{ textAlign: "right" }}>{r.rating.toFixed(2)}</td>
                   <td style={{ textAlign: "right" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 9, justifyContent: "flex-end" }}>
@@ -163,7 +163,7 @@ export default function Overview() {
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 11.5 }} className="sl-muted">
                   <span>Visibility {pct(c.sos)}</span>
                   <span>Avail. {pct(c.availability)}</span>
-                  <span>Content {c.content}</span>
+                  <span>Content {c.content}%</span>
                 </div>
               </Card>
             );

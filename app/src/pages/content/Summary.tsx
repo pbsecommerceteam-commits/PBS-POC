@@ -20,7 +20,7 @@ export default function ContentSummary() {
   const withVariations = snap.products.filter((p: any) => p.variations.length > 0).length;
   const totalVariations = snap.products.reduce((a: number, p: any) => a + p.variations.length, 0);
   const trend = lineChart({ id: "ctrend", title: "Content Completeness Trend", subtitle: "Weighted completeness across tracked pages",
-    labels: snap.labels, lo: 40, hi: 100, ticks: [40, 55, 70, 85, 100], fmt: (v) => String(Math.round(v)), hideLegend: true,
+    labels: snap.labels, lo: 40, hi: 100, ticks: [40, 55, 70, 85, 100], fmt: (v) => Math.round(v) + "%", hideLegend: true,
     series: [{ name: "Content completeness", values: snap.contentTrend.values }], previous: snap.contentTrend.previous, target: 95 }, hover, onEnter);
   const dist = barChart({ id: "cdist", title: "Completeness Distribution", subtitle: "SKUs by content completeness band",
     labels: snap.contentDistribution.map((b: any) => b.bucket), valueName: "SKUs", values: snap.contentDistribution.map((b: any) => b.count),

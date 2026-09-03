@@ -13,7 +13,7 @@ export default function CompetitorList() {
       cell(c.name, { strong: true }), cell(pct(c.share), { align: "right", strong: true }),
       cell(delta(c.delta, " pts"), { align: "right", color: deltaColor(c.delta, true) }),
       cell(String(c.skus), { align: "right" }), cell("$" + c.price.toFixed(2), { align: "right" }),
-      cell(c.rating.toFixed(2), { align: "right" }), cell(String(c.content), { align: "right" }),
+      cell(c.rating.toFixed(2), { align: "right" }), cell(c.content + "%", { align: "right" }),
     ] })));
 
   return <DataTable t={competitorsTable} />;

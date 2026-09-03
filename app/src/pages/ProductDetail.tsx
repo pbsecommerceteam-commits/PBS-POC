@@ -69,7 +69,7 @@ export default function ProductDetail() {
     { id: "rank", label: "Search Rank", unit: "", value: p.searchRank, target: 5, delta: t.rank[0] - p.searchRank, spark: t.rank },
     { id: "instock", label: "Stock Availability 1P + 3P", unit: "%", value: p.inStockRate, target: 98, delta: Number((p.inStockRate - t.stock[0]).toFixed(1)), spark: t.stock },
     { id: "rating", label: "Average Rating", unit: "", value: p.rating, target: 4.5, delta: Number((p.rating - t.rating[0]).toFixed(2)), spark: t.rating },
-    { id: "content", label: "Content Completeness", unit: "/100", value: p.contentScore, target: 95, delta: 0, spark: t.stock.map((_v: number, i: number) => Math.round(p.contentScore - 4 + (i / labels.length) * 4)) },
+    { id: "content", label: "Content Completeness", unit: "%", value: p.contentScore, target: 95, delta: 0, spark: t.stock.map((_v: number, i: number) => Math.round(p.contentScore - 4 + (i / labels.length) * 4)) },
   ];
 
   const maxStars = Math.max(...detail.reviewMix.map((m: any) => m.count));
@@ -100,7 +100,7 @@ export default function ProductDetail() {
     { label: "Search visibility", value: p.searchVisibility + "%", sub: "Rank #" + p.searchRank + " on the primary term" },
     { label: "Stock Availability 1P + 3P", value: p.inStockRate.toFixed(1) + "%", sub: p.stockStatus },
     { label: "Average price", value: "$" + p.avgSellingPrice.toFixed(2), sub: "$" + p.price.toFixed(2) + " current price" },
-    { label: "Content completeness", value: String(p.contentScore), sub: "out of 100" },
+    { label: "Content completeness", value: p.contentScore + "%", sub: "of content checks passed" },
     { label: "Rating", value: p.rating.toFixed(2), sub: "average rating" },
     { label: "Review count", value: p.reviews.toLocaleString(), sub: "tracked reviews" },
     { label: "Buy Box Ownership 1P", value: p.buyBox ? "Held" : "Lost", sub: detail.note },
@@ -113,7 +113,7 @@ export default function ProductDetail() {
       cell(r.retailer), cell(r.matched ? "#" + r.rank : "—", { align: "right", strong: r.matched }),
       cell(r.matched ? "$" + r.price.toFixed(2) : "—", { align: "right" }),
       cell(r.matched ? pct(r.inStock) : "—", { align: "right", color: r.matched && r.inStock >= 98 ? "var(--status-positive-fg)" : "inherit" }),
-      cell(r.matched ? r.rating.toFixed(2) : "—", { align: "right" }), cell(r.matched ? String(r.content) : "—", { align: "right" }),
+      cell(r.matched ? r.rating.toFixed(2) : "—", { align: "right" }), cell(r.matched ? r.content + "%" : "—", { align: "right" }),
       cell(r.isSelf ? "Home retailer" : r.matched ? "Matched product" : "Not tracked in sample", { tone: r.isSelf ? "positive" : r.matched ? "neutral" : "neutral" }),
     ] })));
 

@@ -48,7 +48,7 @@ export function AlertDialog() {
               </select>
             </div>
             <div className="field">
-              <label>Threshold{type.unit ? ` (${type.unit.replace("/100", " /100")})` : ""}</label>
+              <label>Threshold{type.unit ? ` (${type.unit})` : ""}</label>
               <input className="input" type="number" value={alertDraft.threshold} onChange={(e) => setAlertDraft({ threshold: e.target.value })} />
             </div>
           </div>
