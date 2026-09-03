@@ -92,7 +92,7 @@ export default function ProductDetail() {
   const facts = [
     { label: "Search visibility", value: p.searchVisibility + "%", sub: "Rank #" + p.searchRank + " on the primary term" },
     { label: "Availability", value: p.inStockRate.toFixed(1) + "%", sub: p.stockStatus },
-    { label: "Price index", value: (p.priceIndex * 100).toFixed(0), sub: "$" + p.price.toFixed(2) + " current price" },
+    { label: "Average price", value: "$" + p.avgSellingPrice.toFixed(2), sub: "$" + p.price.toFixed(2) + " current price" },
     { label: "Content completeness", value: String(p.contentScore), sub: "out of 100" },
     { label: "Rating", value: p.rating.toFixed(2), sub: "average rating" },
     { label: "Review count", value: p.reviews.toLocaleString(), sub: "tracked reviews" },

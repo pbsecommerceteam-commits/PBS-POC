@@ -659,7 +659,13 @@ function productFor(p: (typeof catalog)[number], key: string) {
     retailerName: (retailers.find((x) => x.id === p.retailer) || ({} as any)).name,
     searchRank: clamp(Math.round(p.rank + (r() - 0.5) * 6), 1, 40),
     rankDelta: Math.round((r() - 0.5) * 9),
-    price: round(p.price * (0.99 + r() * 0.02), 2),
+    /* The "current price" is a specific real fact (the last observed crawl
+       price), not a trend series -- unlike the KPI spark charts, which
+       legitimately synthesize a curve to fill periods outside the real
+       crawl window, there's no honest reason to jitter a single point-in-
+       time value session to session. Always the real catalog price. */
+    price: p.price,
+    avgSellingPrice: (p as any).avgSellingPrice ?? p.price,
     priceIndex: itemPriceIndex(p.price, (p as any).avgSellingPrice ?? null),
     stockStatus: status as "In Stock" | "Low Stock" | "Out of Stock",
     inStockRate: round(clamp(

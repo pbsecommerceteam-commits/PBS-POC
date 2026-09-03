@@ -30,6 +30,7 @@ export interface Product {
   searchRank: number;
   rankDelta: number;
   price: number;
+  avgSellingPrice: number;
   priceIndex: number;
   stockStatus: StockStatus;
   inStockRate: number;
