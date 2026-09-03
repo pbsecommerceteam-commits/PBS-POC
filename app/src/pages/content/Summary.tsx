@@ -14,6 +14,11 @@ export default function ContentSummary() {
   const content = snap.kpis.find((k: any) => k.id === "content");
   const issues = snap.kpis.find((k: any) => k.id === "issues");
   const { improved, declined } = snap.contentChange;
+  /* Real, from the 22 Varient label/value pairs each product's Content-tab
+     row carries (see build_mock_data.py) -- the retailer's other pack-size/
+     color/style listings for that SKU, not a synthetic estimate. */
+  const withVariations = snap.products.filter((p: any) => p.variations.length > 0).length;
+  const totalVariations = snap.products.reduce((a: number, p: any) => a + p.variations.length, 0);
   const trend = lineChart({ id: "ctrend", title: "Content Completeness Trend", subtitle: "Weighted completeness across tracked pages",
     labels: snap.labels, lo: 40, hi: 100, ticks: [40, 55, 70, 85, 100], fmt: (v) => String(Math.round(v)), hideLegend: true,
     series: [{ name: "Content completeness", values: snap.contentTrend.values }], previous: snap.contentTrend.previous, target: 95 }, hover, onEnter);
@@ -37,6 +42,16 @@ export default function ContentSummary() {
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real Sep 1 → Sep 29</div>
         </Card>
         <KpiCard k={kpiCard(issues, spark)} />
+        <Card padding="18px 20px">
+          <div className="sl-muted" style={{ fontSize: 12.5 }}>Products With Variations</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{withVariations}<span style={{ fontSize: 16, fontWeight: 500 }}> / {snap.products.length}</span></div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Real pack-size/color/style listings</div>
+        </Card>
+        <Card padding="18px 20px">
+          <div className="sl-muted" style={{ fontSize: 12.5 }}>Total Variations Tracked</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{totalVariations}</div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Across {withVariations} SKU{withVariations === 1 ? "" : "s"} with variations</div>
+        </Card>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
         <ChartCard c={trend} onLeave={onLeave} />

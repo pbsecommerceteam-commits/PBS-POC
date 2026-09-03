@@ -4,7 +4,7 @@ import { useState } from "react";
  *  real crawled product photo when one downloaded cleanly (115 of 116 did —
  *  see reports/shelfline_assessment.pdf); falls back to a deterministic
  *  monogram tile for the one dead image link or if a photo is missing. */
-export function ProductCell({ id, name, sku, meta, nameLines = 1 }: { id?: string; name: string; sku?: string; meta?: string; nameLines?: number }) {
+export function ProductCell({ id, name, sku, meta, nameLines = 1, imageSize = 34 }: { id?: string; name: string; sku?: string; meta?: string; nameLines?: number; imageSize?: number }) {
   const initials = name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("");
   const [broken, setBroken] = useState(false);
   const showPhoto = id && !broken;
@@ -32,13 +32,13 @@ export function ProductCell({ id, name, sku, meta, nameLines = 1 }: { id?: strin
         <img
           src={`${import.meta.env.BASE_URL}product-images/${id}.jpg`}
           alt=""
-          width={34}
-          height={34}
+          width={imageSize}
+          height={imageSize}
           style={{ borderRadius: "var(--radius-sm)", objectFit: "cover", flex: "none", background: "var(--surface-secondary)" }}
           onError={() => setBroken(true)}
         />
       ) : (
-        <span className="sl-avatar">{initials}</span>
+        <span className="sl-avatar" style={imageSize !== 34 ? { width: imageSize, height: imageSize } : undefined}>{initials}</span>
       )}
       <div style={{ minWidth: 0 }}>
         <div className="sl-table-name" style={nameStyle}>{name}</div>

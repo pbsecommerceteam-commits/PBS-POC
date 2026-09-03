@@ -17,26 +17,29 @@ import type { ContentContext } from "./Layout";
    and mockData.ts's productFor) -- no synthetic/derived label. Description,
    Bullet Points, Ingredients and Variations show the actual crawled copy
    (clamped to a few lines, full text on hover) rather than a length/Yes-No
-   indicator. "Product" is the identity column and can't be hidden.
+   indicator, and sit right after Product since they're the fields most
+   worth reviewing -- everything else (counts, retailer/logistics info)
+   follows. "Product" is the identity column and can't be hidden.
    Deliberately excludes Rank/Category 1-4 (ambiguous relationship to the
    retailer's own taxonomy in the source data) -- see build_mock_data.py's
    comment at the point these are read. */
 const COLUMN_OPTIONS: ColumnOption[] = [
   { id: "name", label: "Product" },
-  { id: "retailerName", label: "Retailer" },
-  { id: "titleLength", label: "Title Length" },
-  { id: "bulletsText", label: "Bullet Points" },
+  { id: "category", label: "Category" },
   { id: "descriptionText", label: "Product Description" },
+  { id: "bulletsText", label: "Bullet Points" },
+  { id: "ingredientsText", label: "Ingredients List" },
+  { id: "variations", label: "Variations" },
+  { id: "variationCount", label: "Variation Count" },
+  { id: "titleLength", label: "Title Length" },
   { id: "imageCount", label: "Images" },
   { id: "videoCount", label: "Videos" },
   { id: "has360Image", label: "360° Image" },
   { id: "enhancedContent", label: "Enhanced Content" },
-  { id: "ingredientsText", label: "Ingredients List" },
-  { id: "variationCount", label: "Variation Count" },
-  { id: "variations", label: "Variations" },
   { id: "questionCount", label: "Questions" },
   { id: "contentScore", label: "Content Score" },
   { id: "completeness", label: "Content Completeness" },
+  { id: "retailerName", label: "Retailer" },
   { id: "retailerId", label: "Retailer ID" },
   { id: "vendorStockNo", label: "Vendor Stock No." },
   { id: "siteCategory", label: "Site Category" },
@@ -46,7 +49,7 @@ const COLUMN_OPTIONS: ColumnOption[] = [
 const DEFAULT_COLUMNS = new Set(COLUMN_OPTIONS.map((c) => c.id));
 
 const yesNo = (v: boolean) => (v ? "Yes" : "No");
-const ROW_HEIGHT = 104; // measured .sl-table row height once description/bullets/name clamp to a fixed 3-line minHeight
+const ROW_HEIGHT = 85; // measured .sl-table row height (3-line clamp minHeight, no more sku/meta subtitle under Product)
 const CARD_CHROME = 260; // header/count row + search row + table header row + pagination + card padding
 
 /* A 3-line clamp with the full text as a native tooltip -- shows real copy
@@ -144,28 +147,33 @@ export default function ContentProducts() {
      Pricing Intelligence's Products table for those). Every field is real,
      straight from the Content-tab crawl (see build_mock_data.py). Product
      shows the full name across up to 3 lines rather than clipping to 1, so
-     row height stays uniform without losing most titles to an ellipsis. */
+     row height stays uniform without losing most titles to an ellipsis --
+     it no longer repeats Retailer ID/Category as a subtitle since both are
+     now their own columns. Column widths are sized to the content each one
+     actually holds (narrow for short counts/flags, wide for real copy) so
+     nothing feels cramped or is left needlessly wide. */
   const ALL_COLUMNS: Column<Product>[] = [
-    { key: "name", label: "Product", minWidth: 340, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.category} nameLines={3} /> },
-    { key: "retailerName", label: "Retailer", sortable: true, render: (p) => p.retailerName },
-    { key: "titleLength", label: "Title Length", align: "right", sortable: true, render: (p) => p.titleLength + " chars" },
-    { key: "bulletsText", label: "Bullet Points", minWidth: 260, sortable: true, render: (p) => <ClampedText text={p.bulletsText.length ? p.bulletsText.join(" • ") : null} /> },
-    { key: "descriptionText", label: "Product Description", minWidth: 260, sortable: true, render: (p) => <ClampedText text={p.descriptionText} /> },
-    { key: "imageCount", label: "Images", align: "right", sortable: true, render: (p) => p.imageCount },
-    { key: "videoCount", label: "Videos", align: "right", sortable: true, render: (p) => p.videoCount },
-    { key: "has360Image", label: "360° Image", sortable: true, render: (p) => <span className={p.has360Image ? undefined : "sl-muted"}>{yesNo(p.has360Image)}</span> },
-    { key: "enhancedContent", label: "Enhanced Content", sortable: true, render: (p) => <span className={p.enhancedContent ? undefined : "sl-muted"}>{yesNo(p.enhancedContent)}</span> },
+    { key: "name", label: "Product", minWidth: 320, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} nameLines={3} imageSize={44} /> },
+    { key: "category", label: "Category", minWidth: 90, sortable: true, render: (p) => p.category },
+    { key: "descriptionText", label: "Product Description", minWidth: 280, sortable: true, render: (p) => <ClampedText text={p.descriptionText} /> },
+    { key: "bulletsText", label: "Bullet Points", minWidth: 280, sortable: true, render: (p) => <ClampedText text={p.bulletsText.length ? p.bulletsText.join(" • ") : null} /> },
     { key: "ingredientsText", label: "Ingredients List", minWidth: 260, sortable: true, render: (p) => <ClampedText text={p.ingredientsText} /> },
-    { key: "variationCount", label: "Variation Count", align: "right", sortable: true, render: (p) => p.variations.length },
     { key: "variations", label: "Variations", minWidth: 220, sortable: true, render: (p) => <ClampedText text={p.variations.length ? p.variations.join(", ") : null} /> },
-    { key: "questionCount", label: "Questions", align: "right", sortable: true, render: (p) => p.questionCount },
-    { key: "contentScore", label: "Content Score", align: "right", sortable: true, render: (p) => <span style={{ fontWeight: 600, color: p.contentScore < 80 ? deltaColor(-1) : "inherit" }}>{p.contentScore}</span> },
-    { key: "completeness", label: "Content Completeness", align: "right", sortable: true, render: (p) => <span>{8 - p.contentChecks.length}/8</span> },
-    { key: "retailerId", label: "Retailer ID", sortable: true, render: (p) => p.retailerId },
-    { key: "vendorStockNo", label: "Vendor Stock No.", sortable: true, render: (p) => p.vendorStockNo ?? "—" },
+    { key: "variationCount", label: "Variation Count", align: "right", minWidth: 110, sortable: true, render: (p) => p.variations.length },
+    { key: "titleLength", label: "Title Length", align: "right", minWidth: 110, sortable: true, render: (p) => p.titleLength + " chars" },
+    { key: "imageCount", label: "Images", align: "right", minWidth: 90, sortable: true, render: (p) => p.imageCount },
+    { key: "videoCount", label: "Videos", align: "right", minWidth: 90, sortable: true, render: (p) => p.videoCount },
+    { key: "has360Image", label: "360° Image", minWidth: 110, sortable: true, render: (p) => <span className={p.has360Image ? undefined : "sl-muted"}>{yesNo(p.has360Image)}</span> },
+    { key: "enhancedContent", label: "Enhanced Content", minWidth: 140, sortable: true, render: (p) => <span className={p.enhancedContent ? undefined : "sl-muted"}>{yesNo(p.enhancedContent)}</span> },
+    { key: "questionCount", label: "Questions", align: "right", minWidth: 100, sortable: true, render: (p) => p.questionCount },
+    { key: "contentScore", label: "Content Score", align: "right", minWidth: 120, sortable: true, render: (p) => <span style={{ fontWeight: 600, color: p.contentScore < 80 ? deltaColor(-1) : "inherit" }}>{p.contentScore}</span> },
+    { key: "completeness", label: "Content Completeness", align: "right", minWidth: 150, sortable: true, render: (p) => <span>{8 - p.contentChecks.length}/8</span> },
+    { key: "retailerName", label: "Retailer", minWidth: 110, sortable: true, render: (p) => p.retailerName },
+    { key: "retailerId", label: "Retailer ID", minWidth: 120, sortable: true, render: (p) => p.retailerId },
+    { key: "vendorStockNo", label: "Vendor Stock No.", minWidth: 130, sortable: true, render: (p) => p.vendorStockNo ?? "—" },
     { key: "siteCategory", label: "Site Category", minWidth: 200, sortable: true, render: (p) => p.siteCategory ?? "—" },
-    { key: "buyBoxSeller", label: "Buy Box Seller", sortable: true, render: (p) => p.buyBoxSeller ?? "—" },
-    { key: "buyBoxShipper", label: "Buy Box Shipper", sortable: true, render: (p) => p.buyBoxShipper ?? "—" },
+    { key: "buyBoxSeller", label: "Buy Box Seller", minWidth: 150, sortable: true, render: (p) => p.buyBoxSeller ?? "—" },
+    { key: "buyBoxShipper", label: "Buy Box Shipper", minWidth: 150, sortable: true, render: (p) => p.buyBoxShipper ?? "—" },
   ];
   const columns = ALL_COLUMNS.filter((c) => c.key === "name" || visibleColumns.has(c.key));
 
