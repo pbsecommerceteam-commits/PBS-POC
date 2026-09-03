@@ -381,11 +381,9 @@ def main():
 
         # Further raw Content-tab fields -- "relevant" here means real,
         # reasonably dense across the 117 SKUs, and semantically legible on
-        # its own. Deliberately NOT included: the 22 Varient label/value
-        # pairs (label 1 covers ~25% of rows, dropping below 3% by pair 10
-        # -- too sparse to be a meaningful column) and Rank 1-4/Category 1-4
-        # (their relationship to the retailer's own taxonomy is ambiguous in
-        # the source data and risks misrepresenting what the number means).
+        # its own. Deliberately NOT included: Rank 1-4/Category 1-4 (their
+        # relationship to the retailer's own taxonomy is ambiguous in the
+        # source data and risks misrepresenting what the number means).
         retailer_id = latest.get("Retailer id")
         vendor_stock_no = latest.get("Vendor stock no")
         site_category = latest.get("Site category")
@@ -404,6 +402,23 @@ def main():
         bullets_text = [latest.get(f"Bullet {i}") for i in range(1, 11)]
         bullets_text = [b for b in bullets_text if b]
         ingredients_text = latest.get("Ingredients list") or None
+
+        # 22 Varient label/value pairs -- observed to be the *other* pack-
+        # size/color/style options the retailer lists alongside this SKU
+        # (e.g. label "size", values "4.52 Lb" / "7.06 Oz" / "1 Oz" across
+        # pairs 1-4 for one product), not a per-product attribute table.
+        # 86 of 117 SKUs have none at all; kept as one aggregated list
+        # (count + "label: value" strings) rather than 22 separate sparse
+        # columns.
+        variations = []
+        for i in range(1, 23):
+            v_label = latest.get(f"Varient label {i}")
+            v_value = latest.get(f"Varient value {i}")
+            if v_label or v_value:
+                # A handful of source rows already have a trailing colon on
+                # the label itself ("Size:") -- strip it so it isn't doubled.
+                label_clean = str(v_label or "Variant").strip().rstrip(":")
+                variations.append(f"{label_clean}: {v_value or 'n/a'}")
 
         catalog.append({
             "id": pid,
@@ -452,6 +467,7 @@ def main():
             "descriptionText": description_text,
             "bulletsText": bullets_text,
             "ingredientsText": ingredients_text,
+            "variations": variations,
         })
 
     # rank = position within (retailer, category) ordered by reviews desc
@@ -704,7 +720,7 @@ def main():
     out.append("export const catalog = [")
     for p in catalog:
         out.append(
-            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, contentChecks: %s, titleLength: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, vendorStockNo: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, hasIngredients: %s, descriptionText: %s, bulletsText: %s, ingredientsText: %s },"
+            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, contentChecks: %s, titleLength: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, vendorStockNo: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, hasIngredients: %s, descriptionText: %s, bulletsText: %s, ingredientsText: %s, variations: %s },"
             % (
                 ts_str(p["id"]), ts_str(p["name"]), ts_str(p["brand"]), ts_str(p["category"]), ts_str(p["retailer"]),
                 ts_num(p["rank"], 1), ts_num(p["price"], 0), ts_num(p["avgSellingPrice"], p["price"] or 0),
@@ -720,6 +736,7 @@ def main():
                 ts_num(p["videoCount"], 0), ts_num(p["questionCount"], 0),
                 ts_bool(p["has360Image"]), ts_bool(p["hasIngredients"]),
                 ts_str(p["descriptionText"]), json.dumps(p["bulletsText"]), ts_str(p["ingredientsText"]),
+                json.dumps(p["variations"]),
             )
         )
     out.append("];")

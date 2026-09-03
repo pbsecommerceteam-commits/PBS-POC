@@ -60,6 +60,7 @@ export interface Product {
   descriptionText: string | null;
   bulletsText: string[];
   ingredientsText: string | null;
+  variations: string[];
   buyBox: boolean;
   opportunity: OpportunityLevel;
   searchVisibility: number;

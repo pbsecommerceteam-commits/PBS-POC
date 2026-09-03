@@ -15,13 +15,12 @@ import type { ContentContext } from "./Layout";
 
 /* Every option here is a real raw Content-tab field (see build_mock_data.py
    and mockData.ts's productFor) -- no synthetic/derived label. Description,
-   Bullet Points and Ingredients show the actual crawled copy (clamped to a
-   few lines, full text on hover) rather than a length/Yes-No indicator.
-   "Product" is the identity column and can't be hidden. Deliberately
-   excludes the 22 Varient label/value pairs (too sparse across the catalog
-   to read as a meaningful column) and Rank/Category 1-4 (ambiguous
-   relationship to the retailer's own taxonomy in the source data) -- see
-   build_mock_data.py's comment at the point these are read. */
+   Bullet Points, Ingredients and Variations show the actual crawled copy
+   (clamped to a few lines, full text on hover) rather than a length/Yes-No
+   indicator. "Product" is the identity column and can't be hidden.
+   Deliberately excludes Rank/Category 1-4 (ambiguous relationship to the
+   retailer's own taxonomy in the source data) -- see build_mock_data.py's
+   comment at the point these are read. */
 const COLUMN_OPTIONS: ColumnOption[] = [
   { id: "name", label: "Product" },
   { id: "retailerName", label: "Retailer" },
@@ -33,6 +32,8 @@ const COLUMN_OPTIONS: ColumnOption[] = [
   { id: "has360Image", label: "360° Image" },
   { id: "enhancedContent", label: "Enhanced Content" },
   { id: "ingredientsText", label: "Ingredients List" },
+  { id: "variationCount", label: "Variation Count" },
+  { id: "variations", label: "Variations" },
   { id: "questionCount", label: "Questions" },
   { id: "contentScore", label: "Content Score" },
   { id: "completeness", label: "Content Completeness" },
@@ -132,7 +133,9 @@ export default function ContentProducts() {
   const SORTERS = { ...productSorters, completeness: (a: Product, b: Product) => (8 - a.contentChecks.length) - (8 - b.contentChecks.length),
     bulletsText: (a: Product, b: Product) => a.bulletsText.length - b.bulletsText.length,
     descriptionText: (a: Product, b: Product) => a.descriptionLength - b.descriptionLength,
-    ingredientsText: (a: Product, b: Product) => Number(!!b.ingredientsText) - Number(!!a.ingredientsText) };
+    ingredientsText: (a: Product, b: Product) => Number(!!b.ingredientsText) - Number(!!a.ingredientsText),
+    variationCount: (a: Product, b: Product) => a.variations.length - b.variations.length,
+    variations: (a: Product, b: Product) => a.variations.length - b.variations.length };
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
     all, SORTERS, "contentScore", pageSize, [retailer, stock, opportunity, category, brand, issue, search, pageSize].join("|"),
   );
@@ -153,6 +156,8 @@ export default function ContentProducts() {
     { key: "has360Image", label: "360° Image", sortable: true, render: (p) => <span className={p.has360Image ? undefined : "sl-muted"}>{yesNo(p.has360Image)}</span> },
     { key: "enhancedContent", label: "Enhanced Content", sortable: true, render: (p) => <span className={p.enhancedContent ? undefined : "sl-muted"}>{yesNo(p.enhancedContent)}</span> },
     { key: "ingredientsText", label: "Ingredients List", minWidth: 260, sortable: true, render: (p) => <ClampedText text={p.ingredientsText} /> },
+    { key: "variationCount", label: "Variation Count", align: "right", sortable: true, render: (p) => p.variations.length },
+    { key: "variations", label: "Variations", minWidth: 220, sortable: true, render: (p) => <ClampedText text={p.variations.length ? p.variations.join(", ") : null} /> },
     { key: "questionCount", label: "Questions", align: "right", sortable: true, render: (p) => p.questionCount },
     { key: "contentScore", label: "Content Score", align: "right", sortable: true, render: (p) => <span style={{ fontWeight: 600, color: p.contentScore < 80 ? deltaColor(-1) : "inherit" }}>{p.contentScore}</span> },
     { key: "completeness", label: "Content Completeness", align: "right", sortable: true, render: (p) => <span>{8 - p.contentChecks.length}/8</span> },
