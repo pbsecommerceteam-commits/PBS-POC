@@ -25,6 +25,10 @@ const STOCK_TABS: Array<{ id: StockStatus | "All"; label: string }> = [
   { id: "All", label: "All" }, { id: "In Stock", label: "In stock" }, { id: "Low Stock", label: "Low" }, { id: "Out of Stock", label: "Out of stock" },
 ];
 
+const CATEGORY_TABS: Array<{ id: string; label: string }> = [
+  { id: "", label: "All" }, { id: "GPC", label: "GPC" }, { id: "HPC", label: "HPC" }, { id: "HG", label: "HG" },
+];
+
 export default function Overview() {
   const { snap } = useDashboardData();
   const { setRetailer } = useFilters();
@@ -33,17 +37,20 @@ export default function Overview() {
   const { hover, onEnter, onLeave } = useChartHover();
   const [stockFilter, setStockFilter] = useState<StockStatus | "All">("All");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const all: Product[] = useMemo(() => {
     if (!snap) return [];
+    const q = searchTerm.trim().toLowerCase();
     return snap.products.filter((p: Product) =>
       (stockFilter === "All" || p.stockStatus === stockFilter) &&
-      (!categoryFilter || p.category === categoryFilter),
+      (!categoryFilter || p.category === categoryFilter) &&
+      (!q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q)),
     );
-  }, [snap, stockFilter, categoryFilter]);
+  }, [snap, stockFilter, categoryFilter, searchTerm]);
 
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
-    all, productSorters, "searchRank", 8, [stockFilter, categoryFilter].join("|"),
+    all, productSorters, "searchRank", 8, [stockFilter, categoryFilter, searchTerm].join("|"),
   );
 
   if (!snap) return <PageShell title="Overview" subtitle="Monitor digital shelf health across your retailers, products and categories."><div /></PageShell>;
@@ -191,8 +198,13 @@ export default function Overview() {
             <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{total} of {snap.products.length} tracked SKUs{categoryFilter ? ` · ${categoryFilter}` : ""}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <input
+              className="input" type="text" placeholder="Search products, SKUs, brands…" value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)} style={{ minWidth: 200, height: 32, fontSize: 12.5 }}
+            />
+            <Tabs options={CATEGORY_TABS} value={categoryFilter} onChange={setCategoryFilter} size="sm" />
             <Tabs options={STOCK_TABS} value={stockFilter} onChange={setStockFilter} size="sm" />
-            {(stockFilter !== "All" || categoryFilter) && <button className="btn btn-ghost" onClick={() => { setStockFilter("All"); setCategoryFilter(""); toast("Filters cleared."); }} style={{ fontSize: 12.5 }}>Clear filters</button>}
+            {(stockFilter !== "All" || categoryFilter || searchTerm) && <button className="btn btn-ghost" onClick={() => { setStockFilter("All"); setCategoryFilter(""); setSearchTerm(""); toast("Filters cleared."); }} style={{ fontSize: 12.5 }}>Clear filters</button>}
           </div>
         </div>
         <SortableTable columns={columns} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} />
@@ -200,7 +212,7 @@ export default function Overview() {
           <div style={{ padding: "32px 4px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
             <div style={{ fontWeight: 600, fontSize: 15 }}>No products match these filters</div>
             <div className="sl-muted" style={{ fontSize: 13 }}>Try a different stock status, category, retailer or search term.</div>
-            <button className="btn btn-secondary" onClick={() => { setStockFilter("All"); setCategoryFilter(""); }}>Reset filters</button>
+            <button className="btn btn-secondary" onClick={() => { setStockFilter("All"); setCategoryFilter(""); setSearchTerm(""); }}>Reset filters</button>
           </div>
         )}
         <Pagination page={page} totalPages={totalPages} total={total} pageSize={8} onPage={setPage} />
