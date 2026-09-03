@@ -23,7 +23,7 @@ const starOf = (p: Product) => String(Math.max(1, Math.min(5, Math.round(p.ratin
    this table (every column is always shown), so "all columns" for export
    purposes is simply this whole list. */
 export const REVIEWS_COLUMNS: Column<Product>[] = [
-  { key: "name", label: "Product", minWidth: 240, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={`${p.category} · ${p.retailerName}`} />, csv: (p) => `${p.id.toUpperCase()} - ${p.name}` },
+  { key: "name", label: "Product", minWidth: 240, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={`${p.category} · ${p.retailerName}`} imageUrl={p.imageUrl} />, csv: (p) => `${p.id.toUpperCase()} - ${p.name}` },
   { key: "rating", label: "Rating", align: "right", sortable: true, render: (p) => <span style={{ fontWeight: 600 }}>{p.rating.toFixed(2)}</span>, csv: (p) => p.rating.toFixed(2) },
   { key: "reviews", label: "Reviews", align: "right", sortable: true, render: (p) => p.reviews.toLocaleString(), csv: (p) => p.reviews },
   { key: "price", label: "Price", align: "right", sortable: true, render: (p) => "$" + p.price.toFixed(2), csv: (p) => p.price.toFixed(2) },

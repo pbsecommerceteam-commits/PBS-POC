@@ -26,10 +26,13 @@ export default function ProductDetail() {
 
   const [detail, setDetail] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const [photoBroken, setPhotoBroken] = useState(false);
+  // Tries the local downloaded photo first, then the real crawled front-
+  // image URL, then the initials monogram -- same fallback order as
+  // ProductCell (see that component's own comment for why).
+  const [photoStage, setPhotoStage] = useState<"local" | "remote" | "initials">("local");
   const reqKey = useRef("");
 
-  useEffect(() => { setPhotoBroken(false); }, [id]);
+  useEffect(() => { setPhotoStage("local"); }, [id]);
 
   useEffect(() => {
     const rangeKey = dateRange ? dateRange.start + ".." + dateRange.end : "";
@@ -127,14 +130,14 @@ export default function ProductDetail() {
     >
       <Card padding="20px 22px">
         <div style={{ display: "flex", alignItems: "flex-start", gap: 18, flexWrap: "wrap" }}>
-          {photoBroken ? (
+          {photoStage === "initials" ? (
             <span className="sl-avatar" style={{ width: 56, height: 56, fontSize: 17, borderRadius: "var(--radius-md)" }}>{initials}</span>
           ) : (
             <img
-              src={`${import.meta.env.BASE_URL}product-images/${p.id}.jpg`}
+              src={photoStage === "local" ? `${import.meta.env.BASE_URL}product-images/${p.id}.jpg` : p.imageUrl}
               alt="" width={56} height={56}
               style={{ borderRadius: "var(--radius-md)", objectFit: "cover", flex: "none", background: "var(--surface-secondary)" }}
-              onError={() => setPhotoBroken(true)}
+              onError={() => setPhotoStage((s) => (s === "local" && p.imageUrl ? "remote" : "initials"))}
             />
           )}
           <div style={{ flex: "1 1 240px", minWidth: 0 }}>

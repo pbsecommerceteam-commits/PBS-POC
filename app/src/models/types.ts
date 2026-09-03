@@ -44,6 +44,8 @@ export interface Product {
   /** Ids of the 8 real content checks (see CONTENT_CHECK_LABELS) this product currently fails; empty = all pass. */
   contentChecks: string[];
   titleLength: number;
+  /** Real front-of-listing photo URL, hotlinked from the retailer's own CDN (Content tab's "Front image"); null if never crawled. */
+  imageUrl: string | null;
   imageCount: number;
   bulletCount: number;
   descriptionLength: number;

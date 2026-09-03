@@ -1,13 +1,18 @@
 import { useState } from "react";
 
-/** The product identity cell used in every product table and list. Shows the
- *  real crawled product photo when one downloaded cleanly (115 of 116 did —
- *  see reports/shelfline_assessment.pdf); falls back to a deterministic
- *  monogram tile for the one dead image link or if a photo is missing. */
-export function ProductCell({ id, name, sku, meta, nameLines = 1, imageSize = 34 }: { id?: string; name: string; sku?: string; meta?: string; nameLines?: number; imageSize?: number }) {
+/** The product identity cell used in every product table and list. Tries a
+ *  locally-downloaded photo first (public/product-images/{id}.jpg -- fast,
+ *  no external dependency, present for a handful of SKUs), then the real
+ *  front-of-listing photo the crawl itself captured (`imageUrl`, hotlinked
+ *  from the retailer's own CDN -- covers effectively the whole catalog),
+ *  and only falls back to a deterministic monogram tile once both a real
+ *  local and real remote photo have failed to load. Never falls back to a
+ *  placeholder/stock image -- every photo shown is a genuine crawled photo
+ *  of that SKU, or it's the monogram. */
+export function ProductCell({ id, name, sku, meta, imageUrl, nameLines = 1, imageSize = 34 }: { id?: string; name: string; sku?: string; meta?: string; imageUrl?: string | null; nameLines?: number; imageSize?: number }) {
   const initials = name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("");
-  const [broken, setBroken] = useState(false);
-  const showPhoto = id && !broken;
+  const [stage, setStage] = useState<"local" | "remote" | "initials">(id ? "local" : imageUrl ? "remote" : "initials");
+  const src = stage === "local" ? `${import.meta.env.BASE_URL}product-images/${id}.jpg` : stage === "remote" ? imageUrl! : undefined;
   /* nameLines > 1 shows the full product name across a fixed number of
      lines instead of clipping to one -- still bounded (so every row in a
      table stays the same height), but much less likely to actually
@@ -28,14 +33,14 @@ export function ProductCell({ id, name, sku, meta, nameLines = 1, imageSize = 34
     : { whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-      {showPhoto ? (
+      {src ? (
         <img
-          src={`${import.meta.env.BASE_URL}product-images/${id}.jpg`}
+          src={src}
           alt=""
           width={imageSize}
           height={imageSize}
           style={{ borderRadius: "var(--radius-sm)", objectFit: "cover", flex: "none", background: "var(--surface-secondary)" }}
-          onError={() => setBroken(true)}
+          onError={() => setStage((s) => (s === "local" && imageUrl ? "remote" : "initials"))}
         />
       ) : (
         <span className="sl-avatar" style={imageSize !== 34 ? { width: imageSize, height: imageSize } : undefined}>{initials}</span>

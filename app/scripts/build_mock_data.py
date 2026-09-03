@@ -378,6 +378,13 @@ def main():
         bullet_count = latest.get("No of bullets") or 0
         description_length = latest.get("Description no of chars") or 0
         enhanced_content = str(latest.get("Enhanced content") or "").strip().lower() == "yes"
+        # The real front-of-listing product photo, hotlinked straight from
+        # the retailer's own CDN (e.g. images-na.ssl-images-amazon.com,
+        # i5.walmartimages.com) -- present on all 585 Content-tab rows this
+        # crawl. Lets the UI show the actual crawled photo instead of only
+        # the initials-avatar fallback for SKUs with no local copy under
+        # public/product-images/.
+        image_url = latest.get("Front image") or None
 
         # Further raw Content-tab fields -- "relevant" here means real,
         # reasonably dense across the 117 SKUs, and semantically legible on
@@ -451,6 +458,7 @@ def main():
             # this product currently FAILS -- empty list means all 8 pass.
             "contentChecks": content_checks_failed,
             "titleLength": title_length,
+            "imageUrl": image_url,
             "imageCount": image_count,
             "bulletCount": bullet_count,
             "descriptionLength": description_length,
@@ -744,7 +752,7 @@ def main():
     out.append("export const catalog = [")
     for p in catalog:
         out.append(
-            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, contentChecks: %s, titleLength: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, vendorStockNo: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, hasIngredients: %s, descriptionText: %s, bulletsText: %s, ingredientsText: %s, variations: %s },"
+            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, contentChecks: %s, titleLength: %s, imageUrl: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, vendorStockNo: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, hasIngredients: %s, descriptionText: %s, bulletsText: %s, ingredientsText: %s, variations: %s },"
             % (
                 ts_str(p["id"]), ts_str(p["name"]), ts_str(p["brand"]), ts_str(p["category"]), ts_str(p["retailer"]),
                 ts_num(p["rank"], 1), ts_num(p["price"], 0), ts_num(p["avgSellingPrice"], p["price"] or 0),
@@ -753,7 +761,7 @@ def main():
                 ts_num(p["priceChangePct"], 0.0), ts_str(p["priceGroup"]),
                 ts_num_or_null(p["listPrice"]), ts_num_or_null(p["currentPrice"]), ts_num_or_null(p["subscriptionPrice"]),
                 json.dumps(p["contentChecks"]),
-                ts_num(p["titleLength"], 0), ts_num(p["imageCount"], 0), ts_num(p["bulletCount"], 0),
+                ts_num(p["titleLength"], 0), ts_str(p["imageUrl"]), ts_num(p["imageCount"], 0), ts_num(p["bulletCount"], 0),
                 ts_num(p["descriptionLength"], 0), ts_bool(p["enhancedContent"]),
                 ts_str(p["retailerId"]), ts_str(p["vendorStockNo"]), ts_str(p["siteCategory"]),
                 ts_str(p["buyBoxSeller"]), ts_str(p["buyBoxShipper"]),

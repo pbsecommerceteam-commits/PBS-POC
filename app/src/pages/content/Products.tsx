@@ -46,7 +46,7 @@ function ClampedText({ text }: { text: string | null }) {
    in sync. `csv` sits next to each `render` so the two can never drift:
    whatever a column visually shows is what it exports, in plain text. */
 export const CONTENT_COLUMNS: Column<Product>[] = [
-  { key: "name", label: "Product", minWidth: 320, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} nameLines={3} imageSize={44} />, csv: (p) => p.name },
+  { key: "name", label: "Product", minWidth: 320, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} nameLines={3} imageSize={44} imageUrl={p.imageUrl} />, csv: (p) => p.name },
   { key: "category", label: "Category", minWidth: 90, sortable: true, render: (p) => p.category, csv: (p) => p.category },
   { key: "retailerName", label: "Retailer", minWidth: 110, sortable: true, render: (p) => p.retailerName, csv: (p) => p.retailerName },
   { key: "retailerId", label: "Retailer ID", minWidth: 120, sortable: true, render: (p) => p.retailerId, csv: (p) => p.retailerId },

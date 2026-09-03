@@ -38,7 +38,7 @@ const visibilityDelta = (p: Product) => Math.round(p.rankDelta * 3.4 * 10) / 10;
    table (every column here is always shown), so "all columns" for export
    purposes is simply this whole list. */
 export const SALES_COLUMNS: Column<Product>[] = [
-  { key: "name", label: "Product", minWidth: 230, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} />, csv: (p) => `${p.id.toUpperCase()} - ${p.name}` },
+  { key: "name", label: "Product", minWidth: 230, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} imageUrl={p.imageUrl} />, csv: (p) => `${p.id.toUpperCase()} - ${p.name}` },
   { key: "retailerName", label: "Retailer", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.retailerName}</span>, csv: (p) => p.retailerName },
   { key: "currentPrice", label: "Current Price", align: "right", sortable: true, render: (p) => <span>${(p.currentPrice ?? p.price).toFixed(2)}</span>, csv: (p) => (p.currentPrice ?? p.price).toFixed(2) },
   { key: "listPrice", label: "List Price", align: "right", sortable: true, render: (p) => <span>{p.listPrice != null ? "$" + p.listPrice.toFixed(2) : "—"}</span>, csv: (p) => p.listPrice != null ? p.listPrice.toFixed(2) : "" },
