@@ -15,6 +15,7 @@ import ContentLayout from "./pages/content/Layout";
 import ContentSummary from "./pages/content/Summary";
 import ContentBenchmarks from "./pages/content/Benchmarks";
 import ContentProducts from "./pages/content/Products";
+import ContentBrands from "./pages/content/Brands";
 import ReviewsLayout from "./pages/reviews/Layout";
 import ReviewsSummary from "./pages/reviews/Summary";
 import ReviewsBenchmarks from "./pages/reviews/Benchmarks";
@@ -50,6 +51,7 @@ export default function App() {
                 <Route index element={<ContentSummary />} />
                 <Route path="benchmarks" element={<ContentBenchmarks />} />
                 <Route path="products" element={<ContentProducts />} />
+                <Route path="brands" element={<ContentBrands />} />
               </Route>
 
               <Route path="reviews" element={<ReviewsLayout />}>

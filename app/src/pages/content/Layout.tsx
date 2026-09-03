@@ -46,6 +46,7 @@ export default function ContentLayout() {
         { label: "Summary", to: "/content", end: true },
         { label: "Benchmarks", to: "/content/benchmarks" },
         { label: "Products", to: "/content/products" },
+        { label: "Brand", to: "/content/brands" },
       ]} />}
       onSaveView={() => toast("View saved.")}
       onExportCsv={snap ? (pageExport ?? defaultExport) : undefined}
