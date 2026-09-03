@@ -57,6 +57,9 @@ export interface Product {
   questionCount: number;
   has360Image: boolean;
   hasIngredients: boolean;
+  descriptionText: string | null;
+  bulletsText: string[];
+  ingredientsText: string | null;
   buyBox: boolean;
   opportunity: OpportunityLevel;
   searchVisibility: number;

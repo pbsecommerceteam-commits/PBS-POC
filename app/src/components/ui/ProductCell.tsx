@@ -14,7 +14,17 @@ export function ProductCell({ id, name, sku, meta, nameLines = 1 }: { id?: strin
      truncate a real product title than the 1-line default used in dense
      tables. */
   const nameStyle = nameLines > 1
-    ? { display: "-webkit-box", WebkitLineClamp: nameLines, WebkitBoxOrient: "vertical" as const, overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.3 }
+    // whiteSpace must be set explicitly here -- it's inherited, and the
+    // ancestor table cell forces nowrap (see app.css's row-height-
+    // consistency rule), which would otherwise stop this box from ever
+    // wrapping past line 1 regardless of WebkitLineClamp. minHeight (not
+    // just the line-clamp max) is what makes row height actually uniform --
+    // line-clamp alone only caps how tall a *long* name can get, so a short
+    // 1-line name would otherwise render shorter than its neighbors. 58px =
+    // 3 lines at this font-size/line-height -- must match content/
+    // Products.tsx's own text-column CLAMP_STYLE (also 58px) so every
+    // clamped cell in a row bottoms out at the same height.
+    ? { display: "-webkit-box", WebkitLineClamp: nameLines, WebkitBoxOrient: "vertical" as const, overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.35, whiteSpace: "normal" as const, minHeight: 58 }
     : { whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>

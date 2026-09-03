@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { FacetPanel, type FacetGroup } from "../../components/ui/FacetPanel";
@@ -14,22 +14,25 @@ import type { Product } from "../../models/types";
 import type { ContentContext } from "./Layout";
 
 /* Every option here is a real raw Content-tab field (see build_mock_data.py
-   and mockData.ts's productFor) -- no synthetic/derived label. "Product" is
-   the identity column and can't be hidden. Deliberately excludes the 22
-   Varient label/value pairs (too sparse across the catalog to read as a
-   meaningful column) and Rank/Category 1-4 (ambiguous relationship to the
-   retailer's own taxonomy in the source data) -- see build_mock_data.py's
-   comment at the point these are read for the full reasoning. */
+   and mockData.ts's productFor) -- no synthetic/derived label. Description,
+   Bullet Points and Ingredients show the actual crawled copy (clamped to a
+   few lines, full text on hover) rather than a length/Yes-No indicator.
+   "Product" is the identity column and can't be hidden. Deliberately
+   excludes the 22 Varient label/value pairs (too sparse across the catalog
+   to read as a meaningful column) and Rank/Category 1-4 (ambiguous
+   relationship to the retailer's own taxonomy in the source data) -- see
+   build_mock_data.py's comment at the point these are read. */
 const COLUMN_OPTIONS: ColumnOption[] = [
   { id: "name", label: "Product" },
+  { id: "retailerName", label: "Retailer" },
   { id: "titleLength", label: "Title Length" },
-  { id: "bulletCount", label: "Bullet Points" },
-  { id: "descriptionLength", label: "Description Length" },
+  { id: "bulletsText", label: "Bullet Points" },
+  { id: "descriptionText", label: "Product Description" },
   { id: "imageCount", label: "Images" },
   { id: "videoCount", label: "Videos" },
   { id: "has360Image", label: "360° Image" },
   { id: "enhancedContent", label: "Enhanced Content" },
-  { id: "hasIngredients", label: "Ingredients List" },
+  { id: "ingredientsText", label: "Ingredients List" },
   { id: "questionCount", label: "Questions" },
   { id: "contentScore", label: "Content Score" },
   { id: "completeness", label: "Content Completeness" },
@@ -42,8 +45,23 @@ const COLUMN_OPTIONS: ColumnOption[] = [
 const DEFAULT_COLUMNS = new Set(COLUMN_OPTIONS.map((c) => c.id));
 
 const yesNo = (v: boolean) => (v ? "Yes" : "No");
-const ROW_HEIGHT = 65; // measured .sl-table row height (see app.css)
+const ROW_HEIGHT = 104; // measured .sl-table row height once description/bullets/name clamp to a fixed 3-line minHeight
 const CARD_CHROME = 260; // header/count row + search row + table header row + pagination + card padding
+
+/* A 3-line clamp with the full text as a native tooltip -- shows real copy
+   (not just a length) while every row still bottoms out at the same height
+   regardless of how long that copy runs. minHeight (not just the line-clamp
+   max) is what actually guarantees uniformity: line-clamp alone only caps
+   the *tallest* a cell can get, so a cell with 1 line of real content would
+   otherwise render shorter than a neighboring 3-line cell in the same row.
+   58px = 3 lines at this font-size/line-height -- must match ProductCell's
+   own nameLines>1 minHeight (also 58px) so the Product column's clamp and
+   these clamp to the exact same row height. */
+const CLAMP_STYLE: CSSProperties = { display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "normal", lineHeight: 1.35, maxWidth: 320, minHeight: 58 };
+function ClampedText({ text }: { text: string | null }) {
+  if (!text) return <span className="sl-muted">—</span>;
+  return <span title={text} style={CLAMP_STYLE}>{text}</span>;
+}
 
 export default function ContentProducts() {
   const { products } = useOutletContext<ContentContext>();
@@ -52,6 +70,7 @@ export default function ContentProducts() {
   const [opportunity, setOpportunity] = useState<string[]>([]);
   const [category, setCategory] = useState<string[]>([]);
   const [brand, setBrand] = useState<string[]>([]);
+  const [retailer, setRetailer] = useState<string[]>([]);
   const [issue, setIssue] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(DEFAULT_COLUMNS);
@@ -84,10 +103,12 @@ export default function ContentProducts() {
   const oppCounts = countBy("opportunity");
   const catCounts = countBy("category");
   const brandCounts = countBy("brand");
+  const retailerCounts = countBy("retailerName");
   const issueCounts: Record<string, number> = {};
   products.forEach((p) => p.contentChecks.forEach((id) => { issueCounts[id] = (issueCounts[id] || 0) + 1; }));
 
   const facets: FacetGroup[] = [
+    { id: "retailer", title: "Retailer", selected: retailer, onChange: setRetailer, options: Object.keys(retailerCounts).sort().map((id) => ({ id, label: id, count: retailerCounts[id] })) },
     { id: "stock", title: "Stock status", selected: stock, onChange: setStock, options: ["In Stock", "Low Stock", "Out of Stock"].map((id) => ({ id, label: id, count: stockCounts[id] || 0 })) },
     { id: "opportunity", title: "Opportunity", selected: opportunity, onChange: setOpportunity, options: ["High", "Medium", "Low"].map((id) => ({ id, label: id, count: oppCounts[id] || 0 })) },
     { id: "category", title: "Category", selected: category, onChange: setCategory, options: Object.keys(catCounts).sort().map((id) => ({ id, label: id, count: catCounts[id] })) },
@@ -98,6 +119,7 @@ export default function ContentProducts() {
   const all: Product[] = useMemo(() => {
     const q = search.trim().toLowerCase();
     return products.filter((p) =>
+      (retailer.length === 0 || retailer.includes(p.retailerName)) &&
       (stock.length === 0 || stock.includes(p.stockStatus)) &&
       (opportunity.length === 0 || opportunity.includes(p.opportunity)) &&
       (category.length === 0 || category.includes(p.category)) &&
@@ -105,28 +127,32 @@ export default function ContentProducts() {
       (issue.length === 0 || issue.some((id) => p.contentChecks.includes(id))) &&
       (!q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)),
     );
-  }, [products, stock, opportunity, category, brand, issue, search]);
+  }, [products, retailer, stock, opportunity, category, brand, issue, search]);
 
-  const SORTERS = { ...productSorters, completeness: (a: Product, b: Product) => (8 - a.contentChecks.length) - (8 - b.contentChecks.length) };
+  const SORTERS = { ...productSorters, completeness: (a: Product, b: Product) => (8 - a.contentChecks.length) - (8 - b.contentChecks.length),
+    bulletsText: (a: Product, b: Product) => a.bulletsText.length - b.bulletsText.length,
+    descriptionText: (a: Product, b: Product) => a.descriptionLength - b.descriptionLength,
+    ingredientsText: (a: Product, b: Product) => Number(!!b.ingredientsText) - Number(!!a.ingredientsText) };
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
-    all, SORTERS, "contentScore", pageSize, [stock, opportunity, category, brand, issue, search, pageSize].join("|"),
+    all, SORTERS, "contentScore", pageSize, [retailer, stock, opportunity, category, brand, issue, search, pageSize].join("|"),
   );
 
   /* Content-only columns -- no price, stock, rating or opportunity here (see
      Pricing Intelligence's Products table for those). Every field is real,
      straight from the Content-tab crawl (see build_mock_data.py). Product
-     shows the full name across up to 2 lines rather than clipping to 1, so
+     shows the full name across up to 3 lines rather than clipping to 1, so
      row height stays uniform without losing most titles to an ellipsis. */
   const ALL_COLUMNS: Column<Product>[] = [
-    { key: "name", label: "Product", minWidth: 300, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={`${p.category} · ${p.retailerName}`} nameLines={2} /> },
+    { key: "name", label: "Product", minWidth: 340, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.category} nameLines={3} /> },
+    { key: "retailerName", label: "Retailer", sortable: true, render: (p) => p.retailerName },
     { key: "titleLength", label: "Title Length", align: "right", sortable: true, render: (p) => p.titleLength + " chars" },
-    { key: "bulletCount", label: "Bullet Points", align: "right", sortable: true, render: (p) => p.bulletCount },
-    { key: "descriptionLength", label: "Description Length", align: "right", sortable: true, render: (p) => p.descriptionLength + " chars" },
+    { key: "bulletsText", label: "Bullet Points", minWidth: 260, sortable: true, render: (p) => <ClampedText text={p.bulletsText.length ? p.bulletsText.join(" • ") : null} /> },
+    { key: "descriptionText", label: "Product Description", minWidth: 260, sortable: true, render: (p) => <ClampedText text={p.descriptionText} /> },
     { key: "imageCount", label: "Images", align: "right", sortable: true, render: (p) => p.imageCount },
     { key: "videoCount", label: "Videos", align: "right", sortable: true, render: (p) => p.videoCount },
     { key: "has360Image", label: "360° Image", sortable: true, render: (p) => <span className={p.has360Image ? undefined : "sl-muted"}>{yesNo(p.has360Image)}</span> },
     { key: "enhancedContent", label: "Enhanced Content", sortable: true, render: (p) => <span className={p.enhancedContent ? undefined : "sl-muted"}>{yesNo(p.enhancedContent)}</span> },
-    { key: "hasIngredients", label: "Ingredients List", sortable: true, render: (p) => <span className={p.hasIngredients ? undefined : "sl-muted"}>{yesNo(p.hasIngredients)}</span> },
+    { key: "ingredientsText", label: "Ingredients List", minWidth: 260, sortable: true, render: (p) => <ClampedText text={p.ingredientsText} /> },
     { key: "questionCount", label: "Questions", align: "right", sortable: true, render: (p) => p.questionCount },
     { key: "contentScore", label: "Content Score", align: "right", sortable: true, render: (p) => <span style={{ fontWeight: 600, color: p.contentScore < 80 ? deltaColor(-1) : "inherit" }}>{p.contentScore}</span> },
     { key: "completeness", label: "Content Completeness", align: "right", sortable: true, render: (p) => <span>{8 - p.contentChecks.length}/8</span> },
@@ -141,7 +167,7 @@ export default function ContentProducts() {
   return (
     <div style={{ display: "flex", gap: "var(--app-gap)", alignItems: "flex-start" }}>
       <div ref={facetRef}>
-        <FacetPanel groups={facets} onClearAll={() => { setStock([]); setOpportunity([]); setCategory([]); setBrand([]); setIssue([]); setSearch(""); }} />
+        <FacetPanel groups={facets} onClearAll={() => { setRetailer([]); setStock([]); setOpportunity([]); setCategory([]); setBrand([]); setIssue([]); setSearch(""); }} />
       </div>
       <Card padding="20px 22px 14px" style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>

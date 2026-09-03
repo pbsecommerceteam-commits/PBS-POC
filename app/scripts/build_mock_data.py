@@ -396,6 +396,15 @@ def main():
         has_360_image = bool(latest.get("Image 360"))
         has_ingredients = bool(latest.get("Ingredients list"))
 
+        # The actual crawled text behind title_length/bullet_count/
+        # description_length/has_ingredients above -- those stayed
+        # measurements-only in the first pass; a UI wanting to show the real
+        # copy (not just its length) needs these too.
+        description_text = latest.get("Product description") or None
+        bullets_text = [latest.get(f"Bullet {i}") for i in range(1, 11)]
+        bullets_text = [b for b in bullets_text if b]
+        ingredients_text = latest.get("Ingredients list") or None
+
         catalog.append({
             "id": pid,
             "name": latest.get("Title"),
@@ -440,6 +449,9 @@ def main():
             "questionCount": question_count,
             "has360Image": has_360_image,
             "hasIngredients": has_ingredients,
+            "descriptionText": description_text,
+            "bulletsText": bullets_text,
+            "ingredientsText": ingredients_text,
         })
 
     # rank = position within (retailer, category) ordered by reviews desc
@@ -692,7 +704,7 @@ def main():
     out.append("export const catalog = [")
     for p in catalog:
         out.append(
-            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, contentChecks: %s, titleLength: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, vendorStockNo: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, hasIngredients: %s },"
+            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, contentChecks: %s, titleLength: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, vendorStockNo: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, hasIngredients: %s, descriptionText: %s, bulletsText: %s, ingredientsText: %s },"
             % (
                 ts_str(p["id"]), ts_str(p["name"]), ts_str(p["brand"]), ts_str(p["category"]), ts_str(p["retailer"]),
                 ts_num(p["rank"], 1), ts_num(p["price"], 0), ts_num(p["avgSellingPrice"], p["price"] or 0),
@@ -707,6 +719,7 @@ def main():
                 ts_str(p["buyBoxSeller"]), ts_str(p["buyBoxShipper"]),
                 ts_num(p["videoCount"], 0), ts_num(p["questionCount"], 0),
                 ts_bool(p["has360Image"]), ts_bool(p["hasIngredients"]),
+                ts_str(p["descriptionText"]), json.dumps(p["bulletsText"]), ts_str(p["ingredientsText"]),
             )
         )
     out.append("];")
