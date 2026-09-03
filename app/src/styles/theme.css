@@ -114,8 +114,14 @@
   /* ---- text ---- */
   --text-primary: #172033;
   --text-secondary: #667085;
-  --text-muted: #98A2B3;
-  --text-faint: color-mix(in srgb, #98A2B3 62%, white);
+  /* Both re-tuned for WCAG AA (>=4.5:1 on white) at normal text sizes --
+     the previous values (#98A2B3 at 2.58:1, and a lighter mix at ~1.73:1)
+     read as low-contrast/near-invisible grey, reported against captions,
+     table sub-values and timestamps across the app. #5F6774/#6E7684 keep a
+     visible two-tier hierarchy under text-primary/text-secondary while
+     both clearing the AA bar (5.71:1 / 4.58:1). */
+  --text-muted: #5F6774;
+  --text-faint: #6E7684;
   --text-label: #667085;
   --text-heading: #101828;
   --text-display: #101828;
