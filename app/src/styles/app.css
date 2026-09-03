@@ -66,6 +66,15 @@ a:hover { color: var(--text-link); }
   font: inherit; color: inherit; padding: 0; margin: 0; cursor: pointer;
 }
 .sl-native-select:focus { outline: none; }
+/* Belt-and-suspenders alongside :root's color-scheme: the closed control
+   already inherits --text-primary via .sl-filter__value, but a browser's
+   native open option-list ignores `color: inherit` and paints from its own
+   scheme -- setting it explicitly on <option> keeps that popup readable
+   even if a browser ignores color-scheme for this element. Applies to every
+   native <select> in the app (the header filters, the .input selects used
+   as brand/category pickers on individual pages), not just this class. */
+select { color: var(--text-primary); background-color: var(--surface-card); }
+select option { color: var(--text-primary); background-color: var(--surface-card); }
 
 /* ---- Card: the base grouped-content surface across the whole app ---- */
 .sl-card-surface {

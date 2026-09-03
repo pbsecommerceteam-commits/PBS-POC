@@ -16,6 +16,14 @@
       intelligence accent) that components actually reference by name.
    ═══════════════════════════════════════════════════════════════════════ */
 :root {
+  /* Shelfline is a light-only UI today -- without this, a native popup this
+     page doesn't otherwise style (a <select>'s open option list, a <input
+     type="date"> picker) renders using the OS's own light/dark preference,
+     which can land on low-contrast/grey-on-light text when the OS is set to
+     dark mode. Declaring the scheme keeps every native control legible
+     regardless of OS theme. */
+  color-scheme: light;
+
   /* ---- 1. Industry primitives, repointed to the Shelfline palette ---- */
   --color-bg: #F5F7FA;              /* page canvas */
   --color-surface: #F8FAFC;         /* muted surface (form fields, nested blocks) */
