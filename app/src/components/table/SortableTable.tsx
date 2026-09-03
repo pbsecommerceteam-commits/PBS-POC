@@ -7,6 +7,11 @@ export interface Column<T> {
   minWidth?: number;
   sortable?: boolean;
   render: (row: T) => ReactNode;
+  /** Plain-text/number value for CSV export -- `render` returns JSX, which
+   *  a CSV cell can't hold, so any column a page wants exportable supplies
+   *  this alongside it. Columns without one (e.g. a pure visual/no export
+   *  need) are simply left out of an export by the page that builds it. */
+  csv?: (row: T) => string | number | null | undefined;
 }
 
 /** Shared sort/click wiring for every product-shaped table (Overview,

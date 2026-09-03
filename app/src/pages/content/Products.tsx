@@ -6,74 +6,82 @@ import { ColumnPicker, type ColumnOption } from "../../components/ui/ColumnPicke
 import { ProductCell } from "../../components/ui/ProductCell";
 import { SortableTable, type Column } from "../../components/table/SortableTable";
 import { Pagination } from "../../components/table/Pagination";
+import { useUi } from "../../context/UiContext";
 import { useSortedPage } from "../../hooks/useSortedPage";
-import { deltaColor } from "../../lib/format";
+import { columnsToCsv, deltaColor } from "../../lib/format";
 import { productSorters } from "../../lib/productSort";
 import { CONTENT_CHECK_LABELS } from "../../data/mockData";
 import type { Product } from "../../models/types";
 import type { ContentContext } from "./Layout";
 
-/* Every option here is a real raw Content-tab field (see build_mock_data.py
-   and mockData.ts's productFor) -- no synthetic/derived label. Description,
-   Bullet Points, Ingredients and Variations show the actual crawled copy
-   (clamped to a few lines, full text on hover) rather than a length/Yes-No
-   indicator, and sit right after Product since they're the fields most
-   worth reviewing -- everything else (counts, retailer/logistics info)
-   follows. "Product" is the identity column and can't be hidden.
-   Deliberately excludes Rank/Category 1-4 (ambiguous relationship to the
-   retailer's own taxonomy in the source data) -- see build_mock_data.py's
-   comment at the point these are read. */
-const COLUMN_OPTIONS: ColumnOption[] = [
-  { id: "name", label: "Product" },
-  { id: "category", label: "Category" },
-  { id: "descriptionText", label: "Product Description" },
-  { id: "bulletsText", label: "Bullet Points" },
-  { id: "ingredientsText", label: "Ingredients List" },
-  { id: "variations", label: "Variations" },
-  { id: "variationCount", label: "Variation Count" },
-  { id: "titleLength", label: "Title Length" },
-  { id: "imageCount", label: "Images" },
-  { id: "videoCount", label: "Videos" },
-  { id: "has360Image", label: "360° Image" },
-  { id: "enhancedContent", label: "Enhanced Content" },
-  { id: "questionCount", label: "Questions" },
-  { id: "contentScore", label: "Content Score" },
-  { id: "completeness", label: "Content Completeness" },
-  { id: "retailerName", label: "Retailer" },
-  { id: "retailerId", label: "Retailer ID" },
-  { id: "vendorStockNo", label: "Vendor Stock No." },
-  { id: "siteCategory", label: "Site Category" },
-  { id: "buyBoxSeller", label: "Buy Box Seller" },
-  { id: "buyBoxShipper", label: "Buy Box Shipper" },
-];
-const DEFAULT_COLUMNS = new Set(COLUMN_OPTIONS.map((c) => c.id));
-/* "Product" is the pinned identity column (see ColumnPicker's lockedIds) --
-   it's excluded from the reorderable set so it always renders first, same
-   as it's excluded from being hidden. */
-const DEFAULT_COLUMN_ORDER = COLUMN_OPTIONS.map((c) => c.id).filter((id) => id !== "name");
-
 const yesNo = (v: boolean) => (v ? "Yes" : "No");
-const ROW_HEIGHT = 85; // measured .sl-table row height (3-line clamp minHeight, no more sku/meta subtitle under Product)
-const CARD_CHROME = 260; // header/count row + search row + table header row + pagination + card padding
 
-/* A 3-line clamp with the full text as a native tooltip -- shows real copy
-   (not just a length) while every row still bottoms out at the same height
-   regardless of how long that copy runs. minHeight (not just the line-clamp
-   max) is what actually guarantees uniformity: line-clamp alone only caps
-   the *tallest* a cell can get, so a cell with 1 line of real content would
-   otherwise render shorter than a neighboring 3-line cell in the same row.
-   58px = 3 lines at this font-size/line-height -- must match ProductCell's
-   own nameLines>1 minHeight (also 58px) so the Product column's clamp and
-   these clamp to the exact same row height. */
 const CLAMP_STYLE: CSSProperties = { display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "normal", lineHeight: 1.35, maxWidth: 320, minHeight: 58 };
 function ClampedText({ text }: { text: string | null }) {
   if (!text) return <span className="sl-muted">—</span>;
   return <span title={text} style={CLAMP_STYLE}>{text}</span>;
 }
 
+/* Content-only columns -- no price, stock, rating or opportunity here (see
+   Pricing Intelligence's Products table for those). Every field is real,
+   straight from the Content-tab crawl (see build_mock_data.py). Product
+   shows the full name across up to 3 lines rather than clipping to 1, so
+   row height stays uniform without losing most titles to an ellipsis.
+   Column widths are sized to the content each one actually holds (narrow
+   for short counts/flags, wide for real copy) so nothing feels cramped or
+   is left needlessly wide. Hoisted to module scope (not just a `const`
+   inside the component) so content/Layout.tsx can reuse the exact same
+   column set -- with the exact same `csv` extractors -- for the
+   Summary/Benchmarks default export, without a second column list to keep
+   in sync. `csv` sits next to each `render` so the two can never drift:
+   whatever a column visually shows is what it exports, in plain text. */
+export const CONTENT_COLUMNS: Column<Product>[] = [
+  { key: "name", label: "Product", minWidth: 320, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} nameLines={3} imageSize={44} />, csv: (p) => p.name },
+  { key: "category", label: "Category", minWidth: 90, sortable: true, render: (p) => p.category, csv: (p) => p.category },
+  { key: "retailerName", label: "Retailer", minWidth: 110, sortable: true, render: (p) => p.retailerName, csv: (p) => p.retailerName },
+  { key: "retailerId", label: "Retailer ID", minWidth: 120, sortable: true, render: (p) => p.retailerId, csv: (p) => p.retailerId },
+  { key: "descriptionText", label: "Product Description", minWidth: 280, sortable: true, render: (p) => <ClampedText text={p.descriptionText} />, csv: (p) => p.descriptionText ?? "" },
+  { key: "bulletsText", label: "Bullet Points", minWidth: 280, sortable: true, render: (p) => <ClampedText text={p.bulletsText.length ? p.bulletsText.join(" • ") : null} />, csv: (p) => p.bulletsText.join(" | ") },
+  { key: "variations", label: "Variations", minWidth: 220, sortable: true, render: (p) => <ClampedText text={p.variations.length ? p.variations.join(", ") : null} />, csv: (p) => p.variations.join(", ") },
+  { key: "variationCount", label: "Variation Count", align: "right", minWidth: 110, sortable: true, render: (p) => p.variations.length, csv: (p) => p.variations.length },
+  { key: "ingredientsText", label: "Ingredients List", minWidth: 260, sortable: true, render: (p) => <ClampedText text={p.ingredientsText} />, csv: (p) => p.ingredientsText ?? "" },
+  { key: "titleLength", label: "Title Length", align: "right", minWidth: 110, sortable: true, render: (p) => p.titleLength + " chars", csv: (p) => p.titleLength },
+  { key: "imageCount", label: "Images", align: "right", minWidth: 90, sortable: true, render: (p) => p.imageCount, csv: (p) => p.imageCount },
+  { key: "videoCount", label: "Videos", align: "right", minWidth: 90, sortable: true, render: (p) => p.videoCount, csv: (p) => p.videoCount },
+  { key: "has360Image", label: "360° Image", minWidth: 110, sortable: true, render: (p) => <span className={p.has360Image ? undefined : "sl-muted"}>{yesNo(p.has360Image)}</span>, csv: (p) => yesNo(p.has360Image) },
+  { key: "enhancedContent", label: "Enhanced Content", minWidth: 140, sortable: true, render: (p) => <span className={p.enhancedContent ? undefined : "sl-muted"}>{yesNo(p.enhancedContent)}</span>, csv: (p) => yesNo(p.enhancedContent) },
+  { key: "questionCount", label: "Questions", align: "right", minWidth: 100, sortable: true, render: (p) => p.questionCount, csv: (p) => p.questionCount },
+  { key: "contentScore", label: "Content Score", align: "right", minWidth: 120, sortable: true, render: (p) => <span style={{ fontWeight: 600, color: p.contentScore < 80 ? deltaColor(-1) : "inherit" }}>{p.contentScore}</span>, csv: (p) => p.contentScore },
+  { key: "completeness", label: "Content Completeness", align: "right", minWidth: 150, sortable: true, render: (p) => <span>{8 - p.contentChecks.length}/8</span>, csv: (p) => `${8 - p.contentChecks.length}/8` },
+  { key: "vendorStockNo", label: "Vendor Stock No.", minWidth: 130, sortable: true, render: (p) => p.vendorStockNo ?? "—", csv: (p) => p.vendorStockNo ?? "" },
+  { key: "siteCategory", label: "Site Category", minWidth: 200, sortable: true, render: (p) => p.siteCategory ?? "—", csv: (p) => p.siteCategory ?? "" },
+  { key: "buyBoxSeller", label: "Buy Box Seller", minWidth: 150, sortable: true, render: (p) => p.buyBoxSeller ?? "—", csv: (p) => p.buyBoxSeller ?? "" },
+  { key: "buyBoxShipper", label: "Buy Box Shipper", minWidth: 150, sortable: true, render: (p) => p.buyBoxShipper ?? "—", csv: (p) => p.buyBoxShipper ?? "" },
+];
+
+/* Every option here is a real raw Content-tab field (see build_mock_data.py
+   and mockData.ts's productFor) -- no synthetic/derived label. "Product" is
+   the identity column and can't be hidden. Deliberately excludes Rank/
+   Category 1-4 (ambiguous relationship to the retailer's own taxonomy in
+   the source data) -- see build_mock_data.py's comment at the point these
+   are read. */
+const COLUMN_OPTIONS: ColumnOption[] = CONTENT_COLUMNS.map((c) => ({ id: c.key, label: c.label }));
+const DEFAULT_COLUMNS = new Set(COLUMN_OPTIONS.map((c) => c.id));
+/* Default table/export order: Product (pinned, see below) then Category,
+   Retailer, Retailer ID, Product Description, Bullet Points, Variations,
+   Variation Count and Ingredients up front as the fields most worth
+   reviewing, then every remaining column in its original relative order.
+   "Product" is excluded here (and from the picker's reorderable list) so
+   it always renders first, same as it's excluded from being hidden. */
+export const DEFAULT_CONTENT_COLUMN_ORDER = CONTENT_COLUMNS.map((c) => c.key).filter((id) => id !== "name");
+
+const ROW_HEIGHT = 85; // measured .sl-table row height (3-line clamp minHeight, no more sku/meta subtitle under Product)
+const CARD_CHROME = 260; // header/count row + search row + table header row + pagination + card padding
+
 export default function ContentProducts() {
-  const { products } = useOutletContext<ContentContext>();
+  const { products, registerExport } = useOutletContext<ContentContext>();
   const navigate = useNavigate();
+  const { toast } = useUi();
   const [stock, setStock] = useState<string[]>([]);
   const [opportunity, setOpportunity] = useState<string[]>([]);
   const [category, setCategory] = useState<string[]>([]);
@@ -82,7 +90,7 @@ export default function ContentProducts() {
   const [issue, setIssue] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(DEFAULT_COLUMNS);
-  const [columnOrder, setColumnOrder] = useState<string[]>(DEFAULT_COLUMN_ORDER);
+  const [columnOrder, setColumnOrder] = useState<string[]>(DEFAULT_CONTENT_COLUMN_ORDER);
   const facetRef = useRef<HTMLDivElement>(null);
   const [pageSize, setPageSize] = useState(8);
 
@@ -166,43 +174,35 @@ export default function ContentProducts() {
     all, SORTERS, "contentScore", pageSize, [retailer, stock, opportunity, category, brand, issue, search, pageSize].join("|"),
   );
 
-  /* Content-only columns -- no price, stock, rating or opportunity here (see
-     Pricing Intelligence's Products table for those). Every field is real,
-     straight from the Content-tab crawl (see build_mock_data.py). Product
-     shows the full name across up to 3 lines rather than clipping to 1, so
-     row height stays uniform without losing most titles to an ellipsis --
-     it no longer repeats Retailer ID/Category as a subtitle since both are
-     now their own columns. Column widths are sized to the content each one
-     actually holds (narrow for short counts/flags, wide for real copy) so
-     nothing feels cramped or is left needlessly wide. */
-  const ALL_COLUMNS: Column<Product>[] = [
-    { key: "name", label: "Product", minWidth: 320, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} nameLines={3} imageSize={44} /> },
-    { key: "category", label: "Category", minWidth: 90, sortable: true, render: (p) => p.category },
-    { key: "descriptionText", label: "Product Description", minWidth: 280, sortable: true, render: (p) => <ClampedText text={p.descriptionText} /> },
-    { key: "bulletsText", label: "Bullet Points", minWidth: 280, sortable: true, render: (p) => <ClampedText text={p.bulletsText.length ? p.bulletsText.join(" • ") : null} /> },
-    { key: "ingredientsText", label: "Ingredients List", minWidth: 260, sortable: true, render: (p) => <ClampedText text={p.ingredientsText} /> },
-    { key: "variations", label: "Variations", minWidth: 220, sortable: true, render: (p) => <ClampedText text={p.variations.length ? p.variations.join(", ") : null} /> },
-    { key: "variationCount", label: "Variation Count", align: "right", minWidth: 110, sortable: true, render: (p) => p.variations.length },
-    { key: "titleLength", label: "Title Length", align: "right", minWidth: 110, sortable: true, render: (p) => p.titleLength + " chars" },
-    { key: "imageCount", label: "Images", align: "right", minWidth: 90, sortable: true, render: (p) => p.imageCount },
-    { key: "videoCount", label: "Videos", align: "right", minWidth: 90, sortable: true, render: (p) => p.videoCount },
-    { key: "has360Image", label: "360° Image", minWidth: 110, sortable: true, render: (p) => <span className={p.has360Image ? undefined : "sl-muted"}>{yesNo(p.has360Image)}</span> },
-    { key: "enhancedContent", label: "Enhanced Content", minWidth: 140, sortable: true, render: (p) => <span className={p.enhancedContent ? undefined : "sl-muted"}>{yesNo(p.enhancedContent)}</span> },
-    { key: "questionCount", label: "Questions", align: "right", minWidth: 100, sortable: true, render: (p) => p.questionCount },
-    { key: "contentScore", label: "Content Score", align: "right", minWidth: 120, sortable: true, render: (p) => <span style={{ fontWeight: 600, color: p.contentScore < 80 ? deltaColor(-1) : "inherit" }}>{p.contentScore}</span> },
-    { key: "completeness", label: "Content Completeness", align: "right", minWidth: 150, sortable: true, render: (p) => <span>{8 - p.contentChecks.length}/8</span> },
-    { key: "retailerName", label: "Retailer", minWidth: 110, sortable: true, render: (p) => p.retailerName },
-    { key: "retailerId", label: "Retailer ID", minWidth: 120, sortable: true, render: (p) => p.retailerId },
-    { key: "vendorStockNo", label: "Vendor Stock No.", minWidth: 130, sortable: true, render: (p) => p.vendorStockNo ?? "—" },
-    { key: "siteCategory", label: "Site Category", minWidth: 200, sortable: true, render: (p) => p.siteCategory ?? "—" },
-    { key: "buyBoxSeller", label: "Buy Box Seller", minWidth: 150, sortable: true, render: (p) => p.buyBoxSeller ?? "—" },
-    { key: "buyBoxShipper", label: "Buy Box Shipper", minWidth: 150, sortable: true, render: (p) => p.buyBoxShipper ?? "—" },
-  ];
-  const columnByKey = new Map(ALL_COLUMNS.map((c) => [c.key, c]));
+  const columnByKey = new Map(CONTENT_COLUMNS.map((c) => [c.key, c]));
   const columns = [
     columnByKey.get("name")!,
     ...columnOrder.map((id) => columnByKey.get(id)).filter((c): c is Column<Product> => !!c && visibleColumns.has(c.key)),
   ];
+
+  /* Hands the shared header's Export button to THIS page's current filtered
+     rows + visible/ordered columns while Products is mounted (see
+     ContentContext.registerExport) -- registered once via a ref so the
+     handler always reads the latest `all`/`columns` at click-time without
+     re-registering (and re-rendering Layout) on every keystroke/filter
+     change. Exports every matching row, not just the current page, since
+     pagination is a display convenience, not a scope the user set. */
+  const exportRef = useRef({ all, columns, toast });
+  useEffect(() => { exportRef.current = { all, columns, toast }; });
+  useEffect(() => {
+    registerExport(() => {
+      const { all, columns, toast } = exportRef.current;
+      if (!all.length) { toast("Nothing to export."); return; }
+      const blob = new Blob([columnsToCsv(all, columns)], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "shelfline-products-content.csv";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      toast(`Exported ${all.length} rows.`);
+    });
+    return () => registerExport(null);
+  }, [registerExport]);
 
   return (
     <div style={{ display: "flex", gap: "var(--app-gap)", alignItems: "flex-start" }}>

@@ -3,6 +3,24 @@
  *  so any component can format a raw metric consistently. Status tone
  *  mapping (stock/opportunity/growth/sentiment) lives in components/ui/Badge. */
 import type { BadgeTone } from "../components/ui/Badge";
+import type { Column } from "../components/table/SortableTable";
+
+/** Turns whatever `Column<T>[]` a page is currently showing (already
+ *  filtered to the visible/ordered subset it wants) into a CSV string,
+ *  using each column's `csv` extractor -- so an export is always exactly
+ *  the columns + rows the page had on screen when Export was clicked,
+ *  never a fixed generic shape. Columns with no `csv` extractor are
+ *  skipped rather than exported blank. */
+export function columnsToCsv<T>(rows: T[], columns: Column<T>[]): string {
+  const withCsv = columns.filter((c): c is Column<T> & { csv: (row: T) => string | number | null | undefined } => !!c.csv);
+  const cell = (v: unknown) => {
+    const s = String(v == null ? "" : v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const lines = [withCsv.map((c) => cell(c.label)).join(",")]
+    .concat(rows.map((row) => withCsv.map((c) => cell(c.csv(row))).join(",")));
+  return lines.join("\n");
+}
 
 export interface Cell {
   text: string;

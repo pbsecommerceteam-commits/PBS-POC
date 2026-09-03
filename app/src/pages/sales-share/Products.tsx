@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { OpportunityCard } from "../../components/ui/OpportunityCard";
@@ -9,7 +9,7 @@ import { Badge, opportunityTone } from "../../components/ui/Badge";
 import { ProductCell } from "../../components/ui/ProductCell";
 import { useUi } from "../../context/UiContext";
 import { useSortedPage } from "../../hooks/useSortedPage";
-import { deltaColor, delta } from "../../lib/format";
+import { columnsToCsv, deltaColor, delta } from "../../lib/format";
 import { productSorters } from "../../lib/productSort";
 import type { Product } from "../../models/types";
 import type { SalesShareContext } from "./Layout";
@@ -27,8 +27,34 @@ const SORTERS = { ...productSorters, rankDelta: (a: Product, b: Product) => a.ra
    rank movement of N positions is a visibility movement of N * 3.4 pts. */
 const visibilityDelta = (p: Product) => Math.round(p.rankDelta * 3.4 * 10) / 10;
 
+/* Pricing-only columns -- no search rank, rating or opportunity here (see
+   Content Intelligence's Products table for those). "Competitor Price" is
+   deliberately not a column: REAL_BUYBOX_COMPETITOR only carries who won
+   the box and for how long, never a competitor's price, so Buy Box is the
+   honest substitute. Hoisted to module scope (not a `const` inside the
+   component) so sales-share/Layout.tsx can reuse the exact same columns --
+   with the exact same `csv` extractors -- for its default export, with no
+   second column list to keep in sync. There's no column picker on this
+   table (every column here is always shown), so "all columns" for export
+   purposes is simply this whole list. */
+export const SALES_COLUMNS: Column<Product>[] = [
+  { key: "name", label: "Product", minWidth: 230, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} />, csv: (p) => `${p.id.toUpperCase()} - ${p.name}` },
+  { key: "retailerName", label: "Retailer", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.retailerName}</span>, csv: (p) => p.retailerName },
+  { key: "currentPrice", label: "Current Price", align: "right", sortable: true, render: (p) => <span>${(p.currentPrice ?? p.price).toFixed(2)}</span>, csv: (p) => (p.currentPrice ?? p.price).toFixed(2) },
+  { key: "listPrice", label: "List Price", align: "right", sortable: true, render: (p) => <span>{p.listPrice != null ? "$" + p.listPrice.toFixed(2) : "—"}</span>, csv: (p) => p.listPrice != null ? p.listPrice.toFixed(2) : "" },
+  { key: "priceDiff", label: "Price Difference", align: "right", render: (p) => {
+    const cur = p.currentPrice ?? p.price;
+    if (p.listPrice == null) return <span className="sl-faint">—</span>;
+    const diff = cur - p.listPrice;
+    return <span style={{ color: diff < 0 ? "var(--status-positive-fg)" : diff > 0 ? "var(--status-negative-fg)" : "inherit" }}>{diff === 0 ? "—" : (diff > 0 ? "+" : "−") + "$" + Math.abs(diff).toFixed(2)}</span>;
+  }, csv: (p) => p.listPrice != null ? ((p.currentPrice ?? p.price) - p.listPrice).toFixed(2) : "" },
+  { key: "priceChangePct", label: "Price Change", align: "right", sortable: true, render: (p) => <span style={{ color: deltaColor(p.priceChangePct) }}>{delta(p.priceChangePct, "%")}</span>, csv: (p) => p.priceChangePct },
+  { key: "priceIndex", label: "Price Index", align: "right", sortable: true, render: (p) => <span>{(p.priceIndex * 100).toFixed(0)}</span>, csv: (p) => (p.priceIndex * 100).toFixed(0) },
+  { key: "buyBox", label: "Buy Box", render: (p) => <Badge tone={p.buyBox ? "positive" : "neutral"}>{p.buyBox ? "Held" : "Lost"}</Badge>, csv: (p) => p.buyBox ? "Held" : "Lost" },
+];
+
 export default function SalesShareProducts() {
-  const { sd, sh, categoryFilter, setCategoryFilter } = useOutletContext<SalesShareContext>();
+  const { sd, sh, categoryFilter, setCategoryFilter, registerExport } = useOutletContext<SalesShareContext>();
   const { toast } = useUi();
   const navigate = useNavigate();
   const [perfTab, setPerfTab] = useState<PerfTab>("top");
@@ -55,26 +81,28 @@ export default function SalesShareProducts() {
   const improvements = movers.filter((p: Product) => visibilityDelta(p) > 0).slice(0, 4);
   const deteriorations = movers.filter((p: Product) => visibilityDelta(p) < 0).slice(-4).reverse();
 
-  /* Pricing-only columns -- no search rank, rating or opportunity here (see
-     Content Intelligence's Products table for those). "Competitor Price" is
-     deliberately not a column: REAL_BUYBOX_COMPETITOR only carries who won
-     the box and for how long, never a competitor's price, so Buy Box is the
-     honest substitute. */
-  const columns: Column<Product>[] = [
-    { key: "name", label: "Product", minWidth: 230, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} /> },
-    { key: "retailerName", label: "Retailer", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.retailerName}</span> },
-    { key: "currentPrice", label: "Current Price", align: "right", sortable: true, render: (p) => <span>${(p.currentPrice ?? p.price).toFixed(2)}</span> },
-    { key: "listPrice", label: "List Price", align: "right", sortable: true, render: (p) => <span>{p.listPrice != null ? "$" + p.listPrice.toFixed(2) : "—"}</span> },
-    { key: "priceDiff", label: "Price Difference", align: "right", render: (p) => {
-      const cur = p.currentPrice ?? p.price;
-      if (p.listPrice == null) return <span className="sl-faint">—</span>;
-      const diff = cur - p.listPrice;
-      return <span style={{ color: diff < 0 ? "var(--status-positive-fg)" : diff > 0 ? "var(--status-negative-fg)" : "inherit" }}>{diff === 0 ? "—" : (diff > 0 ? "+" : "−") + "$" + Math.abs(diff).toFixed(2)}</span>;
-    } },
-    { key: "priceChangePct", label: "Price Change", align: "right", sortable: true, render: (p) => <span style={{ color: deltaColor(p.priceChangePct) }}>{delta(p.priceChangePct, "%")}</span> },
-    { key: "priceIndex", label: "Price Index", align: "right", sortable: true, render: (p) => <span>{(p.priceIndex * 100).toFixed(0)}</span> },
-    { key: "buyBox", label: "Buy Box", render: (p) => <Badge tone={p.buyBox ? "positive" : "neutral"}>{p.buyBox ? "Held" : "Lost"}</Badge> },
-  ];
+  /* Hands the shared header's Export button to THIS page's current
+     filtered rows while Products is mounted (see
+     SalesShareContext.registerExport) -- registered once via a ref so the
+     handler always reads the latest `all` at click-time without
+     re-registering on every keystroke/filter change. Exports every
+     matching row, not just the current page. */
+  const exportRef = useRef({ all, toast });
+  useEffect(() => { exportRef.current = { all, toast }; });
+  useEffect(() => {
+    registerExport(() => {
+      const { all, toast } = exportRef.current;
+      if (!all.length) { toast("Nothing to export."); return; }
+      const blob = new Blob([columnsToCsv(all, SALES_COLUMNS)], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "shelfline-products-sales-share.csv";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      toast(`Exported ${all.length} rows.`);
+    });
+    return () => registerExport(null);
+  }, [registerExport]);
 
   return (
     <>
@@ -91,7 +119,7 @@ export default function SalesShareProducts() {
             {brands.map((b) => <option key={b} value={b}>{b}</option>)}
           </select>
         </div>
-        <SortableTable columns={columns} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} />
+        <SortableTable columns={SALES_COLUMNS} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} />
         {all.length === 0 && (
           <div style={{ padding: "32px 4px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
             <div style={{ fontWeight: 600, fontSize: 15 }}>No products match this view</div>
