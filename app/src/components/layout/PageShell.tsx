@@ -25,7 +25,7 @@ export function PageShell({
   const rangeNote = dateRange ? snap?.dateRange?.note : null;
   const { openAlert } = useUi();
   const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const windowLabel = dateRange ? `${fmtDate(dateRange.start)} – ${fmtDate(dateRange.end)}` : "Last 4 weeks";
+  const windowLabel = dateRange ? `${fmtDate(dateRange.start)} – ${fmtDate(dateRange.end)}` : "Sep 1 – 30, 2022 (all data)";
 
   return (
     <main style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "28px 28px 48px" }}>

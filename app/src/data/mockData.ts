@@ -351,7 +351,7 @@ const MONTHS = ["Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "
 
 function labelsFor(periodId: string) {
   const p = periods.find((x) => x.id === periodId) || periods[2];
-  if (periodId === "4w") return REAL_WEEK_LABELS.slice(1); // real Sep 8/15/22/29 — genuinely real crawl dates
+  if (periodId === "4w") return REAL_WEEK_LABELS; // real Sep 1/8/15/22/29 — the full real crawl window, genuinely real crawl dates
   if (p.grain === "day") return ["Aug 15", "Aug 16", "Aug 17", "Aug 18", "Aug 19", "Aug 20", "Aug 21"];
   if (p.grain === "week") return Array.from({ length: p.points }, (_, i) => "W" + (26 - p.points + i));
   return MONTHS.slice(12 - p.points);
@@ -386,17 +386,18 @@ export const REAL_SOS_WEEK_LABELS = ["Sep 8", "Sep 15", "Sep 22", "Sep 29"];
 export const REAL_WEEK_DATES = ["2022-09-01", "2022-09-08", "2022-09-15", "2022-09-22", "2022-09-29"];
 export const REAL_SOS_WEEK_DATES = ["2022-09-08", "2022-09-15", "2022-09-22", "2022-09-29"];
 
-/* The "Last 4 weeks" period's real window, as indices into the two real
-   weekly tables above -- REAL_ROLLUP_WEEKLY (5 points, Sep 1 first) drops
-   index 0 to match the 4 labels labelsFor("4w") actually shows (Sep 8-29);
-   REAL_SOS_WEEKLY only has 4 points to begin with (Sep 8-29), so all of
-   them are in scope. Used as the *default* pooling window for every real
-   KPI's headline value/delta when no custom date range is active, so
-   "current value" means "pooled across the real period", not "whatever the
-   single most recent crawl day happened to show" (the latest-week-only
-   bucket, e.g. Sep 29-30, is only 2 days and can read meaningfully
-   differently from the period as a whole). */
-const DEFAULT_WIDE_IDX = [1, 2, 3, 4];
+/* The default real window, as indices into the two real weekly tables above
+   -- ALL of them: REAL_ROLLUP_WEEKLY's full 5 points (Sep 1-29/30) and
+   REAL_SOS_WEEKLY's full 4 (Sep 8-29, its crawl doesn't start until Sep 8).
+   Used as the *default* pooling window for every real KPI's headline
+   value/delta when no custom date range is active, so "current value"
+   means "pooled across every real crawl day this dataset has", not
+   "whatever the single most recent crawl day happened to show" (the
+   latest-week-only bucket, e.g. Sep 29-30, is only 2 days and can read
+   meaningfully differently from the whole period) and not an arbitrary
+   trailing-4-weeks subset either -- the Date Range picker is how a user
+   narrows to a specific window; the default shows everything. */
+const DEFAULT_WIDE_IDX = [0, 1, 2, 3, 4];
 const DEFAULT_NARROW_IDX = [0, 1, 2, 3];
 
 export const REAL_PRODUCT_WEEKLY: Record<string, {
@@ -648,15 +649,21 @@ export const REAL_ROLLUP_WEEKLY: Record<string, {
      already-rounded-to-cents avgPrice instead can drift a cent from the true
      flat average once per-week roundings don't cancel out. */
   stockRateWeight: number[]; buyBoxRateWeight: number[]; avgPriceWeight: number[]; avgPriceSum: number[];
+  /* Raw (unrounded) in-stock/buy-box-owned counts behind stockRate/
+     buyBoxRate that week -- same reasoning as avgPriceSum above: pool
+     stockRateSum/stockRateWeight (or buyBoxRateSum/buyBoxRateWeight) across
+     weeks for an exact rate, never reconstruct from the already-rounded
+     stockRate/buyBoxRate percentages. */
+  stockRateSum: number[]; buyBoxRateSum: number[];
 }> = {
-  "portfolio": { stockRate: [62.3, 61.24, 56.77, 62.58, 62.61], buyBoxRate: [82.32, 82.73, 82.48, 82.16, 80.87], rating: [4.26, 4.26, 4.26, 4.26, 4.26], content: [59.52, 59.42, 59.31, 59.41, 59.51], avgPrice: [24.42, 21.72, 21.97, 21.39, 21.59], stockRateWeight: [809, 805, 805, 807, 230], buyBoxRateWeight: [809, 805, 805, 807, 230], avgPriceWeight: [755, 743, 743, 746, 212], avgPriceSum: [18438.73, 16138.77, 16324.02, 15958.81, 4577.51] },
-  "r1": { stockRate: [64.76, 64.29, 66.67, 67.14, 66.67], buyBoxRate: [61.43, 60.95, 62.38, 62.86, 60.0], rating: [4.27, 4.27, 4.28, 4.29, 4.28], content: [60.67, 60.67, 60.23, 60.63, 60.63], avgPrice: [30.67, 30.65, 30.49, 27.73, 27.8], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [210, 210, 210, 210, 60], avgPriceWeight: [165, 158, 161, 156, 44], avgPriceSum: [5061.08, 4842.33, 4909.67, 4325.34, 1223.39] },
-  "r2": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [3.78, 3.78, 3.78, 3.78, 3.78], content: [60.2, 60.2, 60.2, 60.2, 60.2], avgPrice: [15.09, 14.64, 14.54, 14.52, 14.62], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20], avgPriceSum: [1056.29, 1024.98, 1017.99, 1016.2, 292.38] },
-  "r3": { stockRate: [68.57, 67.14, 42.86, 69.52, 73.33], buyBoxRate: [70.48, 72.86, 70.48, 68.57, 66.67], rating: [4.24, 4.24, 4.24, 4.24, 4.24], content: [58.5, 58.1, 58.1, 58.1, 58.1], avgPrice: [38.53, 29.13, 29.94, 30.16, 30.82], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [210, 210, 210, 210, 60], avgPriceWeight: [210, 210, 210, 210, 60], avgPriceSum: [8090.51, 6117.77, 6287.62, 6334.55, 1848.94] },
-  "r4": { stockRate: [60.0, 60.0, 60.0, 58.57, 50.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.0, 4.0, 4.0, 3.99, 3.99], content: [63.9, 63.9, 63.9, 63.9, 63.9], avgPrice: [8.06, 8.16, 8.41, 8.41, 8.41], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20], avgPriceSum: [564.43, 571.09, 588.63, 588.63, 168.18] },
-  "r5": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.65, 4.65, 4.65, 4.65, 4.65], content: [48.9, 48.9, 48.9, 48.9, 48.9], avgPrice: [19.43, 19.43, 18.55, 17.89, 17.89], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20], avgPriceSum: [1360.1, 1360.1, 1298.42, 1252.16, 357.76] },
-  "r6": { stockRate: [2.52, 0.0, 8.4, 0.0, 0.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.23, 4.24, 4.24, 4.24, 4.24], content: [67.24, 67.24, 67.24, 67.24, 67.24], avgPrice: [17.13, 16.99, 17.52, 18.21, 18.21], stockRateWeight: [119, 119, 119, 119, 34], buyBoxRateWeight: [119, 119, 119, 119, 34], avgPriceWeight: [110, 109, 106, 112, 32], avgPriceSum: [1884.53, 1851.67, 1857.27, 2039.11, 582.74] },
-  "r7": { stockRate: [65.0, 62.5, 62.5, 63.79, 62.5], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.67, 4.67, 4.67, 4.67, 4.67], content: [51.6, 51.6, 51.6, 51.6, 52.8], avgPrice: [7.03, 6.62, 6.51, 6.95, 6.51], stockRateWeight: [60, 56, 56, 58, 16], buyBoxRateWeight: [60, 56, 56, 58, 16], avgPriceWeight: [60, 56, 56, 58, 16], avgPriceSum: [421.79, 370.83, 364.42, 402.82, 104.12] },
+  "portfolio": { stockRate: [62.3, 61.24, 56.77, 62.58, 62.61], buyBoxRate: [82.32, 82.73, 82.48, 82.16, 80.87], rating: [4.26, 4.26, 4.26, 4.26, 4.26], content: [59.52, 59.42, 59.31, 59.41, 59.51], avgPrice: [24.42, 21.72, 21.97, 21.39, 21.59], stockRateWeight: [809, 805, 805, 807, 230], buyBoxRateWeight: [809, 805, 805, 807, 230], avgPriceWeight: [755, 743, 743, 746, 212], avgPriceSum: [18438.73, 16138.77, 16324.02, 15958.81, 4577.51], stockRateSum: [504, 493, 457, 505, 144], buyBoxRateSum: [666, 666, 664, 663, 186] },
+  "r1": { stockRate: [64.76, 64.29, 66.67, 67.14, 66.67], buyBoxRate: [61.43, 60.95, 62.38, 62.86, 60.0], rating: [4.27, 4.27, 4.28, 4.29, 4.28], content: [60.67, 60.67, 60.23, 60.63, 60.63], avgPrice: [30.67, 30.65, 30.49, 27.73, 27.8], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [210, 210, 210, 210, 60], avgPriceWeight: [165, 158, 161, 156, 44], avgPriceSum: [5061.08, 4842.33, 4909.67, 4325.34, 1223.39], stockRateSum: [136, 135, 140, 141, 40], buyBoxRateSum: [129, 128, 131, 132, 36] },
+  "r2": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [3.78, 3.78, 3.78, 3.78, 3.78], content: [60.2, 60.2, 60.2, 60.2, 60.2], avgPrice: [15.09, 14.64, 14.54, 14.52, 14.62], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20], avgPriceSum: [1056.29, 1024.98, 1017.99, 1016.2, 292.38], stockRateSum: [70, 70, 70, 70, 20], buyBoxRateSum: [70, 70, 70, 70, 20] },
+  "r3": { stockRate: [68.57, 67.14, 42.86, 69.52, 73.33], buyBoxRate: [70.48, 72.86, 70.48, 68.57, 66.67], rating: [4.24, 4.24, 4.24, 4.24, 4.24], content: [58.5, 58.1, 58.1, 58.1, 58.1], avgPrice: [38.53, 29.13, 29.94, 30.16, 30.82], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [210, 210, 210, 210, 60], avgPriceWeight: [210, 210, 210, 210, 60], avgPriceSum: [8090.51, 6117.77, 6287.62, 6334.55, 1848.94], stockRateSum: [144, 141, 90, 146, 44], buyBoxRateSum: [148, 153, 148, 144, 40] },
+  "r4": { stockRate: [60.0, 60.0, 60.0, 58.57, 50.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.0, 4.0, 4.0, 3.99, 3.99], content: [63.9, 63.9, 63.9, 63.9, 63.9], avgPrice: [8.06, 8.16, 8.41, 8.41, 8.41], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20], avgPriceSum: [564.43, 571.09, 588.63, 588.63, 168.18], stockRateSum: [42, 42, 42, 41, 10], buyBoxRateSum: [70, 70, 70, 70, 20] },
+  "r5": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.65, 4.65, 4.65, 4.65, 4.65], content: [48.9, 48.9, 48.9, 48.9, 48.9], avgPrice: [19.43, 19.43, 18.55, 17.89, 17.89], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20], avgPriceSum: [1360.1, 1360.1, 1298.42, 1252.16, 357.76], stockRateSum: [70, 70, 70, 70, 20], buyBoxRateSum: [70, 70, 70, 70, 20] },
+  "r6": { stockRate: [2.52, 0.0, 8.4, 0.0, 0.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.23, 4.24, 4.24, 4.24, 4.24], content: [67.24, 67.24, 67.24, 67.24, 67.24], avgPrice: [17.13, 16.99, 17.52, 18.21, 18.21], stockRateWeight: [119, 119, 119, 119, 34], buyBoxRateWeight: [119, 119, 119, 119, 34], avgPriceWeight: [110, 109, 106, 112, 32], avgPriceSum: [1884.53, 1851.67, 1857.27, 2039.11, 582.74], stockRateSum: [3, 0, 10, 0, 0], buyBoxRateSum: [119, 119, 119, 119, 34] },
+  "r7": { stockRate: [65.0, 62.5, 62.5, 63.79, 62.5], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.67, 4.67, 4.67, 4.67, 4.67], content: [51.6, 51.6, 51.6, 51.6, 52.8], avgPrice: [7.03, 6.62, 6.51, 6.95, 6.51], stockRateWeight: [60, 56, 56, 58, 16], buyBoxRateWeight: [60, 56, 56, 58, 16], avgPriceWeight: [60, 56, 56, 58, 16], avgPriceSum: [421.79, 370.83, 364.42, 402.82, 104.12], stockRateSum: [39, 35, 35, 37, 10], buyBoxRateSum: [60, 56, 56, 58, 16] },
 };
 
 
@@ -817,16 +824,21 @@ function matchRangeWeeks(range: DateRange | null | undefined, dates: string[]): 
 
 /* Headline KPI value + delta for a custom date range, pooled across every
    matched real week -- this is the number the KPI card's big number and
-   delta actually show, distinct from `vals` (the spark/trend-chart series,
-   which stays on the narrower Sep 8-29 window shared with Search Visibility
-   so every chart on the page still shares one x-axis). stockRate/buyBoxRate
-   are rates over a day-count that varies week to week, so they MUST be
-   pooled from raw counts (stockRateWeight/buyBoxRateWeight), never averaged
-   as percentages -- averaging e.g. "8.4% over 119 rows" and "0% over 34
-   rows" as if they were equally-weighted observations is simply wrong: pool
-   to (0.084*119 + 0*34) / (119+34) = 7.4%, not their (8.4+0)/2 = 4.2%
-   midpoint. rating/content have a constant per-week product count, so plain
-   averaging is already correct for those two. */
+   delta actually show, distinct from `vals` (the spark/trend-chart series).
+   stockRate/buyBoxRate are rates over a day-count that varies week to week,
+   so they MUST be pooled from raw counts, never averaged as percentages --
+   averaging e.g. "8.4% over 119 rows" and "0% over 34 rows" as if they were
+   equally-weighted observations is simply wrong: pool to (10+0)/(119+34) =
+   6.5%, not their (8.4+0)/2 = 4.2% midpoint. Pooling from stockRateSum/
+   buyBoxRateSum (the raw, un-rounded in-stock/buy-box-owned counts per
+   week) rather than reconstructing a numerator from the already-rounded-to-
+   2-decimals stockRate/buyBoxRate is what makes this exact -- e.g. summing
+   Amazon's 5 weekly buyBoxRateSum values (129+128+131+132+36=556) over its
+   5 weekly buyBoxRateWeight values (210*4+60=900) gives exactly 556/900 =
+   61.78%, matching a manual count against the raw Price tab to the decimal,
+   not a rounded-then-reconstructed approximation of it. rating/content have
+   a constant per-week product count, so plain averaging is already correct
+   for those two. */
 function realRangeValue(retailer: string, field: "stockRate" | "buyBoxRate" | "rating" | "content", idx: number[], category?: string): { value: number; delta: number } | null {
   // REAL_ROLLUP_WEEKLY is a retailer/portfolio-level table baked in the ETL
   // step -- it has no category dimension. Rather than pool it into a wrong
@@ -838,11 +850,12 @@ function realRangeValue(retailer: string, field: "stockRate" | "buyBoxRate" | "r
   const row = REAL_ROLLUP_WEEKLY[retailer === "all" ? "portfolio" : retailer];
   if (!row || !idx.length) return null;
   const weights = field === "stockRate" ? row.stockRateWeight : field === "buyBoxRate" ? row.buyBoxRateWeight : null;
+  const sums = field === "stockRate" ? row.stockRateSum : field === "buyBoxRate" ? row.buyBoxRateSum : null;
   let value: number;
-  if (weights) {
+  if (weights && sums) {
     const totalWeight = idx.reduce((s, i) => s + weights[i], 0);
     value = totalWeight
-      ? (idx.reduce((s, i) => s + (row[field][i] / 100) * weights[i], 0) / totalWeight) * 100
+      ? (idx.reduce((s, i) => s + sums[i], 0) / totalWeight) * 100
       : idx.reduce((s, i) => s + row[field][i], 0) / idx.length;
   } else {
     value = idx.reduce((s, i) => s + row[field][i], 0) / idx.length;
@@ -949,20 +962,22 @@ function realBuyBoxLoss(retailer: string, category?: string): { skusTracked: num
   return { skusTracked: scoped.length, skusLost: lost.length, topSeller };
 }
 
-/* Real portfolio/retailer-level trend series for the "Last 4 weeks" period —
-   same reasoning as REAL_PRODUCT_WEEKLY above: this is the one window the
+/* Real portfolio/retailer-level trend series -- this is the one window the
    real September crawl can honestly fill point-for-point. Every other
-   period keeps the synthetic series() curves. `rangeIdx` (0-3, from
-   matchRangeWeeks) overrides the period check entirely for the custom
-   date-range filter — REAL_ROLLUP_WEEKLY is a 5-point array (Sep 1 first),
-   so indices are offset by 1 to land on the same Sep 8-29 window. */
+   period keeps the synthetic series() curves. `rangeIdx` (from
+   matchRangeWeeks against REAL_SOS_WEEK_DATES, the narrower Sep 8-29 list)
+   overrides the default entirely for the custom date-range filter --
+   REAL_ROLLUP_WEEKLY is a 5-point array (Sep 1 first), so those indices are
+   offset by 1 to land on the matching Sep 8-29 week. With no explicit
+   range, the default is the *full* 5-point real window (Sep 1-29/30, all
+   available data), not an arbitrary trailing subset. */
 function realRollupSeries(period: string, retailer: string, field: "stockRate" | "buyBoxRate" | "rating" | "content", rangeIdx?: number[], category?: string): number[] | null {
   if (category) return null; // see realRangeValue's comment -- no category dimension in this table
   const row = REAL_ROLLUP_WEEKLY[retailer === "all" ? "portfolio" : retailer];
   if (!row) return null;
   if (rangeIdx) return rangeIdx.map((i) => row[field][i + 1]);
   if (period !== "4w") return null;
-  return row[field].slice(1);
+  return row[field];
 }
 
 /* REAL_SOS_WEEKLY holds "% of tracked-keyword searches that returned any
@@ -986,16 +1001,17 @@ function realRollupSeriesSos(period: string, retailer: string, rangeIdx?: number
   return row;
 }
 
-/* Real weekly Average Price trend -- same slicing convention as
-   realRollupSeries above (rangeIdx's narrower Sep 8-29 window is offset by
-   1 into REAL_ROLLUP_WEEKLY's 5-point Sep 1-29 array). */
+/* Real weekly Average Price trend -- same convention as realRollupSeries
+   above (rangeIdx's narrower Sep 8-29 window is offset by 1 into
+   REAL_ROLLUP_WEEKLY's 5-point Sep 1-29 array; no explicit range defaults
+   to the full 5-point window). */
 function realAvgPriceWeekly(period: string, retailer: string, rangeIdx?: number[], category?: string): number[] | null {
   if (category) return null; // see realRangeValue's comment -- no category dimension in this table
   const row = REAL_ROLLUP_WEEKLY[retailer === "all" ? "portfolio" : retailer];
   if (!row) return null;
   if (rangeIdx) return rangeIdx.map((i) => row.avgPrice[i + 1]);
   if (period !== "4w") return null;
-  return row.avgPrice.slice(1);
+  return row.avgPrice;
 }
 
 function snapshot(retailer: string, period: string, dateRange?: DateRange | null, category?: string) {
@@ -1020,8 +1036,21 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
      sos value or the "Gap to Leader" comparison reads as nonsense once sos
      is real for the "4w" period. */
   const sos = realRollupSeriesSos(period, retailer, rangeMatch?.idx, category) ?? series(seed + 1, n, 90 - 3 * sw + bias.sos, 90 + bias.sos, 0.9, 1);
-  const leader = series(seed + 2, n, 93 + 1 * sw, 95, 0.6, 1);
-  const riser = series(seed + 3, n, 78 - 8 * sw, 78, 1.1, 1);
+  // leader/riser are paired point-for-point against sos (the "Gap to Leader"
+  // KPI does sos[i] - leader[i]), so they must always match sos's own
+  // length -- which is 4 (real SOS crawl weeks, Sep 8-29) when real data
+  // applies, not necessarily n (5, the full real window every other metric
+  // now defaults to, since SOS's crawl doesn't cover Sep 1-7).
+  const leader = series(seed + 2, sos.length, 93 + 1 * sw, 95, 0.6, 1);
+  const riser = series(seed + 3, sos.length, 78 - 8 * sw, 78, 1.1, 1);
+  // labels (n-length) covers the full real window (Sep 1-29) once real data
+  // applies with no custom range, but sos/leader/riser never have more than
+  // 4 real points (Sep 8-29 -- SOS's crawl doesn't cover Sep 1-7). Slicing
+  // from the end always lands on the matching Sep 8-29 sub-window here,
+  // whether labels is the full 5-point default, an already-narrow custom-
+  // range selection (already equal to sos.length by construction), or the
+  // synthetic n-length case (also already equal to sos.length).
+  const visibilityLabels = labels.slice(-sos.length);
   const stockVals = realRollupSeries(period, retailer, "stockRate", rangeMatch?.idx, category)
     ?? series(seed + 4, n, 96.4 + 1.4 * sw + bias.stock, 96.4 + bias.stock, 0.5, 1).map((v) => round(clamp(v, 88, 100), 1));
   const ratingVals = realRollupSeries(period, retailer, "rating", rangeMatch?.idx, category)
@@ -1082,7 +1111,7 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       { id: "issues", label: "Content Issues", unit: "", target: 0, value: pool.filter((p) => p.contentScore < 80).length, delta: -1, spark: series(seed + 11, n, pool.filter((p) => p.contentScore < 80).length + 2, pool.filter((p) => p.contentScore < 80).length, 0.6, 0).map((v) => clamp(v, 0, 30)) },
     ],
     visibility: {
-      labels,
+      labels: visibilityLabels,
       previous: sos.map((v, i) => round(v - 2.4 - (i % 3) * 0.3, 1)),
       series: [
         { id: "brand", name: "Your portfolio", values: sos, emphasis: true },
@@ -1311,6 +1340,10 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
      disagree about whether a number is real. */
   /* Same rescaled anchor as snapshot() above -- see the comment there. */
   const sos = realRollupSeriesSos(period, retailer, rangeMatch?.idx, category) ?? series(seed + 1, n, 90 - 3 * sw + bias.sos, 90 + bias.sos, 0.9, 1);
+  // See snapshot()'s identical comment -- sos can be shorter than labels/n
+  // (4 real SOS weeks vs. up to 5 for everything else), so its own label
+  // list needs the matching trailing slice.
+  const visibilityLabels = labels.slice(-sos.length);
   const stockVals = realRollupSeries(period, retailer, "stockRate", rangeMatch?.idx, category)
     ?? series(seed + 4, n, 96.4 + 1.4 * sw + bias.stock, 96.4 + bias.stock, 0.5, 1).map((v) => round(clamp(v, 88, 100), 1));
   const contentVals = (realRollupSeries(period, retailer, "content", rangeMatch?.idx, category)?.map((v) => Math.round(v)))
@@ -1479,7 +1512,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
       kpi("buybox", "Buy Box Ownership 1P", "%", buyBox, 95, 1, realRangeValue(retailer, "buyBoxRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
     ],
     visibility: {
-      labels, previous: sos.map((v, i) => round(v - 2.4 - (i % 3) * 0.3, 1)), target: 40,
+      labels: visibilityLabels, previous: sos.map((v, i) => round(v - 2.4 - (i % 3) * 0.3, 1)), target: 40,
       series: [{ id: "brand", name: "Your portfolio", values: sos, emphasis: true }],
       byRetailer: byRetailer.map((r) => ({ label: r.name, value: r.visibility })),
       byCategory: byCategory.map((c) => ({ label: c.category, value: c.visibility })),
@@ -1783,7 +1816,11 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
        rank exists (see the Placement matching note). */
     const real = REAL_PRODUCT_WEEKLY[id];
     const useReal = !!real && (dateRange ? true : period === "4w");
-    const realIdx = rangeMatch ? rangeMatch.idx : [1, 2, 3, 4];
+    // REAL_PRODUCT_WEEKLY has a genuine Sep 1 point (unlike the retailer-
+    // rollup Search Visibility table), so the default window is the full
+    // 5-point real range, matching n/labels above -- not a hardcoded
+    // trailing-4-weeks subset.
+    const realIdx = rangeMatch ? rangeMatch.idx : [0, 1, 2, 3, 4];
     const trends = useReal
       ? {
           rank: series(seed + 1, n, clamp(p.searchRank + 3 * sw, 1, 40), p.searchRank, 1.2, 0).map((v) => clamp(Math.round(v), 1, 40)),

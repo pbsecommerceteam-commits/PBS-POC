@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageShell } from "../components/layout/PageShell";
 import { KpiCard } from "../components/ui/KpiCard";
-import { ChartCard } from "../components/charts/ChartCard";
 import { InsightCard } from "../components/ui/InsightCard";
 import { SortableTable, type Column } from "../components/table/SortableTable";
 import { Pagination } from "../components/table/Pagination";
@@ -13,9 +12,8 @@ import { ProductCell } from "../components/ui/ProductCell";
 import { useDashboardData } from "../context/DataContext";
 import { useFilters } from "../context/FiltersContext";
 import { useUi } from "../context/UiContext";
-import { useChartHover } from "../hooks/useChartHover";
 import { useSortedPage } from "../hooks/useSortedPage";
-import { lineChart, barChart, spark } from "../lib/charts";
+import { spark } from "../lib/charts";
 import { kpiCard, pct, delta, deltaColor } from "../lib/format";
 import { productSorters } from "../lib/productSort";
 import { toCsv } from "../data/mockData";
@@ -34,7 +32,6 @@ export default function Overview() {
   const { setRetailer } = useFilters();
   const { toast } = useUi();
   const navigate = useNavigate();
-  const { hover, onEnter, onLeave } = useChartHover();
   const [stockFilter, setStockFilter] = useState<StockStatus | "All">("All");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,18 +53,6 @@ export default function Overview() {
   if (!snap) return <PageShell title="Overview" subtitle="Monitor digital shelf health across your retailers, products and categories."><div /></PageShell>;
 
   const kpi = (id: string) => snap.kpis.find((k: any) => k.id === id);
-  const vis = lineChart({
-    id: "vis", title: "Search Visibility Trend", subtitle: "Share of search across the tracked keyword set",
-    labels: snap.labels, lo: 0, hi: 105, ticks: [0, 20, 40, 60, 80, 100], fmt: (v) => v.toFixed(1) + "%",
-    series: snap.visibility.series, previous: snap.visibility.previous, target: 40,
-  }, hover, onEnter);
-  const stock = barChart({
-    id: "stock", title: "Stock Availability 1P + 3P", subtitle: "In-stock rate against the 98% service target",
-    badge: "Target 98%", labels: snap.labels, values: snap.stock.values, previous: snap.stock.previous,
-    valueName: "In stock", lo: 90, hi: 100, ticks: [90, 92, 94, 96, 98, 100], fmt: (v) => v.toFixed(1) + "%",
-    target: snap.stock.target, fill: (v) => (v >= snap.stock.target ? "var(--status-positive-fg)" : "var(--color-accent-300)"),
-    footer: snap.stockByRetailer.map((r: any) => ({ label: r.retailer, value: pct(r.inStock), color: r.inStock >= snap.stock.target ? "var(--status-positive-fg)" : "var(--status-neutral-fg)" })),
-  }, hover, onEnter);
 
   const columns: Column<Product>[] = [
     { key: "name", label: "Product", minWidth: 260, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.category} /> },
@@ -107,11 +92,6 @@ export default function Overview() {
     >
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,238px),1fr))", gap: "var(--app-gap)" }}>
         {["sos", "instock", "pidx", "content", "rating", "buybox"].map((id) => <KpiCard key={id} k={kpiCard(kpi(id), spark)} />)}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
-        <ChartCard c={vis} onLeave={onLeave} />
-        <ChartCard c={stock} onLeave={onLeave} />
       </div>
 
       <section>

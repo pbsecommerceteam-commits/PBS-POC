@@ -551,6 +551,7 @@ def main():
         )
 
         stockRate, buyBoxRate, stockWeight, buyBoxWeight, rating, content = [], [], [], [], [], []
+        stockRateSum, buyBoxRateSum = [], []
         avgPrice, avgPriceWeight, avgPriceSum = [], [], []
         for wi, wk_start in enumerate(CONTENT_WEEKS):
             wk_end = CONTENT_WEEKS[wi + 1] if wi + 1 < len(CONTENT_WEEKS) else "2022-10-06"
@@ -585,8 +586,10 @@ def main():
             # only, same convention as fill_series() elsewhere in this file.
             stockRate.append(round(100.0 * in_stock_n / total_n, 2) if total_n else (stockRate[-1] if stockRate else 100.0))
             stockWeight.append(total_n)
+            stockRateSum.append(in_stock_n)
             buyBoxRate.append(round(100.0 * buybox_n / buybox_d, 2) if buybox_d else (buyBoxRate[-1] if buyBoxRate else 100.0))
             buyBoxWeight.append(buybox_d)
+            buyBoxRateSum.append(buybox_n)
             rating.append(avg([raw_rating_by_product[i][wi] for i in ids if i in raw_rating_by_product]))
             avgPrice.append(round(price_sum / price_n, 2) if price_n else (avgPrice[-1] if avgPrice else 0.0))
             avgPriceWeight.append(price_n)
@@ -604,6 +607,13 @@ def main():
         real_rollup_weekly[scope] = {
             "stockRate": stockRate, "buyBoxRate": buyBoxRate, "rating": rating, "content": content,
             "stockRateWeight": stockWeight, "buyBoxRateWeight": buyBoxWeight,
+            # Raw (unrounded) in-stock/buy-box-owned counts behind stockRate/
+            # buyBoxRate this week -- same reason avgPriceSum exists: pooling
+            # multiple weeks by summing these raw counts (sum of sums / sum of
+            # counts) is exact, unlike reconstructing from the already-
+            # rounded-to-2-decimals stockRate/buyBoxRate above, which can
+            # drift once the per-week roundings don't cancel out.
+            "stockRateSum": stockRateSum, "buyBoxRateSum": buyBoxRateSum,
             "avgPrice": avgPrice, "avgPriceWeight": avgPriceWeight, "avgPriceSum": avgPriceSum,
         }
 
@@ -793,13 +803,20 @@ def main():
     out.append("     already-rounded-to-cents avgPrice instead can drift a cent from the true")
     out.append("     flat average once per-week roundings don't cancel out. */")
     out.append("  stockRateWeight: number[]; buyBoxRateWeight: number[]; avgPriceWeight: number[]; avgPriceSum: number[];")
+    out.append("  /* Raw (unrounded) in-stock/buy-box-owned counts behind stockRate/")
+    out.append("     buyBoxRate that week -- same reasoning as avgPriceSum above: pool")
+    out.append("     stockRateSum/stockRateWeight (or buyBoxRateSum/buyBoxRateWeight) across")
+    out.append("     weeks for an exact rate, never reconstruct from the already-rounded")
+    out.append("     stockRate/buyBoxRate percentages. */")
+    out.append("  stockRateSum: number[]; buyBoxRateSum: number[];")
     out.append("}> = {")
     for scope, v in real_rollup_weekly.items():
         out.append(
             f'  {json.dumps(scope)}: {{ stockRate: {json.dumps(v["stockRate"])}, buyBoxRate: {json.dumps(v["buyBoxRate"])}, '
             f'rating: {json.dumps(v["rating"])}, content: {json.dumps(v["content"])}, avgPrice: {json.dumps(v["avgPrice"])}, '
             f'stockRateWeight: {json.dumps(v["stockRateWeight"])}, buyBoxRateWeight: {json.dumps(v["buyBoxRateWeight"])}, '
-            f'avgPriceWeight: {json.dumps(v["avgPriceWeight"])}, avgPriceSum: {json.dumps(v["avgPriceSum"])} }},'
+            f'avgPriceWeight: {json.dumps(v["avgPriceWeight"])}, avgPriceSum: {json.dumps(v["avgPriceSum"])}, '
+            f'stockRateSum: {json.dumps(v["stockRateSum"])}, buyBoxRateSum: {json.dumps(v["buyBoxRateSum"])} }},'
         )
     out.append("};")
     out.append("")
