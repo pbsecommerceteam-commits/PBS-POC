@@ -14,9 +14,9 @@ type TrendMetric = "sos" | "pidx" | "instock" | "buybox";
 
 const TREND_CONFIG: Record<TrendMetric, { lo: number; hi: number; ticks: number[]; fmt: (v: number) => string; label: string }> = {
   sos: { lo: 0, hi: 105, ticks: [0, 20, 40, 60, 80, 100], fmt: (v) => v.toFixed(1) + "%", label: "Search Visibility" },
-  pidx: { lo: 90, hi: 112, ticks: [90, 100, 110], fmt: (v) => v.toFixed(1), label: "Price Index" },
-  instock: { lo: 85, hi: 100, ticks: [85, 90, 95, 100], fmt: (v) => v.toFixed(1) + "%", label: "Availability" },
-  buybox: { lo: 40, hi: 100, ticks: [40, 60, 80, 100], fmt: (v) => v.toFixed(0) + "%", label: "Buy Box" },
+  pidx: { lo: 0, hi: 40, ticks: [0, 10, 20, 30, 40], fmt: (v) => "$" + v.toFixed(2), label: "Average Price" },
+  instock: { lo: 85, hi: 100, ticks: [85, 90, 95, 100], fmt: (v) => v.toFixed(1) + "%", label: "Stock Availability 1P + 3P" },
+  buybox: { lo: 40, hi: 100, ticks: [40, 60, 80, 100], fmt: (v) => v.toFixed(0) + "%", label: "Buy Box Ownership 1P" },
 };
 
 export default function SalesShareSummary() {
@@ -88,7 +88,7 @@ export default function SalesShareSummary() {
                 </div>
                 <div className="sl-progress-track" style={{ margin: "12px 0 10px" }}><span className="sl-progress-fill" style={{ width: r.shelfScore + "%" }}></span></div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {[["Search visibility", pct(r.visibility)], ["Availability", pct(r.availability)], ["Price index", r.priceIndex.toFixed(1)], ["Content completeness", String(r.content)], ["Rating", r.rating.toFixed(2)], ["Buy box presence", r.buyBoxPresence + "%"]].map(([l, v]) => (
+                  {[["Search visibility", pct(r.visibility)], ["Stock Availability 1P + 3P", pct(r.availability)], ["Price index", r.priceIndex.toFixed(1)], ["Content completeness", String(r.content)], ["Rating", r.rating.toFixed(2)], ["Buy Box Ownership 1P", r.buyBoxPresence + "%"]].map(([l, v]) => (
                     <div key={l} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}><span className="sl-muted">{l}</span><span>{v}</span></div>
                   ))}
                 </div>
@@ -105,7 +105,7 @@ export default function SalesShareSummary() {
         <div style={{ overflowX: "auto" }}>
           <table className="sl-table">
             <thead><tr>
-              {[["category", "Category", "left", 170], ["visibility", "Search visibility", "right"], ["availability", "Availability", "right"], ["priceIndex", "Price index", "right"], ["content", "Content completeness", "right"], ["rating", "Rating", "right"], ["overall", "Shelf score", "right", 130]].map(([k, label, align, mw]) => (
+              {[["category", "Category", "left", 170], ["visibility", "Search visibility", "right"], ["availability", "Stock Availability 1P + 3P", "right"], ["priceIndex", "Price index", "right"], ["content", "Content completeness", "right"], ["rating", "Rating", "right"], ["overall", "Shelf score", "right", 130]].map(([k, label, align, mw]) => (
                 <th key={k as string} className={"is-sortable" + (catSort.key === k ? " is-sorted" : "")} style={{ textAlign: align as any, minWidth: mw as number }} onClick={() => catSortFn(k as string)}>{label}{catSort.key === k && <span className="sl-sort-caret">{catSort.dir === "asc" ? "▲" : "▼"}</span>}</th>
               ))}
             </tr></thead>

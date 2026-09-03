@@ -30,7 +30,7 @@ export default function DigitalShelfSummary() {
     { label: "Visibility now", value: visVals[visVals.length - 1].toFixed(1) + "%", color: "var(--status-positive-fg)" },
     { label: "Previous period", value: sh.visibility.previous[sh.visibility.previous.length - 1].toFixed(1) + "%", color: "inherit" },
     { label: "Gap to target", value: (40 - visVals[visVals.length - 1]).toFixed(1) + " pts", color: "var(--status-neutral-fg)" },
-    { label: "Buy box presence", value: buy.value + "%", color: buy.value >= buy.target ? "var(--status-positive-fg)" : "var(--status-neutral-fg)" },
+    { label: "Buy Box Ownership 1P", value: buy.value + "%", color: buy.value >= buy.target ? "var(--status-positive-fg)" : "var(--status-neutral-fg)" },
   ];
   const visChart = visMode === "trend"
     ? lineChart({ id: "shelf-vis", title: "Search Visibility", subtitle: "Share of search across the tracked keyword set, against the 40% target",
@@ -81,7 +81,7 @@ export default function DigitalShelfSummary() {
                 </div>
                 <div className="sl-progress-track" style={{ margin: "10px 0 12px" }}><span className="sl-progress-fill" style={{ width: r.shelfScore + "%" }}></span></div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {[["Search visibility", pct(r.visibility)], ["Availability", pct(r.availability)], ["Price index", r.priceIndex.toFixed(1)], ["Content completeness", String(r.content)], ["Rating", r.rating.toFixed(2)]].map(([l, v]) => (
+                  {[["Search visibility", pct(r.visibility)], ["Stock Availability 1P + 3P", pct(r.availability)], ["Price index", r.priceIndex.toFixed(1)], ["Content completeness", String(r.content)], ["Rating", r.rating.toFixed(2)]].map(([l, v]) => (
                     <div key={l} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}><span className="sl-muted">{l}</span><span>{v}</span></div>
                   ))}
                 </div>
@@ -99,7 +99,7 @@ export default function DigitalShelfSummary() {
         <div style={{ overflowX: "auto" }}>
           <table className="sl-table">
             <thead><tr>
-              {[["category", "Category", "left", 180], ["visibility", "Search visibility", "right"], ["availability", "Availability", "right"], ["content", "Content completeness", "right"], ["priceIndex", "Price index", "right"], ["overall", "Overall score", "right", 140]].map(([k, label, align, mw]) => (
+              {[["category", "Category", "left", 180], ["visibility", "Search visibility", "right"], ["availability", "Stock Availability 1P + 3P", "right"], ["content", "Content completeness", "right"], ["priceIndex", "Price index", "right"], ["overall", "Overall score", "right", 140]].map(([k, label, align, mw]) => (
                 <th key={k as string} className={"is-sortable" + (catSortKey === k ? " is-sorted" : "")} style={{ textAlign: align as any, minWidth: mw as number }} onClick={() => catSort(k as string)}>{label}{catSortKey === k && <span className="sl-sort-caret">{catSortDir === "asc" ? "▲" : "▼"}</span>}</th>
               ))}
             </tr></thead>

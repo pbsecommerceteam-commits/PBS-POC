@@ -48,7 +48,7 @@ export default function DigitalShelfBenchmarks() {
 
         <Card padding="20px 22px">
           <div style={{ marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Availability</h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Stock Availability 1P + 3P</h3>
             <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>
               {sh.availability.belowThreshold === 1 ? "1 SKU is below the 90% availability threshold" : `${sh.availability.belowThreshold} SKUs are below the 90% availability threshold`} · {sh.availability.belowTarget === 1 ? "1 retailer is below the 95% service target" : `${sh.availability.belowTarget} retailers are below the 95% service target`}
             </div>

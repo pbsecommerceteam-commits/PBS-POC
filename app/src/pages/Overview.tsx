@@ -55,7 +55,7 @@ export default function Overview() {
     series: snap.visibility.series, previous: snap.visibility.previous, target: 40,
   }, hover, onEnter);
   const stock = barChart({
-    id: "stock", title: "Stock Availability", subtitle: "In-stock rate against the 98% service target",
+    id: "stock", title: "Stock Availability 1P + 3P", subtitle: "In-stock rate against the 98% service target",
     badge: "Target 98%", labels: snap.labels, values: snap.stock.values, previous: snap.stock.previous,
     valueName: "In stock", lo: 90, hi: 100, ticks: [90, 92, 94, 96, 98, 100], fmt: (v) => v.toFixed(1) + "%",
     target: snap.stock.target, fill: (v) => (v >= snap.stock.target ? "var(--status-positive-fg)" : "var(--color-accent-300)"),

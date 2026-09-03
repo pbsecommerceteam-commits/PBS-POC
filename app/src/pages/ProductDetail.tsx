@@ -60,7 +60,7 @@ export default function ProductDetail() {
 
   const kpis = [
     { id: "rank", label: "Search Rank", unit: "", value: p.searchRank, target: 5, delta: t.rank[0] - p.searchRank, spark: t.rank },
-    { id: "instock", label: "Availability", unit: "%", value: p.inStockRate, target: 98, delta: Number((p.inStockRate - t.stock[0]).toFixed(1)), spark: t.stock },
+    { id: "instock", label: "Stock Availability 1P + 3P", unit: "%", value: p.inStockRate, target: 98, delta: Number((p.inStockRate - t.stock[0]).toFixed(1)), spark: t.stock },
     { id: "rating", label: "Average Rating", unit: "", value: p.rating, target: 4.5, delta: Number((p.rating - t.rating[0]).toFixed(2)), spark: t.rating },
     { id: "content", label: "Content Completeness", unit: "/100", value: p.contentScore, target: 95, delta: 0, spark: t.stock.map((_v: number, i: number) => Math.round(p.contentScore - 4 + (i / labels.length) * 4)) },
   ];
@@ -79,7 +79,7 @@ export default function ProductDetail() {
     labels, lo: lo * 0.94, hi: hi * 1.06, ticks: [lo * 0.96, (lo + hi) / 2, hi * 1.04], fmt: (v) => "$" + v.toFixed(2), hideLegend: true,
     series: [{ name: "Price", values: t.price }],
     footer: detail.priceComparison.map((c: any) => ({ label: c.name, value: "$" + c.price.toFixed(2), color: c.price < p.price ? "var(--status-neutral-fg)" : "var(--status-positive-fg)" })) }, hover, onEnter);
-  const stockChart = barChart({ id: "d-stock", title: "Availability Trend", subtitle: "In-stock rate at this retailer" + realNote, badge: "Target 98%",
+  const stockChart = barChart({ id: "d-stock", title: "Stock Availability 1P + 3P Trend", subtitle: "In-stock rate at this retailer" + realNote, badge: "Target 98%",
     labels, values: t.stock, valueName: "In stock", lo: 60, hi: 100, ticks: [60, 70, 80, 90, 100], fmt: (v) => v.toFixed(1) + "%", target: 98,
     fill: (v) => (v >= 98 ? "var(--status-positive-fg)" : "var(--color-accent-300)") }, hover, onEnter);
   const ratingChart = lineChart({ id: "d-rating", title: "Rating Trend", subtitle: "Average rating and review distribution" + realNote,
@@ -91,12 +91,12 @@ export default function ProductDetail() {
 
   const facts = [
     { label: "Search visibility", value: p.searchVisibility + "%", sub: "Rank #" + p.searchRank + " on the primary term" },
-    { label: "Availability", value: p.inStockRate.toFixed(1) + "%", sub: p.stockStatus },
+    { label: "Stock Availability 1P + 3P", value: p.inStockRate.toFixed(1) + "%", sub: p.stockStatus },
     { label: "Average price", value: "$" + p.avgSellingPrice.toFixed(2), sub: "$" + p.price.toFixed(2) + " current price" },
     { label: "Content completeness", value: String(p.contentScore), sub: "out of 100" },
     { label: "Rating", value: p.rating.toFixed(2), sub: "average rating" },
     { label: "Review count", value: p.reviews.toLocaleString(), sub: "tracked reviews" },
-    { label: "Buy box presence", value: p.buyBox ? "Held" : "Lost", sub: detail.note },
+    { label: "Buy Box Ownership 1P", value: p.buyBox ? "Held" : "Lost", sub: detail.note },
   ];
 
   const retailerPerfTable = table("Retailer comparison", "This exact SKU at its home retailer, plus genuine same-brand matches found elsewhere in our tracked sample — not a claim this product is listed everywhere",

@@ -56,7 +56,7 @@ export default function SalesShareProducts() {
       <div className="sl-table-sub">{p.searchVisibility}% visibility</div></>
     ) },
     { key: "price", label: "Price", align: "right", sortable: true, render: (p) => (<><span>${p.price.toFixed(2)}</span><div className="sl-table-sub">Index {(p.priceIndex * 100).toFixed(0)}</div></>) },
-    { key: "inStockRate", label: "Availability", align: "right", sortable: true, render: (p) => (<><Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge><div className="sl-table-sub">{p.inStockRate.toFixed(1)}%</div></>) },
+    { key: "inStockRate", label: "Stock Availability 1P + 3P", align: "right", sortable: true, render: (p) => (<><Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge><div className="sl-table-sub">{p.inStockRate.toFixed(1)}%</div></>) },
     { key: "rating", label: "Rating", align: "right", sortable: true, render: (p) => (<><span style={{ fontWeight: 500 }}>{p.rating.toFixed(2)}</span><div className="sl-table-sub">{p.reviews.toLocaleString()} reviews</div></>) },
     { key: "buyBox", label: "Buy box", render: (p) => <Badge tone={p.buyBox ? "positive" : "neutral"}>{p.buyBox ? "Held" : "Lost"}</Badge> },
     { key: "opportunity", label: "Opportunity", sortable: true, render: (p) => <Badge tone={opportunityTone(p.opportunity)}>{p.opportunity}</Badge> },

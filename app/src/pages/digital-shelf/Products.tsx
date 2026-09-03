@@ -61,7 +61,7 @@ export default function DigitalShelfProducts() {
     { key: "retailerName", label: "Retailer", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.retailerName}</span> },
     { key: "searchRank", label: "Rank", align: "right", sortable: true, render: (p) => (<><span style={{ fontWeight: 600 }}>#{p.searchRank}</span><span style={{ fontSize: 11.5, marginLeft: 5, color: deltaColor(p.rankDelta) }}>{p.rankDelta === 0 ? "—" : (p.rankDelta > 0 ? "↑" : "↓") + Math.abs(p.rankDelta)}</span></>) },
     { key: "price", label: "Price", align: "right", sortable: true, render: (p) => "$" + p.price.toFixed(2) },
-    { key: "inStockRate", label: "Availability", sortable: true, render: (p) => (<><Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge><div className="sl-table-sub">{p.inStockRate.toFixed(1)}%</div></>) },
+    { key: "inStockRate", label: "Stock Availability 1P + 3P", sortable: true, render: (p) => (<><Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge><div className="sl-table-sub">{p.inStockRate.toFixed(1)}%</div></>) },
     { key: "contentScore", label: "Content completeness", align: "right", sortable: true, render: (p) => p.contentScore },
     { key: "shelfScore", label: "Shelf score", align: "right", minWidth: 110, sortable: true, render: (p) => (
       <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>

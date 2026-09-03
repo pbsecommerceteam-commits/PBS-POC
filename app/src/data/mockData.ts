@@ -948,10 +948,11 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
   });
 
   const r = rng(seed + 7);
-  /* Same seeds/formula as shelfData() so Average Price and Buy Box Presence
-     read identically wherever they appear. Real Average Price (pooled from
-     raw daily rows, see realRangeValueAvgPrice) whenever real data applies;
-     falls back to the unweighted per-product average otherwise. */
+  /* Same seeds/formula as shelfData() so Average Price and Buy Box
+     Ownership 1P read identically wherever they appear. Real Average Price
+     (pooled from raw daily rows, see realRangeValueAvgPrice) whenever real
+     data applies; falls back to the unweighted per-product average
+     otherwise. */
   const avgPriceNow = round(pool.reduce((a, p) => a + p.price, 0) / (pool.length || 1), 2);
   const avgPriceSeries = realAvgPriceWeekly(period, retailer, rangeMatch?.idx) ?? series(seed + 21, n, avgPriceNow * 1.02, avgPriceNow, avgPriceNow * 0.01, 2);
   const buyNow = round((pool.filter((p) => p.buyBox).length / (pool.length || 1)) * 100, 0);
@@ -967,10 +968,10 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
     generatedAt: "Today 06:40 UTC",
     kpis: [
       kpi("sos", "Search Visibility", "%", sos, 40, 1, dateRange ? realRangeValueSos(retailer, rangeMatch!.idx) : null),
-      kpi("instock", "Availability", "%", stockVals, 98, 1, dateRange ? realRangeValue(retailer, "stockRate", wideMatch!.idx) : null),
+      kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1, dateRange ? realRangeValue(retailer, "stockRate", wideMatch!.idx) : null),
       kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2, dateRange ? realRangeValueAvgPrice(retailer, wideMatch!.idx) : null),
       kpi("content", "Content Completeness", "/100", contentVals, 95, 0, dateRange ? realRangeValue(retailer, "content", wideMatch!.idx) : null),
-      kpi("buybox", "Buy Box Presence", "%", buyBoxSeries, 95, 0, dateRange ? realRangeValue(retailer, "buyBoxRate", wideMatch!.idx) : null),
+      kpi("buybox", "Buy Box Ownership 1P", "%", buyBoxSeries, 95, 0, dateRange ? realRangeValue(retailer, "buyBoxRate", wideMatch!.idx) : null),
       kpi("rating", "Average Rating", "", ratingVals, 4.5, 2, dateRange ? realRangeValue(retailer, "rating", wideMatch!.idx) : null),
       { id: "oos", label: "Out of Stock SKUs", unit: "", target: 0, value: oos, delta: Math.round((r() - 0.5) * 4), spark: series(seed + 8, n, oos + 1, oos, 0.7, 0).map((v) => clamp(v, 0, 20)) },
       { id: "rank", label: "Avg Search Rank", unit: "", target: 5, value: avgRank, delta: round((r() - 0.5) * 2, 1), spark: series(seed + 9, n, avgRank + 1.4 * sw, avgRank, 0.5, 1) },
@@ -1344,10 +1345,10 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     generatedAt: "Today 06:40 UTC",
     kpis: [
       kpi("sos", "Search Visibility", "%", sos, 40, 1, dateRange ? realRangeValueSos(retailer, rangeMatch!.idx) : null),
-      kpi("instock", "Availability", "%", stockVals, 98, 1, dateRange ? realRangeValue(retailer, "stockRate", wideMatch!.idx) : null),
+      kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1, dateRange ? realRangeValue(retailer, "stockRate", wideMatch!.idx) : null),
       kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2, dateRange ? realRangeValueAvgPrice(retailer, wideMatch!.idx) : null),
       kpi("content", "Content Completeness", "/100", contentVals, 95, 0, dateRange ? realRangeValue(retailer, "content", wideMatch!.idx) : null),
-      kpi("buybox", "Buy Box Presence", "%", buyBox, 95, 0, dateRange ? realRangeValue(retailer, "buyBoxRate", wideMatch!.idx) : null),
+      kpi("buybox", "Buy Box Ownership 1P", "%", buyBox, 95, 0, dateRange ? realRangeValue(retailer, "buyBoxRate", wideMatch!.idx) : null),
     ],
     visibility: {
       labels, previous: sos.map((v, i) => round(v - 2.4 - (i % 3) * 0.3, 1)), target: 40,
@@ -1521,16 +1522,16 @@ function salesData(retailer: string, period: string, dateRange?: DateRange | nul
   const shelf = shelfData(retailer, period, dateRange);
   const shelfKpi = (id: string) => shelf.kpis.find((k) => k.id === id) || { delta: 0, value: 0 };
   const signals = [
-    { label: "Availability", delta: shelfKpi("instock").delta, unit: " pts", value: shelfKpi("instock").value + "%" },
+    { label: "Stock Availability 1P + 3P", delta: shelfKpi("instock").delta, unit: " pts", value: shelfKpi("instock").value + "%" },
     { label: "Search Visibility", delta: shelfKpi("sos").delta, unit: " pts", value: shelfKpi("sos").value + "%" },
     { label: "Average Price", delta: shelfKpi("pidx").delta, unit: "", value: "$" + Number(shelfKpi("pidx").value).toFixed(2) },
     { label: "Content Completeness", delta: shelfKpi("content").delta, unit: " pts", value: String(shelfKpi("content").value) },
-    { label: "Buy Box Presence", delta: shelfKpi("buybox").delta, unit: " pts", value: shelfKpi("buybox").value + "%" },
+    { label: "Buy Box Ownership 1P", delta: shelfKpi("buybox").delta, unit: " pts", value: shelfKpi("buybox").value + "%" },
   ];
 
   const byMove = signals.slice().sort((a, b) => a.delta - b.delta);
   const weakest = byMove[0], strongest = byMove[byMove.length - 1];
-  const SIGNAL_FOCUS: Record<string, string> = { "Availability": "avail", "Search Visibility": "rank", "Price Index": "price", "Content Completeness": "content", "Buy Box Presence": "avail" };
+  const SIGNAL_FOCUS: Record<string, string> = { "Stock Availability 1P + 3P": "avail", "Search Visibility": "rank", "Average Price": "price", "Content Completeness": "content", "Buy Box Ownership 1P": "avail" };
   const diagnosis = {
     headline: weakest.delta < 0 ? "Likely shelf signal: " + weakest.label.toLowerCase() : "Potential contributor: " + strongest.label.toLowerCase(),
     text: weakest.delta < 0
