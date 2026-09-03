@@ -23,6 +23,10 @@ There is no test suite configured (no Jest/Vitest, no test files) — treat `npm
 
 To run the app end-to-end, use the `.claude/launch.json` config named `shelfline-dev` (already wired for the preview tool) rather than inventing a new one.
 
+## Git workflow
+
+Push directly to `main` — do not create per-task feature branches for changes in this repo. A push to `main` immediately triggers the GitHub Pages deploy (see below), so verify `npm run build` and `npm run lint` pass first.
+
 ## Deployment
 
 `.github/workflows/deploy.yml` builds `app/` and pushes `app/dist` to GitHub Pages on every push to `main`. Because the app is served from `https://<user>.github.io/PBS-POC/` rather than a domain root:
