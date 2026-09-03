@@ -901,14 +901,11 @@ function realRangeValueSos(retailer: string, idx: number[], category?: string): 
 }
 
 /* Single "current value" resolver for the Retailer performance / digital-shelf
-   breakdown cards (Overview's retailerPerformance, Digital Shelf's byRetailer)
+   breakdown cards (Overview's retailerPerformance, shelfData's byRetailer)
    -- pooled across the selected custom date range when one is active (reusing
-   realRangeValue's weighted pooling), or pooled across the full real "Last 4
-   weeks" window (DEFAULT_WIDE_IDX) when no custom range is active, else null
-   so the caller falls back to its existing synthetic bias-based estimate.
-   Search Visibility stays synthetic on these specific cards (no real
-   per-retailer competitive-share data exists), so this is never called for
-   that field. */
+   realRangeValue's weighted pooling), or pooled across the full real period
+   (DEFAULT_WIDE_IDX) when no custom range is active, else null so the caller
+   falls back to its existing synthetic bias-based estimate. */
 function realCurrentValue(retailer: string, field: "stockRate" | "buyBoxRate" | "rating" | "content", period: string, dateRange: DateRange | null | undefined, wideIdx?: number[], category?: string): number | null {
   if (category) return null; // see realRangeValue's comment -- no category dimension in this table
   if (dateRange && wideIdx) {
@@ -917,6 +914,25 @@ function realCurrentValue(retailer: string, field: "stockRate" | "buyBoxRate" | 
   }
   if (period === "4w") {
     const r = realRangeValue(retailer, field, DEFAULT_WIDE_IDX, category);
+    return r ? r.value : null;
+  }
+  return null;
+}
+
+/* Same as realCurrentValue above, but for Search Visibility (REAL_SOS_WEEKLY)
+   -- this table genuinely does have real per-retailer data (it's exactly
+   what the top "Search Visibility" KPI card uses when scoped to one
+   retailer), so the Retailer performance / byRetailer breakdown rows can use
+   the same real, pooled value instead of the illustrative RETAILER_BIAS-
+   anchored estimate every other synthetic fallback here still uses. */
+function realCurrentValueSos(retailer: string, period: string, dateRange: DateRange | null | undefined, narrowIdx?: number[], category?: string): number | null {
+  if (category) return null; // see realRangeValue's comment -- no category dimension in this table
+  if (dateRange && narrowIdx) {
+    const r = realRangeValueSos(retailer, narrowIdx, category);
+    return r ? r.value : null;
+  }
+  if (period === "4w") {
+    const r = realRangeValueSos(retailer, DEFAULT_NARROW_IDX, category);
     return r ? r.value : null;
   }
   return null;
@@ -1199,7 +1215,8 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
     retailerPerformance: retailers.slice(1).map((rt) => {
       const rr = rowRng(key, "retailerPerf", rt.id);
       const b = RETAILER_BIAS[rt.id];
-      const sosR = round(clamp(31 + b.sos + (rr() - 0.5) * 6, 8, 55), 1);
+      const realSos = realCurrentValueSos(rt.id, period, dateRange, rangeMatch?.idx, category);
+      const sosR = realSos != null ? round(realSos, 1) : round(clamp(31 + b.sos + (rr() - 0.5) * 6, 8, 55), 1);
       const realStock = realCurrentValue(rt.id, "stockRate", period, dateRange, wideMatch?.idx, category);
       const realContent = realCurrentValue(rt.id, "content", period, dateRange, wideMatch?.idx, category);
       const realRating = realCurrentValue(rt.id, "rating", period, dateRange, wideMatch?.idx, category);
@@ -1372,7 +1389,8 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     const rr = rowRng(key, "shelfRetailer", rt.id);
     const b = RETAILER_BIAS[rt.id];
     const own = catalog.filter((p) => p.retailer === rt.id && (!category || p.category === category)).map((p) => withShelfMetrics(productFor(p, key)));
-    const visibility = round(clamp(31 + b.sos + (rr() - 0.5) * 6, 8, 58), 1);
+    const realVisibility = realCurrentValueSos(rt.id, period, dateRange, rangeMatch?.idx, category);
+    const visibility = realVisibility != null ? round(realVisibility, 1) : round(clamp(31 + b.sos + (rr() - 0.5) * 6, 8, 58), 1);
     const realAvailability = realCurrentValue(rt.id, "stockRate", period, dateRange, wideMatch?.idx, category);
     const realContent = realCurrentValue(rt.id, "content", period, dateRange, wideMatch?.idx, category);
     const realRating = realCurrentValue(rt.id, "rating", period, dateRange, wideMatch?.idx, category);
