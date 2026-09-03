@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { FacetPanel, type FacetGroup } from "../../components/ui/FacetPanel";
@@ -47,6 +47,10 @@ const COLUMN_OPTIONS: ColumnOption[] = [
   { id: "buyBoxShipper", label: "Buy Box Shipper" },
 ];
 const DEFAULT_COLUMNS = new Set(COLUMN_OPTIONS.map((c) => c.id));
+/* "Product" is the pinned identity column (see ColumnPicker's lockedIds) --
+   it's excluded from the reorderable set so it always renders first, same
+   as it's excluded from being hidden. */
+const DEFAULT_COLUMN_ORDER = COLUMN_OPTIONS.map((c) => c.id).filter((id) => id !== "name");
 
 const yesNo = (v: boolean) => (v ? "Yes" : "No");
 const ROW_HEIGHT = 85; // measured .sl-table row height (3-line clamp minHeight, no more sku/meta subtitle under Product)
@@ -78,6 +82,7 @@ export default function ContentProducts() {
   const [issue, setIssue] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(DEFAULT_COLUMNS);
+  const [columnOrder, setColumnOrder] = useState<string[]>(DEFAULT_COLUMN_ORDER);
   const facetRef = useRef<HTMLDivElement>(null);
   const [pageSize, setPageSize] = useState(8);
 
@@ -98,40 +103,58 @@ export default function ContentProducts() {
     return () => ro.disconnect();
   }, []);
 
-  const countBy = (key: keyof Product) => {
+  /* Each facet's own predicate (mirrors the `all` filter below) so its
+     options can be counted against every OTHER active facet's selection --
+     this is what makes the rail context-aware: picking Amazon recomputes
+     Category/Brand/Content-fields option counts down to only what Amazon
+     actually has, rather than the whole unfiltered catalog. A facet never
+     filters by its own selection when counting its own options, or
+     checking a second value in the same group would immediately zero out
+     every other option in that group (multi-select-within-a-group is
+     still an OR). */
+  const q = search.trim().toLowerCase();
+  const matches = {
+    retailer: (p: Product) => retailer.length === 0 || retailer.includes(p.retailerName),
+    stock: (p: Product) => stock.length === 0 || stock.includes(p.stockStatus),
+    opportunity: (p: Product) => opportunity.length === 0 || opportunity.includes(p.opportunity),
+    category: (p: Product) => category.length === 0 || category.includes(p.category),
+    brand: (p: Product) => brand.length === 0 || brand.includes(p.brand),
+    issue: (p: Product) => issue.length === 0 || issue.some((id) => p.contentChecks.includes(id)),
+    search: (p: Product) => !q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q),
+  };
+  type FacetKey = keyof typeof matches;
+  const poolExcluding = (exclude: FacetKey) =>
+    products.filter((p) => (Object.keys(matches) as FacetKey[]).every((k) => k === exclude || matches[k](p)));
+
+  const countByExcluding = (exclude: FacetKey, keyFn: (p: Product) => string) => {
     const counts: Record<string, number> = {};
-    products.forEach((p) => { const v = String(p[key]); counts[v] = (counts[v] || 0) + 1; });
+    poolExcluding(exclude).forEach((p) => { const v = keyFn(p); counts[v] = (counts[v] || 0) + 1; });
     return counts;
   };
-  const stockCounts = countBy("stockStatus");
-  const oppCounts = countBy("opportunity");
-  const catCounts = countBy("category");
-  const brandCounts = countBy("brand");
-  const retailerCounts = countBy("retailerName");
+  const stockCounts = countByExcluding("stock", (p) => p.stockStatus);
+  const oppCounts = countByExcluding("opportunity", (p) => p.opportunity);
+  const catCounts = countByExcluding("category", (p) => p.category);
+  const brandCounts = countByExcluding("brand", (p) => p.brand);
+  const retailerCounts = countByExcluding("retailer", (p) => p.retailerName);
   const issueCounts: Record<string, number> = {};
-  products.forEach((p) => p.contentChecks.forEach((id) => { issueCounts[id] = (issueCounts[id] || 0) + 1; }));
+  poolExcluding("issue").forEach((p) => p.contentChecks.forEach((id) => { issueCounts[id] = (issueCounts[id] || 0) + 1; }));
+
+  /* Only ever show an option that's actually reachable given every other
+     active filter -- except one the user already checked, which stays
+     visible (still checked, now at 0) rather than vanishing out from
+     under them the instant it stops matching. */
+  const visible = (counts: Record<string, number>, selected: string[], id: string) => (counts[id] || 0) > 0 || selected.includes(id);
 
   const facets: FacetGroup[] = [
-    { id: "retailer", title: "Retailer", selected: retailer, onChange: setRetailer, options: Object.keys(retailerCounts).sort().map((id) => ({ id, label: id, count: retailerCounts[id] })) },
-    { id: "stock", title: "Stock status", selected: stock, onChange: setStock, options: ["In Stock", "Low Stock", "Out of Stock"].map((id) => ({ id, label: id, count: stockCounts[id] || 0 })) },
-    { id: "opportunity", title: "Opportunity", selected: opportunity, onChange: setOpportunity, options: ["High", "Medium", "Low"].map((id) => ({ id, label: id, count: oppCounts[id] || 0 })) },
-    { id: "category", title: "Category", selected: category, onChange: setCategory, options: Object.keys(catCounts).sort().map((id) => ({ id, label: id, count: catCounts[id] })) },
-    { id: "brand", title: "Brand", selected: brand, onChange: setBrand, options: Object.keys(brandCounts).sort().map((id) => ({ id, label: id, count: brandCounts[id] })) },
-    { id: "issue", title: "Content fields", selected: issue, onChange: setIssue, options: Object.keys(CONTENT_CHECK_LABELS).map((id) => ({ id, label: CONTENT_CHECK_LABELS[id], count: issueCounts[id] || 0 })) },
+    { id: "retailer", title: "Retailer", selected: retailer, onChange: setRetailer, options: Object.keys(retailerCounts).sort().filter((id) => visible(retailerCounts, retailer, id)).map((id) => ({ id, label: id, count: retailerCounts[id] || 0 })) },
+    { id: "stock", title: "Stock status", selected: stock, onChange: setStock, options: ["In Stock", "Low Stock", "Out of Stock"].filter((id) => visible(stockCounts, stock, id)).map((id) => ({ id, label: id, count: stockCounts[id] || 0 })) },
+    { id: "opportunity", title: "Opportunity", selected: opportunity, onChange: setOpportunity, options: ["High", "Medium", "Low"].filter((id) => visible(oppCounts, opportunity, id)).map((id) => ({ id, label: id, count: oppCounts[id] || 0 })) },
+    { id: "category", title: "Category", selected: category, onChange: setCategory, options: Object.keys(catCounts).sort().filter((id) => visible(catCounts, category, id)).map((id) => ({ id, label: id, count: catCounts[id] || 0 })) },
+    { id: "brand", title: "Brand", selected: brand, onChange: setBrand, options: Object.keys(brandCounts).sort().filter((id) => visible(brandCounts, brand, id)).map((id) => ({ id, label: id, count: brandCounts[id] || 0 })) },
+    { id: "issue", title: "Content fields", selected: issue, onChange: setIssue, options: Object.keys(CONTENT_CHECK_LABELS).filter((id) => visible(issueCounts, issue, id)).map((id) => ({ id, label: CONTENT_CHECK_LABELS[id], count: issueCounts[id] || 0 })) },
   ];
 
-  const all: Product[] = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return products.filter((p) =>
-      (retailer.length === 0 || retailer.includes(p.retailerName)) &&
-      (stock.length === 0 || stock.includes(p.stockStatus)) &&
-      (opportunity.length === 0 || opportunity.includes(p.opportunity)) &&
-      (category.length === 0 || category.includes(p.category)) &&
-      (brand.length === 0 || brand.includes(p.brand)) &&
-      (issue.length === 0 || issue.some((id) => p.contentChecks.includes(id))) &&
-      (!q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)),
-    );
-  }, [products, retailer, stock, opportunity, category, brand, issue, search]);
+  const all: Product[] = products.filter((p) => (Object.keys(matches) as FacetKey[]).every((k) => matches[k](p)));
 
   const SORTERS = { ...productSorters, completeness: (a: Product, b: Product) => (8 - a.contentChecks.length) - (8 - b.contentChecks.length),
     bulletsText: (a: Product, b: Product) => a.bulletsText.length - b.bulletsText.length,
@@ -175,7 +198,11 @@ export default function ContentProducts() {
     { key: "buyBoxSeller", label: "Buy Box Seller", minWidth: 150, sortable: true, render: (p) => p.buyBoxSeller ?? "—" },
     { key: "buyBoxShipper", label: "Buy Box Shipper", minWidth: 150, sortable: true, render: (p) => p.buyBoxShipper ?? "—" },
   ];
-  const columns = ALL_COLUMNS.filter((c) => c.key === "name" || visibleColumns.has(c.key));
+  const columnByKey = new Map(ALL_COLUMNS.map((c) => [c.key, c]));
+  const columns = [
+    columnByKey.get("name")!,
+    ...columnOrder.map((id) => columnByKey.get(id)).filter((c): c is Column<Product> => !!c && visibleColumns.has(c.key)),
+  ];
 
   return (
     <div style={{ display: "flex", gap: "var(--app-gap)", alignItems: "flex-start" }}>
@@ -185,7 +212,7 @@ export default function ContentProducts() {
       <Card padding="20px 22px 14px" style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
           <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Products</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{total} of {products.length} tracked SKUs</div></div>
-          <ColumnPicker columns={COLUMN_OPTIONS} selected={visibleColumns} onChange={setVisibleColumns} lockedIds={["name"]} />
+          <ColumnPicker columns={COLUMN_OPTIONS} selected={visibleColumns} onChange={setVisibleColumns} order={columnOrder} onReorder={setColumnOrder} lockedIds={["name"]} />
         </div>
         <div style={{ marginBottom: 16 }}>
           <input className="input" placeholder="Search product, SKU, ASIN…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minHeight: 32, fontSize: 12.5, maxWidth: 320 }} />
