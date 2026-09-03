@@ -25,7 +25,7 @@ To run the app end-to-end, use the `.claude/launch.json` config named `shelfline
 
 ## Git workflow
 
-Push directly to `main` — do not create per-task feature branches for changes in this repo. A push to `main` immediately triggers the GitHub Pages deploy (see below), so verify `npm run build` and `npm run lint` pass first.
+Work directly on `main` — do not create per-task feature branches for changes in this repo. `git pull origin main` before starting work, and commit + `git push origin main` as you go while working (not batched at the end). A push to `main` immediately triggers the GitHub Pages deploy (see below), so verify `npm run build` and `npm run lint` pass before each push.
 
 ## Deployment
 
