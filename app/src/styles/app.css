@@ -115,18 +115,21 @@ select option { color: var(--text-primary); background-color: var(--surface-card
 .sl-tab:hover { color: var(--text-primary); }
 .sl-tab.is-active { background: var(--surface-elevated); color: var(--text-primary); box-shadow: var(--shadow-1); }
 
-/* ---- FilterSelect: a select dressed as one coherent filter chip ---- */
+/* ---- FilterSelect: a custom-built dropdown dressed as one coherent chip
+   (a <button> trigger + our own popover, not a native <select> -- see
+   FilterSelect.tsx for why) ---- */
 .sl-filter {
   position: relative; display: inline-flex; align-items: center; gap: 8px;
   height: 36px; padding: 0 30px 0 12px; cursor: pointer;
   background: var(--surface-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);
+  font: inherit; color: inherit; text-align: left; appearance: none;
   transition: border-color var(--duration-fast) var(--ease), background var(--duration-fast) var(--ease);
 }
 .sl-filter:hover { border-color: var(--border-standard); }
-.sl-filter:has(select:focus-visible) { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 16%, transparent); }
+.sl-filter:focus-visible { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 16%, transparent); outline: none; }
 .sl-filter__label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 .sl-filter__value { font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.sl-filter__chevron { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--text-faint); pointer-events: none; }
+.sl-filter__chevron { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--text-faint); pointer-events: none; transition: transform var(--duration-fast) var(--ease); }
 
 /* ---- DateRangePicker: two date inputs in the same chip language ---- */
 .sl-daterange { padding: 0 10px; cursor: default; gap: 6px; }

@@ -57,7 +57,7 @@ export function GlobalHeader() {
     <header ref={rootRef} className="sl-header">
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <FilterSelect label="Retailer" value={retailer} onChange={setRetailer} options={retailers} width={168} />
-        <FilterSelect label="Category" value={category} onChange={setCategory} options={categoryOptions} width={156} />
+        <FilterSelect label="Category" value={category} onChange={setCategory} options={categoryOptions} width={178} />
         <DateRangePicker value={dateRange} onChange={setDateRange} />
       </div>
 
