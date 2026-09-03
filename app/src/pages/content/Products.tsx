@@ -62,7 +62,7 @@ export const CONTENT_COLUMNS: Column<Product>[] = [
   { key: "enhancedContent", label: "Enhanced Content", minWidth: 140, sortable: true, render: (p) => <span className={p.enhancedContent ? undefined : "sl-muted"}>{yesNo(p.enhancedContent)}</span>, csv: (p) => yesNo(p.enhancedContent) },
   { key: "questionCount", label: "Questions", align: "right", minWidth: 100, sortable: true, render: (p) => p.questionCount, csv: (p) => p.questionCount },
   { key: "contentScore", label: "Content Score", align: "right", minWidth: 120, sortable: true, render: (p) => <span style={{ fontWeight: 600, color: p.contentScore < 80 ? deltaColor(-1) : "inherit" }}>{p.contentScore}</span>, csv: (p) => p.contentScore },
-  { key: "completeness", label: "Content Completeness", align: "right", minWidth: 150, sortable: true, render: (p) => <span>{8 - p.contentChecks.length}/8</span>, csv: (p) => `${8 - p.contentChecks.length}/8` },
+  { key: "completeness", label: "Content Completeness", align: "right", minWidth: 150, sortable: true, render: (p) => <span>{Math.round(((8 - p.contentChecks.length) / 8) * 100)}%</span>, csv: (p) => Math.round(((8 - p.contentChecks.length) / 8) * 100) },
   ...CHECK_COLUMNS.map((c): Column<Product> => ({
     key: c.key, label: c.label, align: "right", minWidth: 100, sortable: true,
     render: (p) => <ScorePill pass={passFail(p, c.id)} />,
