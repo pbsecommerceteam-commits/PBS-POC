@@ -48,6 +48,15 @@ export interface Product {
   bulletCount: number;
   descriptionLength: number;
   enhancedContent: boolean;
+  retailerId: string;
+  vendorStockNo: string | null;
+  siteCategory: string | null;
+  buyBoxSeller: string | null;
+  buyBoxShipper: string | null;
+  videoCount: number;
+  questionCount: number;
+  has360Image: boolean;
+  hasIngredients: boolean;
   buyBox: boolean;
   opportunity: OpportunityLevel;
   searchVisibility: number;

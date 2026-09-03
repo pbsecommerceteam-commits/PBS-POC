@@ -379,6 +379,23 @@ def main():
         description_length = latest.get("Description no of chars") or 0
         enhanced_content = str(latest.get("Enhanced content") or "").strip().lower() == "yes"
 
+        # Further raw Content-tab fields -- "relevant" here means real,
+        # reasonably dense across the 117 SKUs, and semantically legible on
+        # its own. Deliberately NOT included: the 22 Varient label/value
+        # pairs (label 1 covers ~25% of rows, dropping below 3% by pair 10
+        # -- too sparse to be a meaningful column) and Rank 1-4/Category 1-4
+        # (their relationship to the retailer's own taxonomy is ambiguous in
+        # the source data and risks misrepresenting what the number means).
+        retailer_id = latest.get("Retailer id")
+        vendor_stock_no = latest.get("Vendor stock no")
+        site_category = latest.get("Site category")
+        buy_box_seller_raw = latest.get("Buy box seller")
+        buy_box_shipper_raw = latest.get("Buy box shipper")
+        video_count = latest.get("No of videos") or 0
+        question_count = latest.get("No of questions") or 0
+        has_360_image = bool(latest.get("Image 360"))
+        has_ingredients = bool(latest.get("Ingredients list"))
+
         catalog.append({
             "id": pid,
             "name": latest.get("Title"),
@@ -414,6 +431,15 @@ def main():
             "bulletCount": bullet_count,
             "descriptionLength": description_length,
             "enhancedContent": enhanced_content,
+            "retailerId": retailer_id,
+            "vendorStockNo": vendor_stock_no,
+            "siteCategory": site_category,
+            "buyBoxSeller": buy_box_seller_raw,
+            "buyBoxShipper": buy_box_shipper_raw,
+            "videoCount": video_count,
+            "questionCount": question_count,
+            "has360Image": has_360_image,
+            "hasIngredients": has_ingredients,
         })
 
     # rank = position within (retailer, category) ordered by reviews desc
@@ -666,7 +692,7 @@ def main():
     out.append("export const catalog = [")
     for p in catalog:
         out.append(
-            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, contentChecks: %s, titleLength: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s },"
+            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, contentChecks: %s, titleLength: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, vendorStockNo: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, hasIngredients: %s },"
             % (
                 ts_str(p["id"]), ts_str(p["name"]), ts_str(p["brand"]), ts_str(p["category"]), ts_str(p["retailer"]),
                 ts_num(p["rank"], 1), ts_num(p["price"], 0), ts_num(p["avgSellingPrice"], p["price"] or 0),
@@ -677,6 +703,10 @@ def main():
                 json.dumps(p["contentChecks"]),
                 ts_num(p["titleLength"], 0), ts_num(p["imageCount"], 0), ts_num(p["bulletCount"], 0),
                 ts_num(p["descriptionLength"], 0), ts_bool(p["enhancedContent"]),
+                ts_str(p["retailerId"]), ts_str(p["vendorStockNo"]), ts_str(p["siteCategory"]),
+                ts_str(p["buyBoxSeller"]), ts_str(p["buyBoxShipper"]),
+                ts_num(p["videoCount"], 0), ts_num(p["questionCount"], 0),
+                ts_bool(p["has360Image"]), ts_bool(p["hasIngredients"]),
             )
         )
     out.append("];")
