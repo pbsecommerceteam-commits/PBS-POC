@@ -15,6 +15,28 @@ import type { Product } from "../../models/types";
 import type { ContentContext } from "./Layout";
 
 const yesNo = (v: boolean) => (v ? "Yes" : "No");
+/* A product's `contentChecks` array holds the FAILED rubric-check ids (see
+   CONTENT_CHECK_LABELS and build_mock_data.py's content_completeness()) --
+   passing is simply "not in that list", already real, computed data with
+   no new ETL field needed. */
+const passFail = (p: Product, id: string) => !p.contentChecks.includes(id);
+
+/* One column per individual rubric check behind Content Score/Content
+   Completeness -- Title/Images/Bullet Count/Bullet Caps/Bullet Length/
+   Description/Rating each get their own Pass/Fail column so the two
+   summary columns aren't the only place to see which specific checks a
+   listing is failing. "Enhanced" is deliberately not repeated here: it's
+   already its own Yes/No column above (enhancedContent) with identical
+   pass/fail semantics -- the check IS the raw flag, no threshold logic. */
+const CHECK_COLUMNS: { key: string; id: string; label: string }[] = [
+  { key: "titleScore", id: "title", label: "Title Score" },
+  { key: "imagesScore", id: "images", label: "Images Score" },
+  { key: "bulletCountScore", id: "bulletCount", label: "Bullet Count Score" },
+  { key: "bulletCapsScore", id: "bulletCaps", label: "Bullet Caps Score" },
+  { key: "bulletLengthScore", id: "bulletLength", label: "Bullet Length Score" },
+  { key: "descriptionScore", id: "description", label: "Description Score" },
+  { key: "ratingScore", id: "rating", label: "Rating Score" },
+];
 
 const CLAMP_STYLE: CSSProperties = { display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "normal", lineHeight: 1.35, maxWidth: 320, minHeight: 58 };
 function ClampedText({ text }: { text: string | null }) {
@@ -53,6 +75,11 @@ export const CONTENT_COLUMNS: Column<Product>[] = [
   { key: "questionCount", label: "Questions", align: "right", minWidth: 100, sortable: true, render: (p) => p.questionCount, csv: (p) => p.questionCount },
   { key: "contentScore", label: "Content Score", align: "right", minWidth: 120, sortable: true, render: (p) => <span style={{ fontWeight: 600, color: p.contentScore < 80 ? deltaColor(-1) : "inherit" }}>{p.contentScore}</span>, csv: (p) => p.contentScore },
   { key: "completeness", label: "Content Completeness", align: "right", minWidth: 150, sortable: true, render: (p) => <span>{8 - p.contentChecks.length}/8</span>, csv: (p) => `${8 - p.contentChecks.length}/8` },
+  ...CHECK_COLUMNS.map((c): Column<Product> => ({
+    key: c.key, label: c.label, minWidth: 110, sortable: true,
+    render: (p) => <span className={passFail(p, c.id) ? undefined : "sl-muted"}>{passFail(p, c.id) ? "Pass" : "Fail"}</span>,
+    csv: (p) => passFail(p, c.id) ? "Pass" : "Fail",
+  })),
   { key: "vendorStockNo", label: "Vendor Stock No.", minWidth: 130, sortable: true, render: (p) => p.vendorStockNo ?? "—", csv: (p) => p.vendorStockNo ?? "" },
   { key: "siteCategory", label: "Site Category", minWidth: 200, sortable: true, render: (p) => p.siteCategory ?? "—", csv: (p) => p.siteCategory ?? "" },
   { key: "buyBoxSeller", label: "Buy Box Seller", minWidth: 150, sortable: true, render: (p) => p.buyBoxSeller ?? "—", csv: (p) => p.buyBoxSeller ?? "" },
@@ -169,7 +196,8 @@ export default function ContentProducts() {
     descriptionText: (a: Product, b: Product) => a.descriptionLength - b.descriptionLength,
     ingredientsText: (a: Product, b: Product) => Number(!!b.ingredientsText) - Number(!!a.ingredientsText),
     variationCount: (a: Product, b: Product) => a.variations.length - b.variations.length,
-    variations: (a: Product, b: Product) => a.variations.length - b.variations.length };
+    variations: (a: Product, b: Product) => a.variations.length - b.variations.length,
+    ...Object.fromEntries(CHECK_COLUMNS.map((c) => [c.key, (a: Product, b: Product) => Number(passFail(a, c.id)) - Number(passFail(b, c.id))])) };
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
     all, SORTERS, "contentScore", pageSize, [retailer, stock, opportunity, category, brand, issue, search, pageSize].join("|"),
   );
