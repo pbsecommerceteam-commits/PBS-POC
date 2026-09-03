@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { FacetPanel, type FacetGroup } from "../../components/ui/FacetPanel";
-import { Badge, stockTone, opportunityTone } from "../../components/ui/Badge";
+import { ColumnPicker, type ColumnOption } from "../../components/ui/ColumnPicker";
 import { ProductCell } from "../../components/ui/ProductCell";
 import { SortableTable, type Column } from "../../components/table/SortableTable";
 import { Pagination } from "../../components/table/Pagination";
@@ -13,6 +13,20 @@ import { CONTENT_CHECK_LABELS } from "../../data/mockData";
 import type { Product } from "../../models/types";
 import type { ContentContext } from "./Layout";
 
+/* Every option here is a real raw Content-tab field (see build_mock_data.py
+   and mockData.ts's productFor) -- no synthetic/derived label. "Product" is
+   the identity column and can't be hidden. */
+const COLUMN_OPTIONS: ColumnOption[] = [
+  { id: "name", label: "Product" },
+  { id: "titleLength", label: "Title Length" },
+  { id: "bulletCount", label: "Bullet Points" },
+  { id: "descriptionLength", label: "Description Length" },
+  { id: "imageCount", label: "Images" },
+  { id: "contentScore", label: "Content Score" },
+  { id: "completeness", label: "Content Completeness" },
+];
+const DEFAULT_COLUMNS = new Set(COLUMN_OPTIONS.map((c) => c.id));
+
 export default function ContentProducts() {
   const { products } = useOutletContext<ContentContext>();
   const navigate = useNavigate();
@@ -21,6 +35,7 @@ export default function ContentProducts() {
   const [category, setCategory] = useState<string[]>([]);
   const [brand, setBrand] = useState<string[]>([]);
   const [issue, setIssue] = useState<string[]>([]);
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(DEFAULT_COLUMNS);
 
   const countBy = (key: keyof Product) => {
     const counts: Record<string, number> = {};
@@ -50,19 +65,27 @@ export default function ContentProducts() {
     (issue.length === 0 || issue.some((id) => p.contentChecks.includes(id))),
   ), [products, stock, opportunity, category, brand, issue]);
 
+  const SORTERS = { ...productSorters, completeness: (a: Product, b: Product) => (8 - a.contentChecks.length) - (8 - b.contentChecks.length) };
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
-    all, productSorters, "contentScore", 8, [stock, opportunity, category, brand, issue].join("|"),
+    all, SORTERS, "contentScore", 8, [stock, opportunity, category, brand, issue].join("|"),
   );
 
-  const columns: Column<Product>[] = [
+  /* Content-only columns -- no price, stock, rating or opportunity here (see
+     Pricing Intelligence's Products table for those). Every field is real:
+     titleLength/bulletCount/descriptionLength/imageCount come straight from
+     the Content-tab crawl (see build_mock_data.py), contentScore is the
+     8-check rubric score, and completeness is "checks passed / 8" -- the
+     same rubric, a different summary than the numeric score. */
+  const ALL_COLUMNS: Column<Product>[] = [
     { key: "name", label: "Product", minWidth: 240, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={`${p.category} · ${p.retailerName}`} /> },
-    { key: "searchRank", label: "Search rank", align: "right", sortable: true, render: (p) => "#" + p.searchRank },
-    { key: "price", label: "Price", align: "right", sortable: true, render: (p) => "$" + p.price.toFixed(2) },
-    { key: "stockStatus", label: "Stock", sortable: true, render: (p) => <Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge> },
-    { key: "rating", label: "Rating", align: "right", sortable: true, render: (p) => p.rating.toFixed(2) },
-    { key: "contentScore", label: "Content completeness", align: "right", sortable: true, render: (p) => <span style={{ fontWeight: 600, color: p.contentScore < 80 ? deltaColor(-1) : "inherit" }}>{p.contentScore}</span> },
-    { key: "opportunity", label: "Opportunity", sortable: true, render: (p) => <Badge tone={opportunityTone(p.opportunity)}>{p.opportunity}</Badge> },
+    { key: "titleLength", label: "Title Length", align: "right", sortable: true, render: (p) => p.titleLength + " chars" },
+    { key: "bulletCount", label: "Bullet Points", align: "right", sortable: true, render: (p) => p.bulletCount },
+    { key: "descriptionLength", label: "Description Length", align: "right", sortable: true, render: (p) => p.descriptionLength + " chars" },
+    { key: "imageCount", label: "Images", align: "right", sortable: true, render: (p) => p.imageCount },
+    { key: "contentScore", label: "Content Score", align: "right", sortable: true, render: (p) => <span style={{ fontWeight: 600, color: p.contentScore < 80 ? deltaColor(-1) : "inherit" }}>{p.contentScore}</span> },
+    { key: "completeness", label: "Content Completeness", align: "right", sortable: true, render: (p) => <span>{8 - p.contentChecks.length}/8</span> },
   ];
+  const columns = ALL_COLUMNS.filter((c) => c.key === "name" || visibleColumns.has(c.key));
 
   return (
     <div style={{ display: "flex", gap: "var(--app-gap)", alignItems: "flex-start" }}>
@@ -70,6 +93,7 @@ export default function ContentProducts() {
       <Card padding="20px 22px 14px" style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
           <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Products</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{total} of {products.length} tracked SKUs</div></div>
+          <ColumnPicker columns={COLUMN_OPTIONS} selected={visibleColumns} onChange={setVisibleColumns} lockedIds={["name"]} />
         </div>
         <SortableTable columns={columns} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} />
         {all.length === 0 && (
