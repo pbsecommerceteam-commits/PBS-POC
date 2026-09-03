@@ -672,13 +672,19 @@ function productFor(p: (typeof catalog)[number], key: string) {
       p.stockBias * 100 + (r() - 0.5) * 2 -
       (status === "Out of Stock" ? 4 + r() * 4 : status === "Low Stock" ? 1 + r() * 1 : 0),
       0, 100), 1),
-    rating: round(clamp(p.rating + (r() - 0.5) * 0.06, 1, 5), 2),
-    reviews: Math.round(p.reviews * (0.98 + r() * 0.04)),
-    /* Unlike price/stock/rating (which genuinely fluctuate day to day and
-       so get a small illustrative jitter for periods outside the real
-       crawl window), Content Completeness is a fixed property of the
-       listing at a point in time -- there's no honest "trend" to simulate,
-       so this is always the real computed score, every period. */
+    /* Same reasoning as price above: rating/reviews are the real crawled
+       facts, not something to jitter session to session. The old
+       clamp(..., 1, 5) also forced products with no rating at all
+       (rating: 0 in the catalog, meaning "never reviewed", not "1 star")
+       up to a fake 1.0 -- removing the jitter removes that clamp too, so
+       an honestly-unrated product now shows 0, not a fabricated 1. */
+    rating: p.rating,
+    reviews: p.reviews,
+    /* Unlike stock (which genuinely fluctuates day to day and so gets a
+       small illustrative jitter for periods outside the real crawl
+       window), Content Completeness is a fixed property of the listing at
+       a point in time -- there's no honest "trend" to simulate, so this
+       is always the real computed score, every period. */
     contentScore: p.content,
     buyBox: r() < (p.buyBoxRate ?? 0.78),
     opportunity: "" as string,
