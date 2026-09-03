@@ -9,6 +9,7 @@ import { Pagination } from "../../components/table/Pagination";
 import { useSortedPage } from "../../hooks/useSortedPage";
 import { deltaColor } from "../../lib/format";
 import { productSorters } from "../../lib/productSort";
+import { CONTENT_CHECK_LABELS } from "../../data/mockData";
 import type { Product } from "../../models/types";
 import type { ContentContext } from "./Layout";
 
@@ -19,6 +20,7 @@ export default function ContentProducts() {
   const [opportunity, setOpportunity] = useState<string[]>([]);
   const [category, setCategory] = useState<string[]>([]);
   const [brand, setBrand] = useState<string[]>([]);
+  const [issue, setIssue] = useState<string[]>([]);
 
   const countBy = (key: keyof Product) => {
     const counts: Record<string, number> = {};
@@ -29,23 +31,27 @@ export default function ContentProducts() {
   const oppCounts = countBy("opportunity");
   const catCounts = countBy("category");
   const brandCounts = countBy("brand");
+  const issueCounts: Record<string, number> = {};
+  products.forEach((p) => p.contentChecks.forEach((id) => { issueCounts[id] = (issueCounts[id] || 0) + 1; }));
 
   const facets: FacetGroup[] = [
     { id: "stock", title: "Stock status", selected: stock, onChange: setStock, options: ["In Stock", "Low Stock", "Out of Stock"].map((id) => ({ id, label: id, count: stockCounts[id] || 0 })) },
     { id: "opportunity", title: "Opportunity", selected: opportunity, onChange: setOpportunity, options: ["High", "Medium", "Low"].map((id) => ({ id, label: id, count: oppCounts[id] || 0 })) },
     { id: "category", title: "Category", selected: category, onChange: setCategory, options: Object.keys(catCounts).sort().map((id) => ({ id, label: id, count: catCounts[id] })) },
     { id: "brand", title: "Brand", selected: brand, onChange: setBrand, options: Object.keys(brandCounts).sort().map((id) => ({ id, label: id, count: brandCounts[id] })) },
+    { id: "issue", title: "Content fields", selected: issue, onChange: setIssue, options: Object.keys(CONTENT_CHECK_LABELS).map((id) => ({ id, label: CONTENT_CHECK_LABELS[id], count: issueCounts[id] || 0 })) },
   ];
 
   const all: Product[] = useMemo(() => products.filter((p) =>
     (stock.length === 0 || stock.includes(p.stockStatus)) &&
     (opportunity.length === 0 || opportunity.includes(p.opportunity)) &&
     (category.length === 0 || category.includes(p.category)) &&
-    (brand.length === 0 || brand.includes(p.brand)),
-  ), [products, stock, opportunity, category, brand]);
+    (brand.length === 0 || brand.includes(p.brand)) &&
+    (issue.length === 0 || issue.some((id) => p.contentChecks.includes(id))),
+  ), [products, stock, opportunity, category, brand, issue]);
 
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
-    all, productSorters, "contentScore", 8, [stock, opportunity, category, brand].join("|"),
+    all, productSorters, "contentScore", 8, [stock, opportunity, category, brand, issue].join("|"),
   );
 
   const columns: Column<Product>[] = [
@@ -60,7 +66,7 @@ export default function ContentProducts() {
 
   return (
     <div style={{ display: "flex", gap: "var(--app-gap)", alignItems: "flex-start" }}>
-      <FacetPanel groups={facets} onClearAll={() => { setStock([]); setOpportunity([]); setCategory([]); setBrand([]); }} />
+      <FacetPanel groups={facets} onClearAll={() => { setStock([]); setOpportunity([]); setCategory([]); setBrand([]); setIssue([]); }} />
       <Card padding="20px 22px 14px" style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
           <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Products</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{total} of {products.length} tracked SKUs</div></div>

@@ -37,6 +37,8 @@ export interface Product {
   rating: number;
   reviews: number;
   contentScore: number;
+  /** Ids of the 8 real content checks (see CONTENT_CHECK_LABELS) this product currently fails; empty = all pass. */
+  contentChecks: string[];
   buyBox: boolean;
   opportunity: OpportunityLevel;
   searchVisibility: number;

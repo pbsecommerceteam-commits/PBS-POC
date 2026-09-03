@@ -7,11 +7,6 @@ import { DataProvider } from "./context/DataContext";
 import { UiProvider } from "./context/UiContext";
 import Login from "./pages/Login";
 import Overview from "./pages/Overview";
-import DigitalShelfLayout from "./pages/digital-shelf/Layout";
-import DigitalShelfSummary from "./pages/digital-shelf/Summary";
-import DigitalShelfSearch from "./pages/digital-shelf/Search";
-import DigitalShelfBenchmarks from "./pages/digital-shelf/Benchmarks";
-import DigitalShelfProducts from "./pages/digital-shelf/Products";
 import SalesShareLayout from "./pages/sales-share/Layout";
 import SalesShareSummary from "./pages/sales-share/Summary";
 import SalesShareDrivers from "./pages/sales-share/Drivers";
@@ -27,6 +22,7 @@ import ReviewsProducts from "./pages/reviews/Products";
 import CompetitorsLayout from "./pages/competitors/Layout";
 import CompetitorsSummary from "./pages/competitors/Summary";
 import CompetitorList from "./pages/competitors/CompetitorList";
+import CompetitorsKeywords from "./pages/competitors/Keywords";
 import Alerts from "./pages/Alerts";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
@@ -43,13 +39,6 @@ export default function App() {
             <Route path="/" element={<RequireAuth><AppShell /></RequireAuth>}>
               <Route index element={<Navigate to="/overview" replace />} />
               <Route path="overview" element={<Overview />} />
-
-              <Route path="digital-shelf" element={<DigitalShelfLayout />}>
-                <Route index element={<DigitalShelfSummary />} />
-                <Route path="search" element={<DigitalShelfSearch />} />
-                <Route path="benchmarks" element={<DigitalShelfBenchmarks />} />
-                <Route path="products" element={<DigitalShelfProducts />} />
-              </Route>
 
               <Route path="sales-share" element={<SalesShareLayout />}>
                 <Route index element={<SalesShareSummary />} />
@@ -72,6 +61,7 @@ export default function App() {
               <Route path="competitors" element={<CompetitorsLayout />}>
                 <Route index element={<CompetitorsSummary />} />
                 <Route path="list" element={<CompetitorList />} />
+                <Route path="keywords" element={<CompetitorsKeywords />} />
               </Route>
 
               <Route path="alerts" element={<Alerts />} />

@@ -107,12 +107,12 @@ export default function SalesShareProducts() {
       </div>
 
       <section>
-        <div style={{ marginBottom: 14 }}><h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Opportunities</h2><div className="sl-muted" style={{ fontSize: 13, marginTop: 2 }}>Ranked by potential impact — each one opens the affected products on Digital Shelf</div></div>
+        <div style={{ marginBottom: 14 }}><h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Opportunities</h2><div className="sl-muted" style={{ fontSize: 13, marginTop: 2 }}>Ranked by potential impact — each one opens the affected products on Content Intelligence</div></div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,275px),1fr))", gap: "var(--app-gap)" }}>
           {sh.opportunities.map((o: any) => (
             <OpportunityCard key={o.id} impact={o.impact + " impact"} impactTone={opportunityTone(o.impact)} count={o.count + (o.count === 1 ? " SKU affected" : " SKUs affected")}
               title={o.title} problem={o.problem} why={o.why} action={o.action} cta="View products →"
-              onGo={() => { navigate(`/digital-shelf/products?focus=${o.focus}`); toast("Digital Shelf filtered to " + o.title.toLowerCase() + "."); }} />
+              onGo={() => { navigate(`/content/products?focus=${o.focus}`); toast("Content filtered to " + o.title.toLowerCase() + "."); }} />
           ))}
         </div>
       </section>

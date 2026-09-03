@@ -67,7 +67,6 @@ export const user = { name: "R. Vance", role: "Commercial Insights", initials: "
 
 export const sectionMeta: Record<string, { title: string; subtitle: string }> = {
   overview: { title: "Overview", subtitle: "Monitor digital shelf health across your retailers, products and categories." },
-  shelf: { title: "Digital Shelf", subtitle: "Monitor product visibility, availability, pricing and content across retailers" },
   alerts: { title: "Alerts", subtitle: "Rules watching the portfolio and what they have caught" },
   reports: { title: "Reports", subtitle: "Scheduled exports and briefings sent to your teams" },
   sales: { title: "Performance Intelligence", subtitle: "Understand how products perform across search, pricing, availability and retailer conditions." },
@@ -274,6 +273,23 @@ export const contentAttributes = [
   { id: "a6", name: "Nutrition or ingredient panel", weight: "High" },
   { id: "a7", name: "Video asset attached", weight: "Low" },
 ];
+
+/* Plain-English labels for the 8 real, binary content checks computed in
+   build_mock_data.py's content_completeness() -- see catalog[].contentChecks
+   (ids of the checks a product currently FAILS) and
+   REAL_PRODUCT_WEEKLY[id].content (the same rubric evaluated per real week).
+   Unlike contentAttributes above (illustrative, no real per-product pass/
+   fail data behind it), every count built from these ids is real. */
+export const CONTENT_CHECK_LABELS: Record<string, string> = {
+  title: "Title over 75 characters",
+  images: "Fewer than 5 images",
+  bulletCount: "Fewer than 5 bullet points",
+  bulletCaps: "Bullets not capitalized",
+  bulletLength: "Bullets outside 150–200 characters",
+  description: "Description outside 200–2,000 characters",
+  rating: "Rating below 4.00",
+  enhanced: "No enhanced content",
+};
 
 export const reviewThemes = [
   { id: "t1", theme: "Flavour and taste", sentiment: "Positive" },
@@ -686,6 +702,11 @@ function productFor(p: (typeof catalog)[number], key: string) {
        a point in time -- there's no honest "trend" to simulate, so this
        is always the real computed score, every period. */
     contentScore: p.content,
+    // Real -- same rubric that produced contentScore, kept as the list of
+    // FAILED check ids (see CONTENT_CHECK_LABELS) rather than a jittered
+    // per-product value, since a listing's content either passes a given
+    // check or it doesn't.
+    contentChecks: (p as any).contentChecks ?? [],
     buyBox: r() < (p.buyBoxRate ?? 0.78),
     opportunity: "" as string,
   };
@@ -1036,6 +1057,29 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       { bucket: "80–89", count: pool.filter((p) => p.contentScore >= 80 && p.contentScore < 90).length },
       { bucket: "90+", count: pool.filter((p) => p.contentScore >= 90).length },
     ],
+    /* Real, per-check failure counts across the current pool -- each
+       product's contentChecks (see productFor) lists the ids of the 8
+       binary checks it currently fails; this tallies how many products
+       fail each one, for a Profitero-style "Products With Issues"
+       breakdown. */
+    contentIssues: Object.keys(CONTENT_CHECK_LABELS).map((id) => ({
+      id, label: CONTENT_CHECK_LABELS[id],
+      count: pool.filter((p) => (p as any).contentChecks?.includes(id)).length,
+    })).sort((a, b) => b.count - a.count),
+    /* Real week-over-week (Sep 1 vs Sep 29) content score movement, from
+       REAL_PRODUCT_WEEKLY[id].content -- not a fabricated delta. Products
+       with no real weekly series (fell back to the peer-average price
+       group, or never crawled) count toward neither. */
+    contentChange: (() => {
+      let improved = 0, declined = 0;
+      for (const p of pool) {
+        const series = (REAL_PRODUCT_WEEKLY as any)[p.id]?.content;
+        if (!series) continue;
+        if (series[4] > series[0]) improved++;
+        else if (series[4] < series[0]) declined++;
+      }
+      return { improved, declined };
+    })(),
     reviewThemes: reviewThemes.map((t) => {
       const rr = rowRng(key, "theme", t.id);
       return { id: t.id, theme: t.theme, sentiment: t.sentiment, share: round(6 + rr() * 26, 1), mentions: Math.round(120 + rr() * 900), delta: round((rr() - 0.5) * 8, 1) };

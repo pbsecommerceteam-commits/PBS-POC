@@ -122,7 +122,7 @@ export default function Overview() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: "var(--app-gap)" }}>
           {snap.insights.map((n: any) => (
             <InsightCard key={n.id} n={n} onGo={() => navigate(
-              n.target === "shelf" ? `/digital-shelf/products${n.id === "i-avail" ? "?focus=avail" : ""}`
+              n.target === "shelf" ? `/content/products${n.id === "i-avail" ? "?focus=avail" : ""}`
                 : n.target === "sales" ? "/sales-share"
                 : "/" + n.target,
             )} />

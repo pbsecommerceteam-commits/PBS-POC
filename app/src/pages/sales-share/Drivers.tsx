@@ -35,7 +35,7 @@ export default function SalesShareDrivers() {
 
       <AiInsightBanner
         action={
-          <button className="btn btn-ai" onClick={() => { navigate(`/digital-shelf/products?focus=${sd.diagnosis.focus}`); toast("Digital Shelf filtered to " + sd.diagnosis.actionLabel.replace("Investigate ", "") + "."); }} style={{ alignSelf: "flex-start", minHeight: 32, whiteSpace: "nowrap" }}>
+          <button className="btn btn-ai" onClick={() => { navigate(`/content/products?focus=${sd.diagnosis.focus}`); toast("Content filtered to " + sd.diagnosis.actionLabel.replace("Investigate ", "") + "."); }} style={{ alignSelf: "flex-start", minHeight: 32, whiteSpace: "nowrap" }}>
             {sd.diagnosis.actionLabel} →
           </button>
         }

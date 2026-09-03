@@ -5,19 +5,21 @@ import { useDashboardData } from "../../context/DataContext";
 
 export interface CompetitorsContext {
   snap: any;
+  sh: any;
 }
 
 export default function CompetitorsLayout() {
-  const { snap } = useDashboardData();
+  const { snap, shelf: sh } = useDashboardData();
 
   return (
     <PageShell title="Competitive Intelligence" subtitle="Compare listings, pricing, availability and search presence across the monitored competitive set."
       tabs={<PageTabs items={[
         { label: "Summary", to: "/competitors", end: true },
         { label: "Competitors", to: "/competitors/list" },
+        { label: "Keywords", to: "/competitors/keywords" },
       ]} />}
     >
-      {!snap ? <div /> : <Outlet context={{ snap } satisfies CompetitorsContext} />}
+      {!snap || !sh ? <div /> : <Outlet context={{ snap, sh } satisfies CompetitorsContext} />}
     </PageShell>
   );
 }

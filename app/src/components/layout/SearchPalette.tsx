@@ -6,7 +6,7 @@ import { Badge, stockTone } from "../ui/Badge";
 import type { Product } from "../../models/types";
 
 const PAGES = [
-  { id: "overview", to: "/overview" }, { id: "shelf", to: "/digital-shelf" }, { id: "sales", to: "/sales-share" },
+  { id: "overview", to: "/overview" }, { id: "sales", to: "/sales-share" },
   { id: "content", to: "/content" }, { id: "reviews", to: "/reviews" }, { id: "competitors", to: "/competitors" },
   { id: "alerts", to: "/alerts" }, { id: "reports", to: "/reports" }, { id: "settings", to: "/settings" },
 ].map((p) => ({ ...p, title: sectionMeta[p.id]?.title || p.id }));
@@ -78,7 +78,7 @@ export function SearchPalette({ open, onClose }: { open: boolean; onClose: () =>
             <div className="sl-palette__group">
               <div className="sl-eyebrow" style={{ padding: "10px 16px 4px" }}>Categories</div>
               {categoryHits.map((c) => (
-                <button key={c} className="sl-palette__row" onClick={() => go("/digital-shelf")}>
+                <button key={c} className="sl-palette__row" onClick={() => go("/content")}>
                   <span style={{ flex: 1, textAlign: "left", fontSize: 13.5 }}>{c}</span>
                 </button>
               ))}

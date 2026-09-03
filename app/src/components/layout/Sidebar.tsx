@@ -6,7 +6,6 @@ interface NavItem { to: string; label: string; icon: React.ReactNode }
 
 const ANALYTICS_ITEMS: NavItem[] = [
   { to: "/overview", label: "Overview", icon: <g><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></g> },
-  { to: "/digital-shelf", label: "Digital Shelf", icon: <g><path d="M3 6h18"></path><path d="M3 12h18"></path><path d="M3 18h18"></path><path d="M8 6v6"></path><path d="M15 12v6"></path></g> },
   { to: "/sales-share", label: "Performance Intelligence", icon: <g><path d="M3 17l6-6 4 4 7-7"></path><path d="M14 8h6v6"></path></g> },
   { to: "/content", label: "Content Intelligence", icon: <g><path d="M5 3h9l5 5v13H5z"></path><path d="M14 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></g> },
   { to: "/reviews", label: "Ratings & Reviews", icon: <path d="M12 4l2.5 5.2 5.5.8-4 3.9.9 5.6L12 16.9 7.1 19.5l.9-5.6-4-3.9 5.5-.8z"></path> },
