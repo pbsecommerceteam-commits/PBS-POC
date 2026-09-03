@@ -369,6 +369,16 @@ def main():
         current_price = latest_price_row.get("Current price") if latest_price_row else None
         subscription_price = latest_price_row.get("Subscription price") if latest_price_row else None
 
+        # Raw Content-tab fields (same "latest" row content_completeness()
+        # already reads its checks from), surfaced individually so a UI can
+        # show e.g. "Bullet Points: 7" rather than only the derived
+        # pass/fail check -- these were previously computed and discarded.
+        title_length = latest.get("Title no of chars") or 0
+        image_count = latest.get("No of images") or 0
+        bullet_count = latest.get("No of bullets") or 0
+        description_length = latest.get("Description no of chars") or 0
+        enhanced_content = str(latest.get("Enhanced content") or "").strip().lower() == "yes"
+
         catalog.append({
             "id": pid,
             "name": latest.get("Title"),
@@ -399,6 +409,11 @@ def main():
             # Ids of the 8 real content checks (see content_completeness)
             # this product currently FAILS -- empty list means all 8 pass.
             "contentChecks": content_checks_failed,
+            "titleLength": title_length,
+            "imageCount": image_count,
+            "bulletCount": bullet_count,
+            "descriptionLength": description_length,
+            "enhancedContent": enhanced_content,
         })
 
     # rank = position within (retailer, category) ordered by reviews desc
@@ -645,10 +660,13 @@ def main():
             return "null"
         return json.dumps(v)
 
+    def ts_bool(v):
+        return "true" if v else "false"
+
     out.append("export const catalog = [")
     for p in catalog:
         out.append(
-            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, contentChecks: %s },"
+            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, contentChecks: %s, titleLength: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s },"
             % (
                 ts_str(p["id"]), ts_str(p["name"]), ts_str(p["brand"]), ts_str(p["category"]), ts_str(p["retailer"]),
                 ts_num(p["rank"], 1), ts_num(p["price"], 0), ts_num(p["avgSellingPrice"], p["price"] or 0),
@@ -657,6 +675,8 @@ def main():
                 ts_num(p["priceChangePct"], 0.0), ts_str(p["priceGroup"]),
                 ts_num_or_null(p["listPrice"]), ts_num_or_null(p["currentPrice"]), ts_num_or_null(p["subscriptionPrice"]),
                 json.dumps(p["contentChecks"]),
+                ts_num(p["titleLength"], 0), ts_num(p["imageCount"], 0), ts_num(p["bulletCount"], 0),
+                ts_num(p["descriptionLength"], 0), ts_bool(p["enhancedContent"]),
             )
         )
     out.append("];")

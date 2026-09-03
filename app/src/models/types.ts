@@ -43,6 +43,11 @@ export interface Product {
   contentScore: number;
   /** Ids of the 8 real content checks (see CONTENT_CHECK_LABELS) this product currently fails; empty = all pass. */
   contentChecks: string[];
+  titleLength: number;
+  imageCount: number;
+  bulletCount: number;
+  descriptionLength: number;
+  enhancedContent: boolean;
   buyBox: boolean;
   opportunity: OpportunityLevel;
   searchVisibility: number;
