@@ -1619,32 +1619,36 @@ function salesData(retailer: string, period: string, dateRange?: DateRange | nul
   const declines = movers.filter((p) => p.sales < p.prevSales).slice(-4).reverse()
     .map((p) => ({ id: p.id, name: p.name, retailerName: p.retailerName, delta: p.sales - p.prevSales, growth: p.salesGrowth }));
 
-  /* Digital shelf signals for the same retailer + period — Performance
-     Intelligence reads these directly rather than an estimated-sales figure. */
+  /* Pricing-only driver signals -- distinct from Summary's Average Price /
+     Price Increased / Price Dropped / Buy Box Lost KPIs, not a repeat of
+     them. Price Index, Above List Price and Subscription Available are
+     structural (point-in-time) pricing positions with no weekly series to
+     trend, so their delta is honestly 0 rather than a fabricated one; Buy
+     Box Ownership 1P keeps its real weekly delta (shared with Summary's
+     shelf-level number via shelfData, distinct from Summary's own *count*
+     of SKUs lost). */
   const shelf = shelfData(retailer, period, dateRange, category);
   const shelfKpi = (id: string) => shelf.kpis.find((k) => k.id === id) || { delta: 0, value: 0 };
+  const priceIndexAvg = pool.length ? round(pool.reduce((a, p) => a + p.priceIndex, 0) / pool.length * 100, 0) : 0;
+  const aboveList = pool.filter((p) => p.listPrice != null && (p.currentPrice ?? p.price) > p.listPrice);
+  const subsAvailable = pool.filter((p) => p.subscriptionPrice != null);
+  const highIndex = pool.filter((p) => p.priceIndex > 1.1);
   const signals = [
-    { label: "Stock Availability 1P + 3P", delta: shelfKpi("instock").delta, unit: " pts", value: shelfKpi("instock").value + "%" },
-    { label: "Search Visibility", delta: shelfKpi("sos").delta, unit: " pts", value: shelfKpi("sos").value + "%" },
-    { label: "Average Price", delta: shelfKpi("pidx").delta, unit: "", value: "$" + Number(shelfKpi("pidx").value).toFixed(2) },
-    { label: "Content Completeness", delta: shelfKpi("content").delta, unit: " pts", value: String(shelfKpi("content").value) },
+    { label: "Price Index", delta: 0, unit: "", value: String(priceIndexAvg) },
+    { label: "Above List Price", delta: 0, unit: "", value: aboveList.length + " SKUs" },
+    { label: "Subscription Available", delta: 0, unit: "", value: subsAvailable.length + " SKUs" },
     { label: "Buy Box Ownership 1P", delta: shelfKpi("buybox").delta, unit: " pts", value: shelfKpi("buybox").value + "%" },
   ];
 
-  const byMove = signals.slice().sort((a, b) => a.delta - b.delta);
-  const weakest = byMove[0], strongest = byMove[byMove.length - 1];
-  const SIGNAL_FOCUS: Record<string, string> = { "Stock Availability 1P + 3P": "avail", "Search Visibility": "rank", "Average Price": "price", "Content Completeness": "content", "Buy Box Ownership 1P": "avail" };
   const diagnosis = {
-    headline: weakest.delta < 0 ? "Likely shelf signal: " + weakest.label.toLowerCase() : "Potential contributor: " + strongest.label.toLowerCase(),
-    text: weakest.delta < 0
-      ? weakest.label + " fell " + Math.abs(weakest.delta).toFixed(1) + " pts while " + strongest.label.toLowerCase() +
-        " moved " + (strongest.delta >= 0 ? "up " : "down ") + Math.abs(strongest.delta).toFixed(1) +
-        " pts over the same window. Observed change, not a confirmed cause."
-      : strongest.label + " rose " + Math.abs(strongest.delta).toFixed(1) + " pts over the same window, with " +
-        weakest.label.toLowerCase() + " the weakest signal at " + (weakest.delta >= 0 ? "+" : "−") +
-        Math.abs(weakest.delta).toFixed(1) + " pts. Potential contributor to overall shelf performance.",
-    actionLabel: "Investigate " + weakest.label.toLowerCase(),
-    focus: SIGNAL_FOCUS[weakest.label] || "avail",
+    headline: aboveList.length > 0 ? "Pricing signal: products above list price" : "Pricing signal: buy box ownership",
+    text: aboveList.length > 0
+      ? aboveList.length + (aboveList.length === 1 ? " product is" : " products are") + " currently priced above their own list price" +
+        (highIndex.length ? ", and " + highIndex.length + " " + (highIndex.length === 1 ? "sits" : "sit") + " more than 10% above the portfolio's own price index" : "") +
+        ". Observed pricing position, not a promotional read."
+      : "No products are currently priced above their own list price this period. " + shelfKpi("buybox").value + "% Buy Box Ownership 1P is the next pricing signal to review.",
+    actionLabel: aboveList.length > 0 ? "Review priced-above-list products" : "Review buy box ownership",
+    focus: "price",
   };
 
   const topCat = byCategory.slice().sort((a, b) => b.growth - a.growth)[0];
