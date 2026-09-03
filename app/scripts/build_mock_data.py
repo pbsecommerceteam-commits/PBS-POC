@@ -263,9 +263,10 @@ def main():
         pid = f"{code}-{native_id}"
         pid_to_key[pid] = (code, native_id)
 
-        content_score, buckets = content_completeness(latest)
-        for b, v in buckets.items():
+        content_score, checks = content_completeness(latest)
+        for b, v in checks.items():
             component_bucket_totals[b].append(v)
+        content_checks_failed = [k for k, v in checks.items() if not v]
 
         week_scores = {}
         for wk in CONTENT_WEEKS:
@@ -341,6 +342,11 @@ def main():
             "price": fill_series(price_series),
             "stockRate": fill_series(stock_series, hard_default=100.0),
             "buyBoxRate": fill_series(buybox_series, hard_default=100.0),
+            # Real per-week Content Completeness score (the same 8-check
+            # rubric, evaluated against that week's own Content-tab row) --
+            # lets the client compute a genuine "score improved/declined
+            # since Sep 1" without inventing a delta.
+            "content": [week_scores[wk] for wk in CONTENT_WEEKS],
         }
 
         cat = CATEGORY_NORMALIZE.get(latest.get("Category name"), latest.get("Category name"))
@@ -350,6 +356,18 @@ def main():
         price_change_pct = None
         if len(all_prices) >= 2 and all_prices[0]:
             price_change_pct = round(((all_prices[-1] - all_prices[0]) / all_prices[0]) * 100, 1)
+
+        # List/Current/Subscription price as distinct raw fields (Price tab
+        # columns "List everyday price" / "Current price" / "Subscription
+        # price"), from the most recent Price-tab row -- unlike `price`
+        # above (which falls back List->Current and is what every other
+        # feature in the app reads), these three are kept separate and
+        # unfallback'd so a UI can show all three when they genuinely
+        # differ, and null (not 0) when a field was never posted.
+        latest_price_row = prows[-1] if prows else None
+        list_price = latest_price_row.get("List everyday price") if latest_price_row else None
+        current_price = latest_price_row.get("Current price") if latest_price_row else None
+        subscription_price = latest_price_row.get("Subscription price") if latest_price_row else None
 
         catalog.append({
             "id": pid,
@@ -375,6 +393,12 @@ def main():
             "buyBoxRate": round(sum(buybox_flags_all) / len(buybox_flags_all), 2) if buybox_flags_all else 1.0,
             "priceChangePct": price_change_pct if price_change_pct is not None else 0.0,
             "priceGroup": f"{code}::{cat}",
+            "listPrice": round(list_price, 2) if list_price is not None else None,
+            "currentPrice": round(current_price, 2) if current_price is not None else None,
+            "subscriptionPrice": round(subscription_price, 2) if subscription_price is not None else None,
+            # Ids of the 8 real content checks (see content_completeness)
+            # this product currently FAILS -- empty list means all 8 pass.
+            "contentChecks": content_checks_failed,
         })
 
     # rank = position within (retailer, category) ordered by reviews desc
@@ -613,16 +637,26 @@ def main():
             return str(default)
         return json.dumps(v)
 
+    def ts_num_or_null(v):
+        # Unlike ts_num's default-substitution, a genuinely absent price
+        # field (e.g. no subscription price was ever posted) must stay
+        # null, not 0 -- 0 would read as "free", a fabricated value.
+        if v is None:
+            return "null"
+        return json.dumps(v)
+
     out.append("export const catalog = [")
     for p in catalog:
         out.append(
-            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s },"
+            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, contentChecks: %s },"
             % (
                 ts_str(p["id"]), ts_str(p["name"]), ts_str(p["brand"]), ts_str(p["category"]), ts_str(p["retailer"]),
                 ts_num(p["rank"], 1), ts_num(p["price"], 0), ts_num(p["avgSellingPrice"], p["price"] or 0),
                 ts_num(p["rating"], 0), ts_num(p["reviews"], 0),
                 ts_num(p["content"], 0), ts_num(p["stockBias"], 1.0), ts_num(p["buyBoxRate"], 1.0),
                 ts_num(p["priceChangePct"], 0.0), ts_str(p["priceGroup"]),
+                ts_num_or_null(p["listPrice"]), ts_num_or_null(p["currentPrice"]), ts_num_or_null(p["subscriptionPrice"]),
+                json.dumps(p["contentChecks"]),
             )
         )
     out.append("];")
@@ -642,10 +676,10 @@ def main():
     out.append("")
 
     out.append("export const REAL_PRODUCT_WEEKLY: Record<string, {")
-    out.append("  rating: number[]; reviews: number[]; price: number[]; stockRate: number[]; buyBoxRate: number[];")
+    out.append("  rating: number[]; reviews: number[]; price: number[]; stockRate: number[]; buyBoxRate: number[]; content: number[];")
     out.append("}> = {")
     for pid, v in real_product_weekly.items():
-        out.append(f'  {json.dumps(pid)}: {{ rating: {json.dumps(v["rating"])}, reviews: {json.dumps(v["reviews"])}, price: {json.dumps(v["price"])}, stockRate: {json.dumps(v["stockRate"])}, buyBoxRate: {json.dumps(v["buyBoxRate"])} }},')
+        out.append(f'  {json.dumps(pid)}: {{ rating: {json.dumps(v["rating"])}, reviews: {json.dumps(v["reviews"])}, price: {json.dumps(v["price"])}, stockRate: {json.dumps(v["stockRate"])}, buyBoxRate: {json.dumps(v["buyBoxRate"])}, content: {json.dumps(v["content"])} }},')
     out.append("};")
     out.append("")
 
