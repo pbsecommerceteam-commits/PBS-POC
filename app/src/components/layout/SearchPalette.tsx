@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useDashboardData } from "../../context/DataContext";
 import { sectionMeta } from "../../data/mockData";
 import { Badge, stockTone } from "../ui/Badge";
+import { ProductCell } from "../ui/ProductCell";
 import type { Product } from "../../models/types";
 
 const PAGES = [
@@ -56,17 +57,8 @@ export function SearchPalette({ open, onClose }: { open: boolean; onClose: () =>
               <div className="sl-eyebrow" style={{ padding: "10px 16px 4px" }}>Products</div>
               {productHits.map((p) => (
                 <button key={p.id} className="sl-palette__row" onClick={() => go("/product/" + p.id)}>
-                  <span style={{ position: "relative", width: 28, height: 28, flex: "none" }}>
-                    <span className="sl-avatar" style={{ width: 28, height: 28, fontSize: 10.5, position: "absolute", inset: 0 }}>{p.name.split(" ").slice(0, 2).map((w) => w[0]).join("")}</span>
-                    <img
-                      src={`${import.meta.env.BASE_URL}product-images/${p.id}.jpg`} alt=""
-                      style={{ width: 28, height: 28, borderRadius: "var(--radius-sm)", objectFit: "cover", position: "absolute", inset: 0 }}
-                      onError={(e) => { (e.currentTarget.style.display = "none"); }}
-                    />
-                  </span>
-                  <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
-                    <span className="sl-muted" style={{ fontSize: 11.5 }}>{p.id.toUpperCase()} · {p.retailerName}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.retailerName} imageUrl={p.imageUrl} imageSize={28} />
                   </span>
                   <Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge>
                 </button>
