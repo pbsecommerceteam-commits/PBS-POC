@@ -386,6 +386,19 @@ export const REAL_SOS_WEEK_LABELS = ["Sep 8", "Sep 15", "Sep 22", "Sep 29"];
 export const REAL_WEEK_DATES = ["2022-09-01", "2022-09-08", "2022-09-15", "2022-09-22", "2022-09-29"];
 export const REAL_SOS_WEEK_DATES = ["2022-09-08", "2022-09-15", "2022-09-22", "2022-09-29"];
 
+/* The "Last 4 weeks" period's real window, as indices into the two real
+   weekly tables above -- REAL_ROLLUP_WEEKLY (5 points, Sep 1 first) drops
+   index 0 to match the 4 labels labelsFor("4w") actually shows (Sep 8-29);
+   REAL_SOS_WEEKLY only has 4 points to begin with (Sep 8-29), so all of
+   them are in scope. Used as the *default* pooling window for every real
+   KPI's headline value/delta when no custom date range is active, so
+   "current value" means "pooled across the real period", not "whatever the
+   single most recent crawl day happened to show" (the latest-week-only
+   bucket, e.g. Sep 29-30, is only 2 days and can read meaningfully
+   differently from the period as a whole). */
+const DEFAULT_WIDE_IDX = [1, 2, 3, 4];
+const DEFAULT_NARROW_IDX = [0, 1, 2, 3];
+
 export const REAL_PRODUCT_WEEKLY: Record<string, {
   rating: number[]; reviews: number[]; price: number[]; stockRate: number[]; buyBoxRate: number[]; content: number[];
 }> = {
@@ -877,20 +890,21 @@ function realRangeValueSos(retailer: string, idx: number[], category?: string): 
 /* Single "current value" resolver for the Retailer performance / digital-shelf
    breakdown cards (Overview's retailerPerformance, Digital Shelf's byRetailer)
    -- pooled across the selected custom date range when one is active (reusing
-   realRangeValue's weighted pooling), or the latest real week when "Last 4
-   weeks" is selected with no custom range, else null so the caller falls back
-   to its existing synthetic bias-based estimate. Search Visibility stays
-   synthetic on these specific cards (no real per-retailer competitive-share
-   data exists), so this is never called for that field. */
+   realRangeValue's weighted pooling), or pooled across the full real "Last 4
+   weeks" window (DEFAULT_WIDE_IDX) when no custom range is active, else null
+   so the caller falls back to its existing synthetic bias-based estimate.
+   Search Visibility stays synthetic on these specific cards (no real
+   per-retailer competitive-share data exists), so this is never called for
+   that field. */
 function realCurrentValue(retailer: string, field: "stockRate" | "buyBoxRate" | "rating" | "content", period: string, dateRange: DateRange | null | undefined, wideIdx?: number[], category?: string): number | null {
   if (category) return null; // see realRangeValue's comment -- no category dimension in this table
   if (dateRange && wideIdx) {
-    const r = realRangeValue(retailer, field, wideIdx);
+    const r = realRangeValue(retailer, field, wideIdx, category);
     return r ? r.value : null;
   }
   if (period === "4w") {
-    const row = REAL_ROLLUP_WEEKLY[retailer === "all" ? "portfolio" : retailer];
-    return row ? row[field][4] : null;
+    const r = realRangeValue(retailer, field, DEFAULT_WIDE_IDX, category);
+    return r ? r.value : null;
   }
   return null;
 }
@@ -902,12 +916,12 @@ function realCurrentValue(retailer: string, field: "stockRate" | "buyBoxRate" | 
 function realCurrentAvgPrice(retailer: string, period: string, dateRange: DateRange | null | undefined, wideIdx?: number[], category?: string): number | null {
   if (category) return null; // see realRangeValue's comment -- no category dimension in this table
   if (dateRange && wideIdx) {
-    const r = realRangeValueAvgPrice(retailer, wideIdx);
+    const r = realRangeValueAvgPrice(retailer, wideIdx, category);
     return r ? r.value : null;
   }
   if (period === "4w") {
-    const row = REAL_ROLLUP_WEEKLY[retailer === "all" ? "portfolio" : retailer];
-    return row ? row.avgPrice[4] : null;
+    const r = realRangeValueAvgPrice(retailer, DEFAULT_WIDE_IDX, category);
+    return r ? r.value : null;
   }
   return null;
 }
@@ -1055,12 +1069,12 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       : null,
     generatedAt: "Today 06:40 UTC",
     kpis: [
-      kpi("sos", "Search Visibility", "%", sos, 40, 1, dateRange ? realRangeValueSos(retailer, rangeMatch!.idx, category) : null),
-      kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1, dateRange ? realRangeValue(retailer, "stockRate", wideMatch!.idx, category) : null),
-      kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2, dateRange ? realRangeValueAvgPrice(retailer, wideMatch!.idx, category) : null),
-      kpi("content", "Content Completeness", "/100", contentVals, 95, 0, dateRange ? realRangeValue(retailer, "content", wideMatch!.idx, category) : null),
-      kpi("buybox", "Buy Box Ownership 1P", "%", buyBoxSeries, 95, 0, dateRange ? realRangeValue(retailer, "buyBoxRate", wideMatch!.idx, category) : null),
-      kpi("rating", "Average Rating", "", ratingVals, 4.5, 2, dateRange ? realRangeValue(retailer, "rating", wideMatch!.idx, category) : null),
+      kpi("sos", "Search Visibility", "%", sos, 40, 1, realRangeValueSos(retailer, dateRange ? rangeMatch!.idx : DEFAULT_NARROW_IDX, category)),
+      kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1, realRangeValue(retailer, "stockRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
+      kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2, realRangeValueAvgPrice(retailer, dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
+      kpi("content", "Content Completeness", "/100", contentVals, 95, 0, realRangeValue(retailer, "content", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
+      kpi("buybox", "Buy Box Ownership 1P", "%", buyBoxSeries, 95, 0, realRangeValue(retailer, "buyBoxRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
+      kpi("rating", "Average Rating", "", ratingVals, 4.5, 2, realRangeValue(retailer, "rating", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       { id: "oos", label: "Out of Stock SKUs", unit: "", target: 0, value: oos, delta: Math.round((r() - 0.5) * 4), spark: series(seed + 8, n, oos + 1, oos, 0.7, 0).map((v) => clamp(v, 0, 20)) },
       { id: "rank", label: "Avg Search Rank", unit: "", target: 5, value: avgRank, delta: round((r() - 0.5) * 2, 1), spark: series(seed + 9, n, avgRank + 1.4 * sw, avgRank, 0.5, 1) },
       { id: "reviews", label: "Review Count", unit: "", target: 20000, value: reviewVolume, delta: Math.round(reviewVolume * 0.04), spark: series(seed + 10, n, reviewVolume * 0.94, reviewVolume, reviewVolume * 0.01, 0) },
@@ -1458,11 +1472,11 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
       : null,
     generatedAt: "Today 06:40 UTC",
     kpis: [
-      kpi("sos", "Search Visibility", "%", sos, 40, 1, dateRange ? realRangeValueSos(retailer, rangeMatch!.idx, category) : null),
-      kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1, dateRange ? realRangeValue(retailer, "stockRate", wideMatch!.idx, category) : null),
-      kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2, dateRange ? realRangeValueAvgPrice(retailer, wideMatch!.idx, category) : null),
-      kpi("content", "Content Completeness", "/100", contentVals, 95, 0, dateRange ? realRangeValue(retailer, "content", wideMatch!.idx, category) : null),
-      kpi("buybox", "Buy Box Ownership 1P", "%", buyBox, 95, 0, dateRange ? realRangeValue(retailer, "buyBoxRate", wideMatch!.idx, category) : null),
+      kpi("sos", "Search Visibility", "%", sos, 40, 1, realRangeValueSos(retailer, dateRange ? rangeMatch!.idx : DEFAULT_NARROW_IDX, category)),
+      kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1, realRangeValue(retailer, "stockRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
+      kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2, realRangeValueAvgPrice(retailer, dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
+      kpi("content", "Content Completeness", "/100", contentVals, 95, 0, realRangeValue(retailer, "content", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
+      kpi("buybox", "Buy Box Ownership 1P", "%", buyBox, 95, 0, realRangeValue(retailer, "buyBoxRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
     ],
     visibility: {
       labels, previous: sos.map((v, i) => round(v - 2.4 - (i % 3) * 0.3, 1)), target: 40,
