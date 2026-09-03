@@ -34,20 +34,23 @@ export interface Cell {
    *  this cell -- e.g. a brand/product name column where cutting the
    *  text off is worse than the row occasionally running two lines. */
   wrap?: boolean;
+  /** Makes this cell a link-styled click target (e.g. a brand's score,
+   *  drilling into the products behind it) instead of plain text. */
+  onClick?: () => void;
 }
 
-export function cell(text: string, o: { sub?: string; align?: "left" | "right"; tone?: BadgeTone; strong?: boolean; color?: string; wrap?: boolean } = {}): Cell {
+export function cell(text: string, o: { sub?: string; align?: "left" | "right"; tone?: BadgeTone; strong?: boolean; color?: string; wrap?: boolean; onClick?: () => void } = {}): Cell {
   return {
     text, sub: o.sub || "", align: o.align || "left", tone: o.tone,
     font: o.strong ? "var(--font-heading)" : "var(--font-body)",
-    size: o.strong ? "15px" : "13.5px", color: o.color || "inherit", wrap: o.wrap,
+    size: o.strong ? "15px" : "13.5px", color: o.color || "inherit", wrap: o.wrap, onClick: o.onClick,
   };
 }
 
 export interface TableConfig {
   title: string;
   subtitle: string;
-  cols: Array<{ label: string; align?: "left" | "right" }>;
+  cols: Array<{ label: string; align?: "left" | "right"; minWidth?: number }>;
   rows: Array<{ cells: Cell[] }>;
 }
 

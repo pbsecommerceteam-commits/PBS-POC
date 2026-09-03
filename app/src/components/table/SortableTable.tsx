@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
+import { useColumnWidths } from "../../hooks/useColumnWidths";
 
 export interface Column<T> {
   key: string;
@@ -18,8 +19,11 @@ export interface Column<T> {
  *  Digital Shelf, Performance Intelligence, keywords) — each page supplies its own
  *  column render functions for the bespoke cell visuals (progress bars,
  *  badges, deltas), so only the header-sort and row-click plumbing is
- *  centralized here instead of repeated per page. */
-export function SortableTable<T>({ columns, rows, sortKey, sortDir, onSort, onRowClick, rowKey }: {
+ *  centralized here instead of repeated per page. `resizable` is opt-in
+ *  (default off, so every existing table keeps its current auto-sized
+ *  layout) -- when on, each column starts at its `minWidth` and the user
+ *  can drag a header's right edge to widen/narrow it. */
+export function SortableTable<T>({ columns, rows, sortKey, sortDir, onSort, onRowClick, rowKey, resizable }: {
   columns: Column<T>[];
   rows: T[];
   sortKey?: string;
@@ -27,10 +31,19 @@ export function SortableTable<T>({ columns, rows, sortKey, sortDir, onSort, onRo
   onSort?: (key: string) => void;
   onRowClick?: (row: T) => void;
   rowKey: (row: T) => string;
+  resizable?: boolean;
 }) {
+  const defaults = useMemo(() => Object.fromEntries(columns.map((c) => [c.key, c.minWidth ?? 140])), [columns]);
+  const { widths, startResize } = useColumnWidths(defaults);
+
   return (
     <div style={{ overflowX: "auto" }}>
-      <table className="sl-table">
+      <table className="sl-table" style={resizable ? { tableLayout: "fixed" } : undefined}>
+        {resizable && (
+          <colgroup>
+            {columns.map((c) => <col key={c.key} style={{ width: widths[c.key] ?? c.minWidth ?? 140 }} />)}
+          </colgroup>
+        )}
         <thead>
           <tr>
             {columns.map((c) => {
@@ -39,11 +52,20 @@ export function SortableTable<T>({ columns, rows, sortKey, sortDir, onSort, onRo
                 <th
                   key={c.key}
                   className={(c.sortable ? "is-sortable" : "") + (sorted ? " is-sorted" : "")}
-                  style={{ textAlign: c.align, minWidth: c.minWidth }}
+                  style={{ textAlign: c.align, minWidth: resizable ? undefined : c.minWidth }}
                   onClick={c.sortable && onSort ? () => onSort(c.key) : undefined}
                 >
                   {c.label}
                   {sorted && <span className="sl-sort-caret">{sortDir === "asc" ? "▲" : "▼"}</span>}
+                  {resizable && (
+                    <span
+                      className="sl-col-resize-handle"
+                      onMouseDown={startResize(c.key)}
+                      onClick={(e) => e.stopPropagation()}
+                      title="Drag to resize"
+                      style={{ position: "absolute", right: -3, top: 0, bottom: 0, width: 7, cursor: "col-resize", userSelect: "none" }}
+                    />
+                  )}
                 </th>
               );
             })}

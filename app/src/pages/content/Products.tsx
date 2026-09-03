@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { FacetPanel, type FacetGroup } from "../../components/ui/FacetPanel";
 import { ColumnPicker, type ColumnOption } from "../../components/ui/ColumnPicker";
@@ -97,10 +97,17 @@ export default function ContentProducts() {
   const { products, registerExport } = useOutletContext<ContentContext>();
   const navigate = useNavigate();
   const { toast } = useUi();
+  const [searchParams] = useSearchParams();
   const [stock, setStock] = useState<string[]>([]);
   const [opportunity, setOpportunity] = useState<string[]>([]);
   const [category, setCategory] = useState<string[]>([]);
-  const [brand, setBrand] = useState<string[]>([]);
+  /* Pre-selects the Brand facet when arriving via a "?brand=" link (the
+     Brand tab's score drill-down) -- read once at mount, same as every
+     other filter here starts from a plain empty default otherwise. */
+  const [brand, setBrand] = useState<string[]>(() => {
+    const b = searchParams.get("brand");
+    return b ? [b] : [];
+  });
   const [retailer, setRetailer] = useState<string[]>([]);
   const [issue, setIssue] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -233,7 +240,7 @@ export default function ContentProducts() {
         <div style={{ marginBottom: 16 }}>
           <input className="input" placeholder="Search product, SKU, ASIN…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minHeight: 32, fontSize: 12.5, maxWidth: 320 }} />
         </div>
-        <SortableTable columns={columns} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} />
+        <SortableTable columns={columns} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} resizable />
         {all.length === 0 && (
           <div style={{ padding: "32px 4px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
             <div style={{ fontWeight: 600, fontSize: 15 }}>No products match these filters</div>

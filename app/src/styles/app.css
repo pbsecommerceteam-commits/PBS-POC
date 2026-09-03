@@ -140,6 +140,8 @@ select option { color: var(--text-primary); background-color: var(--surface-card
   border-bottom: 1px solid var(--border-standard); white-space: nowrap;
 }
 .sl-table thead th.is-sortable { cursor: pointer; user-select: none; }
+.sl-col-resize-handle { background: transparent; }
+.sl-col-resize-handle:hover, .sl-col-resize-handle:active { background: var(--color-accent-700); opacity: 0.5; }
 .sl-table thead th.is-sortable:hover { color: var(--text-primary); }
 .sl-table thead th .sl-sort-caret { color: var(--text-faint); margin-left: 3px; font-size: 10px; }
 .sl-table thead th.is-sorted .sl-sort-caret { color: var(--color-accent-700); }
