@@ -46,7 +46,7 @@
 
 export const retailers = [
   { id: "all", name: "All retailers" },
-  { id: "r1", name: "Amazon.com" },
+  { id: "r1", name: "Amazon" },
   { id: "r2", name: "Chewy" },
   { id: "r3", name: "Walmart" },
   { id: "r4", name: "The Home Depot" },
