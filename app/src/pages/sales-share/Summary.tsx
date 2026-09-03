@@ -126,9 +126,9 @@ export default function SalesShareSummary() {
             const active = retailer === r.id;
             return (
               <Card key={r.id} interactive selected={active} padding="16px 18px" onClick={() => { if (!active) { setRetailer(r.id); toast("Scoped to " + r.name + "."); } }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                  <span style={{ fontWeight: 500, fontSize: 14.5 }}>{r.name}</span>
-                  <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 20 }}>${r.avgPrice.toFixed(2)}</span>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, minWidth: 0 }}>
+                  <span style={{ fontWeight: 500, fontSize: 14.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                  <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 20, flex: "none" }}>${r.avgPrice.toFixed(2)}</span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 12 }}>
                   {[["SKUs", String(r.skus)], ["Price index", r.priceIndex.toFixed(1)], ["Buy box 1P", r.buyBoxPresence + "%"]].map(([l, v]) => (

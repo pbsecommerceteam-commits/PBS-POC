@@ -157,7 +157,13 @@ select option { color: var(--text-primary); background-color: var(--surface-card
 .sl-table thead th.is-sortable:hover { color: var(--text-primary); }
 .sl-table thead th .sl-sort-caret { color: var(--text-faint); margin-left: 3px; font-size: 10px; }
 .sl-table thead th.is-sorted .sl-sort-caret { color: var(--color-accent-700); }
-.sl-table tbody td { padding: var(--app-row-pad, 13px) var(--space-2); border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+/* Baseline text truncation so a long value (a retailer/category/product
+   name) can never wrap a row onto a second line and stretch it taller than
+   its siblings -- row height then stays uniform regardless of filter state
+   or which products happen to be showing. A cell that intentionally stacks
+   two lines (a value plus a `.sl-table-sub` note) is unaffected: this only
+   stops a single text run from wrapping, not the two divs from stacking. */
+.sl-table tbody td { padding: var(--app-row-pad, 13px) var(--space-2); border-bottom: 1px solid var(--border-subtle); vertical-align: middle; max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sl-table tbody tr:last-child td { border-bottom: none; }
 .sl-table tbody tr.sl-row.is-clickable { cursor: pointer; }
 
