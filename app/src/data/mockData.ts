@@ -653,17 +653,21 @@ export const REAL_ROLLUP_WEEKLY: Record<string, {
      buyBoxRate that week -- same reasoning as avgPriceSum above: pool
      stockRateSum/stockRateWeight (or buyBoxRateSum/buyBoxRateWeight) across
      weeks for an exact rate, never reconstruct from the already-rounded
-     stockRate/buyBoxRate percentages. */
+     stockRate/buyBoxRate percentages. buyBoxRateWeight/buyBoxRateSum are
+     scoped to genuinely in-stock rows only (an out-of-stock listing has no
+     buy box to contest), so buyBoxRateWeight[i] always equals
+     stockRateSum[i] by construction -- both count "rows observed in stock
+     this week". */
   stockRateSum: number[]; buyBoxRateSum: number[];
 }> = {
-  "portfolio": { stockRate: [62.3, 61.24, 56.77, 62.58, 62.61], buyBoxRate: [82.32, 82.73, 82.48, 82.16, 80.87], rating: [4.26, 4.26, 4.26, 4.26, 4.26], content: [59.52, 59.42, 59.31, 59.41, 59.51], avgPrice: [24.42, 21.72, 21.97, 21.39, 21.59], stockRateWeight: [809, 805, 805, 807, 230], buyBoxRateWeight: [809, 805, 805, 807, 230], avgPriceWeight: [755, 743, 743, 746, 212], avgPriceSum: [18438.73, 16138.77, 16324.02, 15958.81, 4577.51], stockRateSum: [504, 493, 457, 505, 144], buyBoxRateSum: [666, 666, 664, 663, 186] },
-  "r1": { stockRate: [64.76, 64.29, 66.67, 67.14, 66.67], buyBoxRate: [61.43, 60.95, 62.38, 62.86, 60.0], rating: [4.27, 4.27, 4.28, 4.29, 4.28], content: [60.67, 60.67, 60.23, 60.63, 60.63], avgPrice: [30.67, 30.65, 30.49, 27.73, 27.8], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [210, 210, 210, 210, 60], avgPriceWeight: [165, 158, 161, 156, 44], avgPriceSum: [5061.08, 4842.33, 4909.67, 4325.34, 1223.39], stockRateSum: [136, 135, 140, 141, 40], buyBoxRateSum: [129, 128, 131, 132, 36] },
+  "portfolio": { stockRate: [62.3, 61.24, 56.77, 62.58, 62.61], buyBoxRate: [81.94, 83.57, 80.09, 82.57, 80.56], rating: [4.26, 4.26, 4.26, 4.26, 4.26], content: [59.52, 59.42, 59.31, 59.41, 59.51], avgPrice: [24.42, 21.72, 21.97, 21.39, 21.59], stockRateWeight: [809, 805, 805, 807, 230], buyBoxRateWeight: [504, 493, 457, 505, 144], avgPriceWeight: [755, 743, 743, 746, 212], avgPriceSum: [18438.73, 16138.77, 16324.02, 15958.81, 4577.51], stockRateSum: [504, 493, 457, 505, 144], buyBoxRateSum: [413, 412, 366, 417, 116] },
+  "r1": { stockRate: [64.76, 64.29, 66.67, 67.14, 66.67], buyBoxRate: [77.21, 82.22, 79.29, 83.69, 80.0], rating: [4.27, 4.27, 4.28, 4.29, 4.28], content: [60.67, 60.67, 60.23, 60.63, 60.63], avgPrice: [30.67, 30.65, 30.49, 27.73, 27.8], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [136, 135, 140, 141, 40], avgPriceWeight: [165, 158, 161, 156, 44], avgPriceSum: [5061.08, 4842.33, 4909.67, 4325.34, 1223.39], stockRateSum: [136, 135, 140, 141, 40], buyBoxRateSum: [105, 111, 111, 118, 32] },
   "r2": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [3.78, 3.78, 3.78, 3.78, 3.78], content: [60.2, 60.2, 60.2, 60.2, 60.2], avgPrice: [15.09, 14.64, 14.54, 14.52, 14.62], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20], avgPriceSum: [1056.29, 1024.98, 1017.99, 1016.2, 292.38], stockRateSum: [70, 70, 70, 70, 20], buyBoxRateSum: [70, 70, 70, 70, 20] },
-  "r3": { stockRate: [68.57, 67.14, 42.86, 69.52, 73.33], buyBoxRate: [70.48, 72.86, 70.48, 68.57, 66.67], rating: [4.24, 4.24, 4.24, 4.24, 4.24], content: [58.5, 58.1, 58.1, 58.1, 58.1], avgPrice: [38.53, 29.13, 29.94, 30.16, 30.82], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [210, 210, 210, 210, 60], avgPriceWeight: [210, 210, 210, 210, 60], avgPriceSum: [8090.51, 6117.77, 6287.62, 6334.55, 1848.94], stockRateSum: [144, 141, 90, 146, 44], buyBoxRateSum: [148, 153, 148, 144, 40] },
-  "r4": { stockRate: [60.0, 60.0, 60.0, 58.57, 50.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.0, 4.0, 4.0, 3.99, 3.99], content: [63.9, 63.9, 63.9, 63.9, 63.9], avgPrice: [8.06, 8.16, 8.41, 8.41, 8.41], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20], avgPriceSum: [564.43, 571.09, 588.63, 588.63, 168.18], stockRateSum: [42, 42, 42, 41, 10], buyBoxRateSum: [70, 70, 70, 70, 20] },
+  "r3": { stockRate: [68.57, 67.14, 42.86, 69.52, 73.33], buyBoxRate: [58.33, 59.57, 31.11, 55.48, 54.55], rating: [4.24, 4.24, 4.24, 4.24, 4.24], content: [58.5, 58.1, 58.1, 58.1, 58.1], avgPrice: [38.53, 29.13, 29.94, 30.16, 30.82], stockRateWeight: [210, 210, 210, 210, 60], buyBoxRateWeight: [144, 141, 90, 146, 44], avgPriceWeight: [210, 210, 210, 210, 60], avgPriceSum: [8090.51, 6117.77, 6287.62, 6334.55, 1848.94], stockRateSum: [144, 141, 90, 146, 44], buyBoxRateSum: [84, 84, 28, 81, 24] },
+  "r4": { stockRate: [60.0, 60.0, 60.0, 58.57, 50.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.0, 4.0, 4.0, 3.99, 3.99], content: [63.9, 63.9, 63.9, 63.9, 63.9], avgPrice: [8.06, 8.16, 8.41, 8.41, 8.41], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [42, 42, 42, 41, 10], avgPriceWeight: [70, 70, 70, 70, 20], avgPriceSum: [564.43, 571.09, 588.63, 588.63, 168.18], stockRateSum: [42, 42, 42, 41, 10], buyBoxRateSum: [42, 42, 42, 41, 10] },
   "r5": { stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.65, 4.65, 4.65, 4.65, 4.65], content: [48.9, 48.9, 48.9, 48.9, 48.9], avgPrice: [19.43, 19.43, 18.55, 17.89, 17.89], stockRateWeight: [70, 70, 70, 70, 20], buyBoxRateWeight: [70, 70, 70, 70, 20], avgPriceWeight: [70, 70, 70, 70, 20], avgPriceSum: [1360.1, 1360.1, 1298.42, 1252.16, 357.76], stockRateSum: [70, 70, 70, 70, 20], buyBoxRateSum: [70, 70, 70, 70, 20] },
-  "r6": { stockRate: [2.52, 0.0, 8.4, 0.0, 0.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.23, 4.24, 4.24, 4.24, 4.24], content: [67.24, 67.24, 67.24, 67.24, 67.24], avgPrice: [17.13, 16.99, 17.52, 18.21, 18.21], stockRateWeight: [119, 119, 119, 119, 34], buyBoxRateWeight: [119, 119, 119, 119, 34], avgPriceWeight: [110, 109, 106, 112, 32], avgPriceSum: [1884.53, 1851.67, 1857.27, 2039.11, 582.74], stockRateSum: [3, 0, 10, 0, 0], buyBoxRateSum: [119, 119, 119, 119, 34] },
-  "r7": { stockRate: [65.0, 62.5, 62.5, 63.79, 62.5], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.67, 4.67, 4.67, 4.67, 4.67], content: [51.6, 51.6, 51.6, 51.6, 52.8], avgPrice: [7.03, 6.62, 6.51, 6.95, 6.51], stockRateWeight: [60, 56, 56, 58, 16], buyBoxRateWeight: [60, 56, 56, 58, 16], avgPriceWeight: [60, 56, 56, 58, 16], avgPriceSum: [421.79, 370.83, 364.42, 402.82, 104.12], stockRateSum: [39, 35, 35, 37, 10], buyBoxRateSum: [60, 56, 56, 58, 16] },
+  "r6": { stockRate: [2.52, 0.0, 8.4, 0.0, 0.0], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.23, 4.24, 4.24, 4.24, 4.24], content: [67.24, 67.24, 67.24, 67.24, 67.24], avgPrice: [17.13, 16.99, 17.52, 18.21, 18.21], stockRateWeight: [119, 119, 119, 119, 34], buyBoxRateWeight: [3, 0, 10, 0, 0], avgPriceWeight: [110, 109, 106, 112, 32], avgPriceSum: [1884.53, 1851.67, 1857.27, 2039.11, 582.74], stockRateSum: [3, 0, 10, 0, 0], buyBoxRateSum: [3, 0, 10, 0, 0] },
+  "r7": { stockRate: [65.0, 62.5, 62.5, 63.79, 62.5], buyBoxRate: [100.0, 100.0, 100.0, 100.0, 100.0], rating: [4.67, 4.67, 4.67, 4.67, 4.67], content: [51.6, 51.6, 51.6, 51.6, 52.8], avgPrice: [7.03, 6.62, 6.51, 6.95, 6.51], stockRateWeight: [60, 56, 56, 58, 16], buyBoxRateWeight: [39, 35, 35, 37, 10], avgPriceWeight: [60, 56, 56, 58, 16], avgPriceSum: [421.79, 370.83, 364.42, 402.82, 104.12], stockRateSum: [39, 35, 35, 37, 10], buyBoxRateSum: [39, 35, 35, 37, 10] },
 };
 
 
@@ -833,11 +837,14 @@ function matchRangeWeeks(range: DateRange | null | undefined, dates: string[]): 
    buyBoxRateSum (the raw, un-rounded in-stock/buy-box-owned counts per
    week) rather than reconstructing a numerator from the already-rounded-to-
    2-decimals stockRate/buyBoxRate is what makes this exact -- e.g. summing
-   Amazon's 5 weekly buyBoxRateSum values (129+128+131+132+36=556) over its
-   5 weekly buyBoxRateWeight values (210*4+60=900) gives exactly 556/900 =
-   61.78%, matching a manual count against the raw Price tab to the decimal,
-   not a rounded-then-reconstructed approximation of it. rating/content have
-   a constant per-week product count, so plain averaging is already correct
+   Amazon's 5 weekly buyBoxRateSum values (105+111+111+118+32=477) over its
+   5 weekly buyBoxRateWeight values (136+135+140+141+40=592) gives exactly
+   477/592 = 80.57%, matching a manual count against the raw Price tab to
+   the decimal, not a rounded-then-reconstructed approximation of it (see
+   build_mock_data.py's per-week loop -- buyBoxRateWeight/Sum only count
+   rows genuinely in stock that week, since an out-of-stock listing has no
+   buy box to contest). rating/content have a constant per-week product
+   count, so plain averaging is already correct
    for those two. */
 function realRangeValue(retailer: string, field: "stockRate" | "buyBoxRate" | "rating" | "content", idx: number[], category?: string): { value: number; delta: number } | null {
   // REAL_ROLLUP_WEEKLY is a retailer/portfolio-level table baked in the ETL

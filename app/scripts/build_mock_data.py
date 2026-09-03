@@ -565,8 +565,16 @@ def main():
                     if flag is not None:
                         total_n += 1
                         in_stock_n += 1 if flag else 0
-                    buybox_d += 1
-                    buybox_n += 1 if is_own_seller(r.get("Buy box seller"), code) else 0
+                    # Buy Box Ownership is scoped to genuinely in-stock rows
+                    # only (flag is True) -- an out-of-stock listing has no
+                    # buy box to contest, so counting it in the denominator
+                    # (as "not owned") understates ownership among the
+                    # listings that actually mattered. A row with unparseable
+                    # stock status (flag is None) is excluded from both, same
+                    # as it already is from stockRate.
+                    if flag:
+                        buybox_d += 1
+                        buybox_n += 1 if is_own_seller(r.get("Buy box seller"), code) else 0
                     # Average Price -- pooled the same way as stockRate/buyBoxRate
                     # above: every raw daily row (Current price, falling back to
                     # List everyday price) is one equally-weighted observation.
