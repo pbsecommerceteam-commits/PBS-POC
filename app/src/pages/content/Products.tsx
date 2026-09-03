@@ -5,10 +5,11 @@ import { FacetPanel, type FacetGroup } from "../../components/ui/FacetPanel";
 import { ColumnPicker, type ColumnOption } from "../../components/ui/ColumnPicker";
 import { ProductCell } from "../../components/ui/ProductCell";
 import { SortableTable, type Column } from "../../components/table/SortableTable";
+import { DataTable } from "../../components/table/DataTable";
 import { Pagination } from "../../components/table/Pagination";
 import { useUi } from "../../context/UiContext";
 import { useSortedPage } from "../../hooks/useSortedPage";
-import { columnsToCsv, deltaColor } from "../../lib/format";
+import { cell, columnsToCsv, deltaColor, table } from "../../lib/format";
 import { productSorters } from "../../lib/productSort";
 import { CONTENT_CHECK_LABELS } from "../../data/mockData";
 import type { Product } from "../../models/types";
@@ -18,12 +19,24 @@ const yesNo = (v: boolean) => (v ? "Yes" : "No");
 /* A product's `contentChecks` array holds the FAILED rubric-check ids (see
    CONTENT_CHECK_LABELS and build_mock_data.py's content_completeness()) --
    passing is simply "not in that list", already real, computed data with
-   no new ETL field needed. */
+   no new ETL field needed. Each check is a binary pass/fail (there's no
+   partial-credit rubric underneath), so its "score" is exactly 100 or 0 --
+   matching how Content Score itself is built (sum of 8 such 0/100 checks
+   / 8), just not yet averaged across checks. */
 const passFail = (p: Product, id: string) => !p.contentChecks.includes(id);
+function ScorePill({ pass }: { pass: boolean }) {
+  return (
+    <span style={{
+      display: "inline-block", minWidth: 52, textAlign: "center", padding: "2px 8px", borderRadius: 999, fontWeight: 600, fontSize: 12.5,
+      color: pass ? "var(--status-positive-fg)" : "var(--status-critical-fg)",
+      background: pass ? "var(--status-positive-bg)" : "var(--status-critical-bg)",
+    }}>{pass ? "100.00" : "0.00"}</span>
+  );
+}
 
 /* One column per individual rubric check behind Content Score/Content
    Completeness -- Title/Images/Bullet Count/Bullet Caps/Bullet Length/
-   Description/Rating each get their own Pass/Fail column so the two
+   Description/Rating each get their own 100/0 score column so the two
    summary columns aren't the only place to see which specific checks a
    listing is failing. "Enhanced" is deliberately not repeated here: it's
    already its own Yes/No column above (enhancedContent) with identical
@@ -76,9 +89,9 @@ export const CONTENT_COLUMNS: Column<Product>[] = [
   { key: "contentScore", label: "Content Score", align: "right", minWidth: 120, sortable: true, render: (p) => <span style={{ fontWeight: 600, color: p.contentScore < 80 ? deltaColor(-1) : "inherit" }}>{p.contentScore}</span>, csv: (p) => p.contentScore },
   { key: "completeness", label: "Content Completeness", align: "right", minWidth: 150, sortable: true, render: (p) => <span>{8 - p.contentChecks.length}/8</span>, csv: (p) => `${8 - p.contentChecks.length}/8` },
   ...CHECK_COLUMNS.map((c): Column<Product> => ({
-    key: c.key, label: c.label, minWidth: 110, sortable: true,
-    render: (p) => <span className={passFail(p, c.id) ? undefined : "sl-muted"}>{passFail(p, c.id) ? "Pass" : "Fail"}</span>,
-    csv: (p) => passFail(p, c.id) ? "Pass" : "Fail",
+    key: c.key, label: c.label, align: "right", minWidth: 100, sortable: true,
+    render: (p) => <ScorePill pass={passFail(p, c.id)} />,
+    csv: (p) => passFail(p, c.id) ? 100 : 0,
   })),
   { key: "vendorStockNo", label: "Vendor Stock No.", minWidth: 130, sortable: true, render: (p) => p.vendorStockNo ?? "—", csv: (p) => p.vendorStockNo ?? "" },
   { key: "siteCategory", label: "Site Category", minWidth: 200, sortable: true, render: (p) => p.siteCategory ?? "—", csv: (p) => p.siteCategory ?? "" },
@@ -191,6 +204,36 @@ export default function ContentProducts() {
 
   const all: Product[] = products.filter((p) => (Object.keys(matches) as FacetKey[]).every((k) => matches[k](p)));
 
+  /* Brand-wise content-quality rollup, below the product-level table --
+     same real per-check pass/fail data as the columns above, grouped by
+     brand instead of listed per-SKU. Scoped to the SAME filtered `all` set
+     the product table shows, so narrowing by retailer/category/etc.
+     narrows this too. Content Score's own "pass" threshold (>=80) matches
+     the color cutoff already used on its column above. */
+  const SCORE_COLUMNS: { id: string; label: string; passFn: (p: Product) => boolean }[] = [
+    { id: "contentScore", label: "Content Score", passFn: (p) => p.contentScore >= 80 },
+    ...CHECK_COLUMNS.map((c) => ({ id: c.id, label: c.label.replace(" Score", ""), passFn: (p: Product) => passFail(p, c.id) })),
+  ];
+  const pctColor = (pct: number) => (pct >= 80 ? "var(--status-positive-fg)" : pct >= 50 ? "var(--status-warning-fg)" : "var(--status-critical-fg)");
+  const byBrand = new Map<string, Product[]>();
+  all.forEach((p) => { const arr = byBrand.get(p.brand) ?? []; arr.push(p); byBrand.set(p.brand, arr); });
+  const brandTable = table(
+    "Content Score by Brand", "Real per-check pass counts, grouped by brand, over the current filters",
+    [{ label: "Brand", align: "left" }, { label: "SKUs", align: "right" }, ...SCORE_COLUMNS.map((sc) => ({ label: sc.label, align: "right" as const }))],
+    Array.from(byBrand.entries()).sort((a, b) => b[1].length - a[1].length).map(([brandName, prods]) => {
+      const n = prods.length;
+      return { cells: [
+        cell(brandName, { strong: true }),
+        cell(String(n), { align: "right" }),
+        ...SCORE_COLUMNS.map((sc) => {
+          const passing = prods.filter(sc.passFn).length;
+          const pct = n ? Math.round((passing / n) * 1000) / 10 : 0;
+          return cell(`${passing} (${pct.toFixed(1)}%)`, { align: "right", color: pctColor(pct) });
+        }),
+      ] };
+    }),
+  );
+
   const SORTERS = { ...productSorters, completeness: (a: Product, b: Product) => (8 - a.contentChecks.length) - (8 - b.contentChecks.length),
     bulletsText: (a: Product, b: Product) => a.bulletsText.length - b.bulletsText.length,
     descriptionText: (a: Product, b: Product) => a.descriptionLength - b.descriptionLength,
@@ -233,27 +276,30 @@ export default function ContentProducts() {
   }, [registerExport]);
 
   return (
-    <div style={{ display: "flex", gap: "var(--app-gap)", alignItems: "flex-start" }}>
-      <div ref={facetRef}>
-        <FacetPanel groups={facets} onClearAll={() => { setRetailer([]); setStock([]); setOpportunity([]); setCategory([]); setBrand([]); setIssue([]); setSearch(""); }} />
-      </div>
-      <Card padding="20px 22px 14px" style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
-          <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Products</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{total} of {products.length} tracked SKUs</div></div>
-          <ColumnPicker columns={COLUMN_OPTIONS} selected={visibleColumns} onChange={setVisibleColumns} order={columnOrder} onReorder={setColumnOrder} lockedIds={["name"]} />
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--app-section-gap)" }}>
+      <div style={{ display: "flex", gap: "var(--app-gap)", alignItems: "flex-start" }}>
+        <div ref={facetRef}>
+          <FacetPanel groups={facets} onClearAll={() => { setRetailer([]); setStock([]); setOpportunity([]); setCategory([]); setBrand([]); setIssue([]); setSearch(""); }} />
         </div>
-        <div style={{ marginBottom: 16 }}>
-          <input className="input" placeholder="Search product, SKU, ASIN…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minHeight: 32, fontSize: 12.5, maxWidth: 320 }} />
-        </div>
-        <SortableTable columns={columns} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} />
-        {all.length === 0 && (
-          <div style={{ padding: "32px 4px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
-            <div style={{ fontWeight: 600, fontSize: 15 }}>No products match these filters</div>
-            <div className="sl-muted" style={{ fontSize: 13 }}>Try clearing a filter or search term.</div>
+        <Card padding="20px 22px 14px" style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
+            <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Products</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{total} of {products.length} tracked SKUs</div></div>
+            <ColumnPicker columns={COLUMN_OPTIONS} selected={visibleColumns} onChange={setVisibleColumns} order={columnOrder} onReorder={setColumnOrder} lockedIds={["name"]} />
           </div>
-        )}
-        <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPage={setPage} />
-      </Card>
+          <div style={{ marginBottom: 16 }}>
+            <input className="input" placeholder="Search product, SKU, ASIN…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minHeight: 32, fontSize: 12.5, maxWidth: 320 }} />
+          </div>
+          <SortableTable columns={columns} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} />
+          {all.length === 0 && (
+            <div style={{ padding: "32px 4px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+              <div style={{ fontWeight: 600, fontSize: 15 }}>No products match these filters</div>
+              <div className="sl-muted" style={{ fontSize: 13 }}>Try clearing a filter or search term.</div>
+            </div>
+          )}
+          <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPage={setPage} />
+        </Card>
+      </div>
+      {all.length > 0 && <DataTable t={brandTable} />}
     </div>
   );
 }
