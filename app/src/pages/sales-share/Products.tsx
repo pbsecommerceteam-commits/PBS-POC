@@ -5,7 +5,7 @@ import { OpportunityCard } from "../../components/ui/OpportunityCard";
 import { SortableTable, type Column } from "../../components/table/SortableTable";
 import { Pagination } from "../../components/table/Pagination";
 import { Tabs } from "../../components/ui/Tabs";
-import { Badge, opportunityTone, stockTone } from "../../components/ui/Badge";
+import { Badge, opportunityTone } from "../../components/ui/Badge";
 import { ProductCell } from "../../components/ui/ProductCell";
 import { useUi } from "../../context/UiContext";
 import { useSortedPage } from "../../hooks/useSortedPage";
@@ -33,36 +33,47 @@ export default function SalesShareProducts() {
   const navigate = useNavigate();
   const [perfTab, setPerfTab] = useState<PerfTab>("top");
   const [brand, setBrand] = useState("");
+  const [search, setSearch] = useState("");
   const brands = useMemo(() => Array.from(new Set(sd.products.map((p: Product) => p.brand))).sort() as string[], [sd]);
 
-  const all: Product[] = useMemo(() => sd.products.filter((p: Product) =>
-    (!categoryFilter || p.category === categoryFilter) &&
-    (!brand || p.brand === brand) &&
-    (perfTab !== "improved" || p.rankDelta > 0) &&
-    (perfTab !== "declined" || p.rankDelta < 0),
-  ), [sd, categoryFilter, brand, perfTab]);
+  const all: Product[] = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return sd.products.filter((p: Product) =>
+      (!categoryFilter || p.category === categoryFilter) &&
+      (!brand || p.brand === brand) &&
+      (perfTab !== "improved" || p.rankDelta > 0) &&
+      (perfTab !== "declined" || p.rankDelta < 0) &&
+      (!q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)),
+    );
+  }, [sd, categoryFilter, brand, perfTab, search]);
 
   const { slice, sortKey, sortDir, onSort, setSort, page, totalPages, setPage, total } = useSortedPage(
-    all, SORTERS, "shelfScore", 8, [categoryFilter, brand, perfTab].join("|"),
+    all, SORTERS, "shelfScore", 8, [categoryFilter, brand, perfTab, search].join("|"),
   );
 
   const movers = sd.products.slice().sort((a: Product, b: Product) => visibilityDelta(b) - visibilityDelta(a));
   const improvements = movers.filter((p: Product) => visibilityDelta(p) > 0).slice(0, 4);
   const deteriorations = movers.filter((p: Product) => visibilityDelta(p) < 0).slice(-4).reverse();
 
+  /* Pricing-only columns -- no search rank, rating or opportunity here (see
+     Content Intelligence's Products table for those). "Competitor Price" is
+     deliberately not a column: REAL_BUYBOX_COMPETITOR only carries who won
+     the box and for how long, never a competitor's price, so Buy Box is the
+     honest substitute. */
   const columns: Column<Product>[] = [
     { key: "name", label: "Product", minWidth: 230, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} /> },
-    { key: "category", label: "Category", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.category}</span> },
     { key: "retailerName", label: "Retailer", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.retailerName}</span> },
-    { key: "searchRank", label: "Search rank", align: "right", sortable: true, render: (p) => (
-      <><span style={{ fontWeight: 600 }}>#{p.searchRank}</span><span style={{ fontSize: 11.5, marginLeft: 5, color: deltaColor(p.rankDelta) }}>{p.rankDelta === 0 ? "—" : (p.rankDelta > 0 ? "↑" : "↓") + Math.abs(p.rankDelta)}</span>
-      <div className="sl-table-sub">{p.searchVisibility}% visibility</div></>
-    ) },
-    { key: "price", label: "Price", align: "right", sortable: true, render: (p) => (<><span>${p.price.toFixed(2)}</span><div className="sl-table-sub">Index {(p.priceIndex * 100).toFixed(0)}</div></>) },
-    { key: "inStockRate", label: "Stock Availability 1P + 3P", align: "right", sortable: true, render: (p) => (<><Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge><div className="sl-table-sub">{p.inStockRate.toFixed(1)}%</div></>) },
-    { key: "rating", label: "Rating", align: "right", sortable: true, render: (p) => (<><span style={{ fontWeight: 500 }}>{p.rating.toFixed(2)}</span><div className="sl-table-sub">{p.reviews.toLocaleString()} reviews</div></>) },
-    { key: "buyBox", label: "Buy box", render: (p) => <Badge tone={p.buyBox ? "positive" : "neutral"}>{p.buyBox ? "Held" : "Lost"}</Badge> },
-    { key: "opportunity", label: "Opportunity", sortable: true, render: (p) => <Badge tone={opportunityTone(p.opportunity)}>{p.opportunity}</Badge> },
+    { key: "currentPrice", label: "Current Price", align: "right", sortable: true, render: (p) => <span>${(p.currentPrice ?? p.price).toFixed(2)}</span> },
+    { key: "listPrice", label: "List Price", align: "right", sortable: true, render: (p) => <span>{p.listPrice != null ? "$" + p.listPrice.toFixed(2) : "—"}</span> },
+    { key: "priceDiff", label: "Price Difference", align: "right", render: (p) => {
+      const cur = p.currentPrice ?? p.price;
+      if (p.listPrice == null) return <span className="sl-faint">—</span>;
+      const diff = cur - p.listPrice;
+      return <span style={{ color: diff < 0 ? "var(--status-positive-fg)" : diff > 0 ? "var(--status-negative-fg)" : "inherit" }}>{diff === 0 ? "—" : (diff > 0 ? "+" : "−") + "$" + Math.abs(diff).toFixed(2)}</span>;
+    } },
+    { key: "priceChangePct", label: "Price Change", align: "right", sortable: true, render: (p) => <span style={{ color: deltaColor(p.priceChangePct) }}>{delta(p.priceChangePct, "%")}</span> },
+    { key: "priceIndex", label: "Price Index", align: "right", sortable: true, render: (p) => <span>{(p.priceIndex * 100).toFixed(0)}</span> },
+    { key: "buyBox", label: "Buy Box", render: (p) => <Badge tone={p.buyBox ? "positive" : "neutral"}>{p.buyBox ? "Held" : "Lost"}</Badge> },
   ];
 
   return (
@@ -71,12 +82,13 @@ export default function SalesShareProducts() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
           <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Products</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{total} of {sd.products.length} tracked SKUs · {categoryFilter || "all categories"}</div></div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <input className="input" placeholder="Search product, SKU, ASIN…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minHeight: 32, fontSize: 12.5, width: 200 }} />
             <select className="input" value={brand} onChange={(e) => setBrand(e.target.value)} style={{ minHeight: 32, fontSize: 12.5 }}>
               <option value="">All brands</option>
               {brands.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
             <Tabs options={TABS} value={perfTab} onChange={(id) => { const tb = TABS.find((x) => x.id === id)!; setPerfTab(id); setSort(tb.sortKey, tb.dir); }} />
-            {(categoryFilter || brand || perfTab !== "top") && <button className="btn btn-ghost" onClick={() => { setCategoryFilter(""); setBrand(""); setPerfTab("top"); toast("Filters cleared."); }} style={{ fontSize: 12.5 }}>Clear filters</button>}
+            {(categoryFilter || brand || search || perfTab !== "top") && <button className="btn btn-ghost" onClick={() => { setCategoryFilter(""); setBrand(""); setSearch(""); setPerfTab("top"); toast("Filters cleared."); }} style={{ fontSize: 12.5 }}>Clear filters</button>}
           </div>
         </div>
         <SortableTable columns={columns} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} />
@@ -84,7 +96,7 @@ export default function SalesShareProducts() {
           <div style={{ padding: "32px 4px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
             <div style={{ fontWeight: 600, fontSize: 15 }}>No products match this view</div>
             <div className="sl-muted" style={{ fontSize: 13 }}>Try another tab, category or search term.</div>
-            <button className="btn btn-secondary" onClick={() => { setCategoryFilter(""); setBrand(""); setPerfTab("top"); }}>Reset filters</button>
+            <button className="btn btn-secondary" onClick={() => { setCategoryFilter(""); setBrand(""); setSearch(""); setPerfTab("top"); }}>Reset filters</button>
           </div>
         )}
         <Pagination page={page} totalPages={totalPages} total={total} pageSize={8} onPage={setPage} />
