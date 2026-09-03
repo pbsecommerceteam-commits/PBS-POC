@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { catalog, retailers, user } from "../data/mockData";
+import { Badge } from "../components/ui/Badge";
 
 const STATS = [
   { label: "Tracked SKUs", value: String(catalog.length) },
@@ -41,6 +42,17 @@ export default function Login() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div className="sl-brand-mark" style={{ width: 34, height: 34, fontSize: 14 }}>SL</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 18 }}>Shelfline</div>
+          <span style={{ marginLeft: "auto" }}>
+            <Badge tone="positive">
+              <span
+                style={{
+                  width: 6, height: 6, borderRadius: "50%",
+                  background: "var(--status-positive-fg)", animation: "sl-pulse 1.6s ease-in-out infinite",
+                }}
+              />
+              All systems live
+            </Badge>
+          </span>
         </div>
 
         <div style={{ maxWidth: 380 }}>
