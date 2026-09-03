@@ -24,7 +24,7 @@ export function DataTable({ t }: { t: TableConfig }) {
             {t.rows.map((r, ri) => (
               <tr className="sl-row" key={ri}>
                 {r.cells.map((c, ci) => (
-                  <td key={ci} style={{ textAlign: c.align }}>
+                  <td key={ci} style={c.wrap ? { textAlign: c.align, whiteSpace: "normal", overflow: "visible", textOverflow: "clip", maxWidth: "none" } : { textAlign: c.align }}>
                     <span style={{ fontFamily: c.font, fontSize: c.size, color: c.color, fontWeight: c.font.includes("heading") ? 600 : 400 }}>{c.text}</span>
                     {c.sub && <div className="sl-table-sub">{c.sub}</div>}
                   </td>

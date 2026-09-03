@@ -27,7 +27,7 @@ export default function ContentBrands() {
     Array.from(byBrand.entries()).sort((a, b) => b[1].length - a[1].length).map(([brandName, prods]) => {
       const n = prods.length;
       return { cells: [
-        cell(brandName, { strong: true }),
+        cell(brandName, { strong: true, wrap: true }),
         cell(String(n), { align: "right" }),
         ...SCORE_COLUMNS.map((sc) => {
           const passing = prods.filter(sc.passFn).length;

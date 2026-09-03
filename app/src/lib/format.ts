@@ -30,13 +30,17 @@ export interface Cell {
   font: string;
   size: string;
   color: string;
+  /** Opt out of DataTable's default single-line ellipsis truncation for
+   *  this cell -- e.g. a brand/product name column where cutting the
+   *  text off is worse than the row occasionally running two lines. */
+  wrap?: boolean;
 }
 
-export function cell(text: string, o: { sub?: string; align?: "left" | "right"; tone?: BadgeTone; strong?: boolean; color?: string } = {}): Cell {
+export function cell(text: string, o: { sub?: string; align?: "left" | "right"; tone?: BadgeTone; strong?: boolean; color?: string; wrap?: boolean } = {}): Cell {
   return {
     text, sub: o.sub || "", align: o.align || "left", tone: o.tone,
     font: o.strong ? "var(--font-heading)" : "var(--font-body)",
-    size: o.strong ? "15px" : "13.5px", color: o.color || "inherit",
+    size: o.strong ? "15px" : "13.5px", color: o.color || "inherit", wrap: o.wrap,
   };
 }
 
