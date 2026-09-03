@@ -69,7 +69,7 @@ export const sectionMeta: Record<string, { title: string; subtitle: string }> = 
   overview: { title: "Overview", subtitle: "Monitor digital shelf health across your retailers, products and categories." },
   alerts: { title: "Alerts", subtitle: "Rules watching the portfolio and what they have caught" },
   reports: { title: "Reports", subtitle: "Scheduled exports and briefings sent to your teams" },
-  sales: { title: "Performance Intelligence", subtitle: "Understand how products perform across search, pricing, availability and retailer conditions." },
+  sales: { title: "Pricing Intelligence", subtitle: "Track current, list and subscription pricing, price movement and buy box outcomes across retailers." },
   content: { title: "Content Intelligence", subtitle: "Measure product-content completeness across monitored retailers." },
   reviews: { title: "Ratings & Reviews", subtitle: "Rating trajectory, review volume and retailer/category comparisons" },
   competitors: { title: "Competitive Intelligence", subtitle: "Compare listings, pricing, availability and search presence across the monitored competitive set." },
@@ -683,6 +683,15 @@ function productFor(p: (typeof catalog)[number], key: string) {
     price: p.price,
     avgSellingPrice: (p as any).avgSellingPrice ?? p.price,
     priceIndex: itemPriceIndex(p.price, (p as any).avgSellingPrice ?? null),
+    // Real, whole-month change in observed price (first vs. last crawl
+    // day) -- see catalog[].priceChangePct in build_mock_data.py.
+    priceChangePct: (p as any).priceChangePct ?? 0,
+    // Real Price-tab fields, kept separate and unfallback'd -- null (not
+    // 0) when a field was never posted, same reasoning as avgSellingPrice
+    // vs. price above.
+    listPrice: (p as any).listPrice ?? null,
+    currentPrice: (p as any).currentPrice ?? null,
+    subscriptionPrice: (p as any).subscriptionPrice ?? null,
     stockStatus: status as "In Stock" | "Low Stock" | "Out of Stock",
     inStockRate: round(clamp(
       p.stockBias * 100 + (r() - 0.5) * 2 -
@@ -871,6 +880,26 @@ function realCurrentAvgPrice(retailer: string, period: string, dateRange: DateRa
   return null;
 }
 
+/* Real, per-SKU signal: how many catalog products (in scope) had a genuine
+   3rd-party seller win the buy box for at least one tracked day, per
+   REAL_BUYBOX_COMPETITOR (Amazon/Chewy/Walmart/PetSmart/Petco only -- Home
+   Depot and Lowe's have no resolvable 3P-seller signal, see the comment
+   above that table). Whole-period, not week-scoped -- REAL_BUYBOX_COMPETITOR
+   is a single whole-month tally, not a weekly series. Shared by Pricing
+   Intelligence's and Competitive Intelligence's buy-box KPI cards so both
+   show the same number for the same retailer scope. */
+function realBuyBoxLoss(retailer: string): { skusTracked: number; skusLost: number; topSeller: string | null } {
+  const scoped = (catalog as any[]).filter((p) => retailer === "all" || p.retailer === retailer);
+  const lost = scoped.filter((p) => REAL_BUYBOX_COMPETITOR[p.id]);
+  const sellerDays: Record<string, number> = {};
+  for (const p of lost) {
+    const { seller, daysWon } = REAL_BUYBOX_COMPETITOR[p.id];
+    sellerDays[seller] = (sellerDays[seller] || 0) + daysWon;
+  }
+  const topSeller = Object.keys(sellerDays).sort((a, b) => sellerDays[b] - sellerDays[a])[0] || null;
+  return { skusTracked: scoped.length, skusLost: lost.length, topSeller };
+}
+
 /* Real portfolio/retailer-level trend series for the "Last 4 weeks" period —
    same reasoning as REAL_PRODUCT_WEEKLY above: this is the one window the
    real September crawl can honestly fill point-for-point. Every other
@@ -1036,6 +1065,7 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
         content: clamp(Math.round(c.content + (rr() - 0.5) * 8), 40, 100),
       };
     }),
+    buyBoxLoss: realBuyBoxLoss(retailer),
     keywords: keywordSet.map((k) => {
       const rr = rowRng(key, "keyword", k.id);
       return {
@@ -1267,11 +1297,12 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     const rating = realRating != null ? round(realRating, 2) : (own.length ? avg(own, (p) => p.rating, 2) : round(clamp(4.3 + b.rating, 3.4, 5), 2));
     const priceIndex = own.length ? round(avg(own, (p) => p.priceIndex, 3) * 100, 1) : round(98 + rr() * 8, 1);
     const buyBoxPresence = realBuyBox != null ? Math.round(realBuyBox) : (own.length ? Math.round((own.filter((p) => p.buyBox).length / own.length) * 100) : Math.round(60 + rr() * 30));
+    const avgPrice = realCurrentAvgPrice(rt.id, period, dateRange, wideMatch?.idx) ?? (own.length ? avg(own, (p) => p.price, 2) : 0);
     const shelfScore = clamp(Math.round(
       (visibility / 45) * 25 + (availability / 100) * 30 + (content / 100) * 25 + (rating / 5) * 20
     ), 25, 100);
     return {
-      id: rt.id, name: rt.name, skus: own.length, visibility, availability, content, rating, priceIndex, buyBoxPresence, shelfScore,
+      id: rt.id, name: rt.name, skus: own.length, visibility, availability, content, rating, priceIndex, buyBoxPresence, avgPrice, shelfScore,
       visibilityDelta: round((rr() - 0.5) * 4.5, 1),
       availabilityDelta: round((rr() - 0.5) * 2.4, 1),
       shelfScoreDelta: round((rr() - 0.5) * 5, 1),
@@ -1290,8 +1321,9 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     const priceIndex = inCat.length ? round(avg(inCat, (p) => p.priceIndex, 3) * 100, 1) : round(96 + rr() * 10, 1);
     const rating = inCat.length ? avg(inCat, (p) => p.rating, 2) : round(clamp(4.3 + rr() * 0.3, 3.4, 5), 2);
     const overall = inCat.length ? Math.round(avg(inCat, (p) => p.shelfScore, 0)) : Math.round(55 + rr() * 30);
+    const avgPrice = inCat.length ? avg(inCat, (p) => p.price, 2) : 0;
     return {
-      category: c, skus: inCat.length, visibility, availability, content, priceIndex, rating, overall,
+      category: c, skus: inCat.length, visibility, availability, content, priceIndex, rating, avgPrice, overall,
       delta: round((rr() - 0.5) * 6, 1),
     };
   });
@@ -1410,6 +1442,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
       verdict: ownPrice > periodAvgPrice * 1.05 ? "above" : ownPrice < periodAvgPrice * 0.95 ? "below" : "inline",
       gap: round(((ownPrice - periodAvgPrice) / (periodAvgPrice || 1)) * 100, 1),
     },
+    buyBoxLoss: realBuyBoxLoss(retailer),
     availability: {
       byRetailer: byRetailer.map((r) => ({
         name: r.name, inStock: r.inStock, low: r.low, oos: r.oos,

@@ -20,8 +20,8 @@ export default function SalesShareLayout() {
   const [categoryFilter, setCategoryFilter] = useState("");
 
   return (
-    <PageShell title={categoryFilter ? `${categoryFilter} — Performance Intelligence` : "Performance Intelligence"}
-      subtitle={categoryFilter ? `Search, pricing, availability and retailer conditions for ${categoryFilter}` : "Understand how products perform across search, pricing, availability and retailer conditions."}
+    <PageShell title={categoryFilter ? `${categoryFilter} — Pricing Intelligence` : "Pricing Intelligence"}
+      subtitle={categoryFilter ? `Current, list and subscription pricing, price movement and buy box outcomes for ${categoryFilter}` : "Track current, list and subscription pricing, price movement and buy box outcomes across retailers."}
       tabs={<PageTabs items={[
         { label: "Summary", to: "/sales-share", end: true },
         { label: "Drivers", to: "/sales-share/drivers" },

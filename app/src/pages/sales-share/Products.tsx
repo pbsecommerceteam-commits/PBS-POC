@@ -32,15 +32,18 @@ export default function SalesShareProducts() {
   const { toast } = useUi();
   const navigate = useNavigate();
   const [perfTab, setPerfTab] = useState<PerfTab>("top");
+  const [brand, setBrand] = useState("");
+  const brands = useMemo(() => Array.from(new Set(sd.products.map((p: Product) => p.brand))).sort() as string[], [sd]);
 
   const all: Product[] = useMemo(() => sd.products.filter((p: Product) =>
     (!categoryFilter || p.category === categoryFilter) &&
+    (!brand || p.brand === brand) &&
     (perfTab !== "improved" || p.rankDelta > 0) &&
     (perfTab !== "declined" || p.rankDelta < 0),
-  ), [sd, categoryFilter, perfTab]);
+  ), [sd, categoryFilter, brand, perfTab]);
 
   const { slice, sortKey, sortDir, onSort, setSort, page, totalPages, setPage, total } = useSortedPage(
-    all, SORTERS, "shelfScore", 8, [categoryFilter, perfTab].join("|"),
+    all, SORTERS, "shelfScore", 8, [categoryFilter, brand, perfTab].join("|"),
   );
 
   const movers = sd.products.slice().sort((a: Product, b: Product) => visibilityDelta(b) - visibilityDelta(a));
@@ -68,8 +71,12 @@ export default function SalesShareProducts() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
           <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Products</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{total} of {sd.products.length} tracked SKUs · {categoryFilter || "all categories"}</div></div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <select className="input" value={brand} onChange={(e) => setBrand(e.target.value)} style={{ minHeight: 32, fontSize: 12.5 }}>
+              <option value="">All brands</option>
+              {brands.map((b) => <option key={b} value={b}>{b}</option>)}
+            </select>
             <Tabs options={TABS} value={perfTab} onChange={(id) => { const tb = TABS.find((x) => x.id === id)!; setPerfTab(id); setSort(tb.sortKey, tb.dir); }} />
-            {(categoryFilter || perfTab !== "top") && <button className="btn btn-ghost" onClick={() => { setCategoryFilter(""); setPerfTab("top"); toast("Filters cleared."); }} style={{ fontSize: 12.5 }}>Clear filters</button>}
+            {(categoryFilter || brand || perfTab !== "top") && <button className="btn btn-ghost" onClick={() => { setCategoryFilter(""); setBrand(""); setPerfTab("top"); toast("Filters cleared."); }} style={{ fontSize: 12.5 }}>Clear filters</button>}
           </div>
         </div>
         <SortableTable columns={columns} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} />
@@ -77,7 +84,7 @@ export default function SalesShareProducts() {
           <div style={{ padding: "32px 4px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
             <div style={{ fontWeight: 600, fontSize: 15 }}>No products match this view</div>
             <div className="sl-muted" style={{ fontSize: 13 }}>Try another tab, category or search term.</div>
-            <button className="btn btn-secondary" onClick={() => { setCategoryFilter(""); setPerfTab("top"); }}>Reset filters</button>
+            <button className="btn btn-secondary" onClick={() => { setCategoryFilter(""); setBrand(""); setPerfTab("top"); }}>Reset filters</button>
           </div>
         )}
         <Pagination page={page} totalPages={totalPages} total={total} pageSize={8} onPage={setPage} />

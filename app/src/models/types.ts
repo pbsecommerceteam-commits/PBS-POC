@@ -32,6 +32,10 @@ export interface Product {
   price: number;
   avgSellingPrice: number;
   priceIndex: number;
+  priceChangePct: number;
+  listPrice: number | null;
+  currentPrice: number | null;
+  subscriptionPrice: number | null;
   stockStatus: StockStatus;
   inStockRate: number;
   rating: number;

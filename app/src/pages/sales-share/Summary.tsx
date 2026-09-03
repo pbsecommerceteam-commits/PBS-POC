@@ -7,53 +7,55 @@ import { useFilters } from "../../context/FiltersContext";
 import { useUi } from "../../context/UiContext";
 import { useChartHover } from "../../hooks/useChartHover";
 import { lineChart, barChart, spark } from "../../lib/charts";
-import { kpiCard, pct, delta, deltaColor } from "../../lib/format";
+import { kpiCard, delta, deltaColor } from "../../lib/format";
 import type { SalesShareContext } from "./Layout";
-
-type TrendMetric = "sos" | "pidx" | "instock" | "buybox";
-
-const TREND_CONFIG: Record<TrendMetric, { lo: number; hi: number; ticks: number[]; fmt: (v: number) => string; label: string }> = {
-  sos: { lo: 0, hi: 105, ticks: [0, 20, 40, 60, 80, 100], fmt: (v) => v.toFixed(1) + "%", label: "Search Visibility" },
-  pidx: { lo: 0, hi: 40, ticks: [0, 10, 20, 30, 40], fmt: (v) => "$" + v.toFixed(2), label: "Average Price" },
-  instock: { lo: 85, hi: 100, ticks: [85, 90, 95, 100], fmt: (v) => v.toFixed(1) + "%", label: "Stock Availability 1P + 3P" },
-  buybox: { lo: 40, hi: 100, ticks: [40, 60, 80, 100], fmt: (v) => v.toFixed(0) + "%", label: "Buy Box Ownership 1P" },
-};
+import type { Product } from "../../models/types";
 
 export default function SalesShareSummary() {
   const { sh, categoryFilter, setCategoryFilter } = useOutletContext<SalesShareContext>();
   const { setRetailer, retailer } = useFilters();
   const { toast } = useUi();
   const { hover, onEnter, onLeave } = useChartHover();
-  const [trendMode, setTrendMode] = useState<TrendMetric>("sos");
   const [catSort, setCatSort] = useState({ key: "overall", dir: "desc" as "asc" | "desc" });
 
-  const findKpi = (id: string) => sh.kpis.find((k: any) => k.id === id);
-  const kpiIds = ["sos", "pidx", "instock", "buybox"];
+  const pidx = sh.kpis.find((k: any) => k.id === "pidx");
+  const priceIncreased = sh.products.filter((p: Product) => p.priceChangePct > 0).length;
+  const priceDropped = sh.products.filter((p: Product) => p.priceChangePct < 0).length;
+  const { skusTracked, skusLost, topSeller } = sh.buyBoxLoss;
 
-  const modes = (Object.keys(TREND_CONFIG) as TrendMetric[]).map((m) => ({
-    label: TREND_CONFIG[m].label, cls: trendMode === m ? "btn-primary" : "btn-secondary", go: () => setTrendMode(m),
-  }));
-  const activeKpi = findKpi(trendMode);
-  const cfg = TREND_CONFIG[trendMode];
-  const trendChart = lineChart({
-    id: "perf-trend-" + trendMode, title: "Performance Trend",
-    subtitle: cfg.label + " across the selected period",
-    labels: sh.labels, lo: cfg.lo, hi: cfg.hi, ticks: cfg.ticks, fmt: cfg.fmt, hideLegend: true,
-    series: [{ name: cfg.label, values: activeKpi.spark }],
-    target: activeKpi.target, modes, span: "1 / -1",
+  const priceHi = Math.max(40, Math.ceil((pidx.value + 10) / 10) * 10);
+  const priceTrend = lineChart({
+    id: "price-trend", title: "Average Price Trend", subtitle: "Real pooled average price across the selected period",
+    labels: sh.labels, lo: 0, hi: priceHi, ticks: [0, priceHi / 4, priceHi / 2, (priceHi * 3) / 4, priceHi], fmt: (v) => "$" + v.toFixed(2), hideLegend: true,
+    series: [{ name: "Average price", values: pidx.spark }], span: "1 / -1",
     footer: [
-      { label: cfg.label + " now", value: cfg.fmt(activeKpi.value), color: "var(--status-positive-fg)" },
-      { label: "Previous period", value: cfg.fmt(activeKpi.value - activeKpi.delta), color: "inherit" },
-      { label: "Change", value: delta(activeKpi.delta, " pts"), color: deltaColor(activeKpi.delta) },
+      { label: "Average price now", value: "$" + pidx.value.toFixed(2), color: "var(--status-positive-fg)" },
+      { label: "Previous period", value: "$" + (pidx.value - pidx.delta).toFixed(2), color: "inherit" },
+      { label: "Change", value: (pidx.delta >= 0 ? "↑ " : "↓ ") + "$" + Math.abs(pidx.delta).toFixed(2), color: deltaColor(pidx.delta, true) },
     ],
   }, hover, onEnter);
 
-  const retailerChart = barChart({
-    id: "perf-retailer-vis", title: "Retailer Comparison", subtitle: "Search visibility at each monitored retailer",
-    labels: sh.retailers.map((r: any) => r.name), values: sh.retailers.map((r: any) => r.visibility),
-    valueName: "Visibility", lo: 0, hi: 60, ticks: [0, 15, 30, 45, 60], fmt: (v) => v.toFixed(1) + "%", target: 40,
-    fill: (v) => (v >= 40 ? "var(--status-positive-fg)" : "var(--color-accent-300)"),
+  const retailerHi = Math.max(20, Math.ceil((Math.max(...sh.retailers.map((r: any) => r.avgPrice)) + 5) / 5) * 5);
+  const retailerPriceChart = barChart({
+    id: "price-by-retailer", title: "Average Price by Retailer", subtitle: "Real pooled average price at each monitored retailer",
+    labels: sh.retailers.map((r: any) => r.name), values: sh.retailers.map((r: any) => r.avgPrice),
+    valueName: "Avg price", lo: 0, hi: retailerHi, ticks: [0, retailerHi / 4, retailerHi / 2, (retailerHi * 3) / 4, retailerHi], fmt: (v) => "$" + v.toFixed(2),
+    fill: () => "var(--color-accent-700)",
   }, hover, onEnter);
+
+  const tierFields: Array<{ key: "listPrice" | "currentPrice" | "subscriptionPrice"; label: string }> = [
+    { key: "listPrice", label: "List price" }, { key: "currentPrice", label: "Current price" }, { key: "subscriptionPrice", label: "Subscription price" },
+  ];
+  const tiers = tierFields.map((f) => {
+    const withValue = sh.products.filter((p: Product) => p[f.key] != null);
+    const avg = withValue.length ? withValue.reduce((a: number, p: Product) => a + (p[f.key] as number), 0) / withValue.length : null;
+    return { ...f, avg, tracked: withValue.length };
+  });
+
+  const priceGaps = sh.products
+    .map((p: Product) => ({ p, gapPct: p.avgSellingPrice ? ((p.price - p.avgSellingPrice) / p.avgSellingPrice) * 100 : 0 }))
+    .sort((a: any, b: any) => Math.abs(b.gapPct) - Math.abs(a.gapPct))
+    .slice(0, 5);
 
   const catSortFn = (k: string) => setCatSort((s) => ({ key: k, dir: s.key === k && s.dir === "desc" ? "asc" : "desc" }));
   const sortedCategories = sh.categories.slice().sort((a: any, b: any) => {
@@ -63,32 +65,73 @@ export default function SalesShareSummary() {
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,238px),1fr))", gap: "var(--app-gap)" }}>
-        {kpiIds.map((id) => <KpiCard key={id} k={kpiCard(findKpi(id), spark)} />)}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))", gap: "var(--app-gap)" }}>
+        <KpiCard k={kpiCard(pidx, spark)} />
+        <Card padding="18px 20px">
+          <div className="sl-muted" style={{ fontSize: 12.5 }}>Price Increased</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{priceIncreased}</div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real whole-month change</div>
+        </Card>
+        <Card padding="18px 20px">
+          <div className="sl-muted" style={{ fontSize: 12.5 }}>Price Dropped</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{priceDropped}</div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real whole-month change</div>
+        </Card>
+        <Card padding="18px 20px">
+          <div className="sl-muted" style={{ fontSize: 12.5 }}>Buy Box Lost (1P)</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: skusLost > 0 ? "var(--status-negative-fg)" : "inherit" }}>{skusLost}<span style={{ fontSize: 16, fontWeight: 500 }}> / {skusTracked}</span></div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>{topSeller ? "Top 3P seller: " + topSeller : "No 3P buy-box loss in scope"}</div>
+        </Card>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
-        <ChartCard c={trendChart} onLeave={onLeave} />
-        <ChartCard c={retailerChart} onLeave={onLeave} />
+        <ChartCard c={priceTrend} onLeave={onLeave} />
+        <ChartCard c={retailerPriceChart} onLeave={onLeave} />
       </div>
+
+      <Card padding="20px 22px">
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Price Tiers</h3>
+        <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 16 }}>Real Price-tab fields — a product with no value for a tier never posted that price</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 16 }}>
+          {tiers.map((t) => (
+            <div key={t.key}>
+              <div className="sl-muted" style={{ fontSize: 12.5 }}>{t.label}</div>
+              <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 24, marginTop: 4 }}>{t.avg != null ? "$" + t.avg.toFixed(2) : "—"}</div>
+              <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 4 }}>{t.tracked} of {sh.products.length} SKUs</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card padding="20px 22px">
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Largest Price Gap vs. Own Average</h3>
+        <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 14 }}>Current price vs. this item's own real average selling price this period</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {priceGaps.map(({ p, gapPct }: any) => (
+            <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, fontSize: 12.5, paddingBottom: 8, borderBottom: "1px solid var(--border-subtle)" }}>
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+              <span style={{ flex: "none", whiteSpace: "nowrap" }}>${p.price.toFixed(2)} vs ${p.avgSellingPrice.toFixed(2)} <span style={{ fontWeight: 600, color: deltaColor(gapPct, true), marginLeft: 6 }}>{delta(gapPct, "%")}</span></span>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       <section>
         <div style={{ marginBottom: 14 }}>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Retailer performance</h2>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Retailer pricing</h2>
           <div className="sl-muted" style={{ fontSize: 13, marginTop: 2 }}>Select a retailer to scope the page to that account</div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,250px),1fr))", gap: "var(--app-gap)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))", gap: "var(--app-gap)" }}>
           {sh.retailers.map((r: any) => {
             const active = retailer === r.id;
             return (
               <Card key={r.id} interactive selected={active} padding="16px 18px" onClick={() => { if (!active) { setRetailer(r.id); toast("Scoped to " + r.name + "."); } }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                   <span style={{ fontWeight: 500, fontSize: 14.5 }}>{r.name}</span>
-                  <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 22 }}>{r.shelfScore}</span>
+                  <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 20 }}>${r.avgPrice.toFixed(2)}</span>
                 </div>
-                <div className="sl-progress-track" style={{ margin: "12px 0 10px" }}><span className="sl-progress-fill" style={{ width: r.shelfScore + "%" }}></span></div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {[["Search visibility", pct(r.visibility)], ["Stock Availability 1P + 3P", pct(r.availability)], ["Price index", r.priceIndex.toFixed(1)], ["Content completeness", String(r.content)], ["Rating", r.rating.toFixed(2)], ["Buy Box Ownership 1P", r.buyBoxPresence + "%"]].map(([l, v]) => (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 12 }}>
+                  {[["SKUs", String(r.skus)], ["Price index", r.priceIndex.toFixed(1)], ["Buy box 1P", r.buyBoxPresence + "%"]].map(([l, v]) => (
                     <div key={l} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}><span className="sl-muted">{l}</span><span>{v}</span></div>
                   ))}
                 </div>
@@ -100,12 +143,12 @@ export default function SalesShareSummary() {
 
       <Card padding="20px 22px 10px">
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
-          <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Category performance</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Sort any column; select a category to scope the page</div></div>
+          <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Category pricing</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Sort any column; select a category to scope the page</div></div>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table className="sl-table">
             <thead><tr>
-              {[["category", "Category", "left", 170], ["visibility", "Search visibility", "right"], ["availability", "Stock Availability 1P + 3P", "right"], ["priceIndex", "Price index", "right"], ["content", "Content completeness", "right"], ["rating", "Rating", "right"], ["overall", "Shelf score", "right", 130]].map(([k, label, align, mw]) => (
+              {[["category", "Category", "left", 170], ["avgPrice", "Avg price", "right"], ["priceIndex", "Price index", "right"], ["skus", "SKUs", "right"]].map(([k, label, align, mw]) => (
                 <th key={k as string} className={"is-sortable" + (catSort.key === k ? " is-sorted" : "")} style={{ textAlign: align as any, minWidth: mw as number }} onClick={() => catSortFn(k as string)}>{label}{catSort.key === k && <span className="sl-sort-caret">{catSort.dir === "asc" ? "▲" : "▼"}</span>}</th>
               ))}
             </tr></thead>
@@ -113,19 +156,11 @@ export default function SalesShareSummary() {
               {sortedCategories.map((c: any) => {
                 const selected = categoryFilter === c.category;
                 return (
-                  <tr className={"sl-row is-clickable" + (selected ? " is-selected" : "")} key={c.category} onClick={() => { setCategoryFilter(selected ? "" : c.category); toast(selected ? "Category filter cleared." : c.category + " — Performance Intelligence."); }}>
-                    <td><div className="sl-table-name">{c.category}</div><div className="sl-table-sub">{c.skus} SKUs</div></td>
-                    <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{pct(c.visibility)} <span style={{ fontSize: 11.5, marginLeft: 6, color: deltaColor(c.delta) }}>{delta(c.delta, " pts")}</span></td>
-                    <td style={{ textAlign: "right" }}>{pct(c.availability)}</td>
+                  <tr className={"sl-row is-clickable" + (selected ? " is-selected" : "")} key={c.category} onClick={() => { setCategoryFilter(selected ? "" : c.category); toast(selected ? "Category filter cleared." : c.category + " — Pricing Intelligence."); }}>
+                    <td><div className="sl-table-name">{c.category}</div></td>
+                    <td style={{ textAlign: "right" }}>${c.avgPrice.toFixed(2)}</td>
                     <td style={{ textAlign: "right" }}>{c.priceIndex.toFixed(1)}</td>
-                    <td style={{ textAlign: "right" }}>{c.content}</td>
-                    <td style={{ textAlign: "right" }}>{c.rating.toFixed(2)}</td>
-                    <td style={{ textAlign: "right" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 9, justifyContent: "flex-end" }}>
-                        <span className="sl-progress-track" style={{ width: 56 }}><span className="sl-progress-fill" style={{ width: c.overall + "%" }}></span></span>
-                        <span style={{ fontWeight: 600, minWidth: 24 }}>{c.overall}</span>
-                      </div>
-                    </td>
+                    <td style={{ textAlign: "right" }}>{c.skus}</td>
                   </tr>
                 );
               })}
