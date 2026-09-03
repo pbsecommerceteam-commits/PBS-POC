@@ -565,16 +565,15 @@ def main():
                     if flag is not None:
                         total_n += 1
                         in_stock_n += 1 if flag else 0
-                    # Buy Box Ownership is scoped to genuinely in-stock rows
-                    # only (flag is True) -- an out-of-stock listing has no
-                    # buy box to contest, so counting it in the denominator
-                    # (as "not owned") understates ownership among the
-                    # listings that actually mattered. A row with unparseable
-                    # stock status (flag is None) is excluded from both, same
-                    # as it already is from stockRate.
-                    if flag:
-                        buybox_d += 1
-                        buybox_n += 1 if is_own_seller(r.get("Buy box seller"), code) else 0
+                    # Buy Box Ownership's denominator is every tracked row
+                    # (matching the "out of 900" framing of the metric --
+                    # every observed listing-day is an opportunity), but the
+                    # numerator only counts a row as "owned" when the
+                    # listing was both in stock AND we held the buy box that
+                    # day -- an out-of-stock day can never count as owned,
+                    # since there's no buy box to hold while unavailable.
+                    buybox_d += 1
+                    buybox_n += 1 if (flag and is_own_seller(r.get("Buy box seller"), code)) else 0
                     # Average Price -- pooled the same way as stockRate/buyBoxRate
                     # above: every raw daily row (Current price, falling back to
                     # List everyday price) is one equally-weighted observation.
@@ -674,7 +673,14 @@ def main():
         if code in ("r4", "r6"):
             continue
         pid = f"{code}-{native_id}"
-        non_self = [str(r.get("Buy box seller")) for r in prows if r.get("Buy box seller") and not is_own_seller(r.get("Buy box seller"), code)]
+        # Only counts as a genuine loss on a day the listing was itself in
+        # stock -- a 3P seller's name in the Buy Box Seller field while our
+        # own listing was out of stock isn't a contested buy box we lost,
+        # since there was no buy box on our (unavailable) listing that day.
+        non_self = [
+            str(r.get("Buy box seller")) for r in prows
+            if r.get("Buy box seller") and not is_own_seller(r.get("Buy box seller"), code) and is_in_stock(r.get("Stock status"))
+        ]
         if not non_self:
             continue
         top_seller, days_won = Counter(non_self).most_common(1)[0]
