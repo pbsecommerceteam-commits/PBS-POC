@@ -131,23 +131,6 @@ select option { color: var(--text-primary); background-color: var(--surface-card
 .sl-filter__value { font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .sl-filter__chevron { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--text-faint); pointer-events: none; transition: transform var(--duration-fast) var(--ease); }
 
-/* ---- DateRangePicker: two date inputs in the same chip language ---- */
-.sl-daterange { padding: 0 10px; cursor: default; gap: 6px; }
-.sl-daterange:has(input:focus-visible) { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 16%, transparent); }
-.sl-daterange__input {
-  font-size: 13px; font-weight: 500; color: var(--text-primary); background: transparent; border: none;
-  font-family: inherit; padding: 0; width: 108px; cursor: pointer;
-}
-.sl-daterange__input:focus { outline: none; }
-.sl-daterange__sep { color: var(--text-faint); font-size: 12px; }
-.sl-daterange__clear {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 16px; height: 16px; border-radius: 50%; border: none; padding: 0;
-  background: var(--surface-tertiary, var(--border-subtle)); color: var(--text-muted); font-size: 13px; line-height: 1;
-  cursor: pointer;
-}
-.sl-daterange__clear:hover { color: var(--text-primary); }
-
 /* ---- Table: the premium data-table system ---- */
 .sl-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .sl-table thead th {
