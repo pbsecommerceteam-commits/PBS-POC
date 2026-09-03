@@ -13,9 +13,13 @@ import { lineChart, barChart, spark } from "../lib/charts";
 import { kpiCard, cell, table, pct } from "../lib/format";
 import { fetchProduct } from "../data/mockData";
 
+// No user-facing period control exists any more (see FiltersContext) --
+// pinned to "4w", the one window backed by real crawl data.
+const period = "4w";
+
 export default function ProductDetail() {
   const { id = "" } = useParams();
-  const { retailer, period, dateRange } = useFilters();
+  const { retailer, dateRange } = useFilters();
   const { toast } = useUi();
   const navigate = useNavigate();
   const { hover, onEnter, onLeave } = useChartHover();

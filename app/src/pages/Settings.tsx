@@ -4,7 +4,7 @@ import { useFilters } from "../context/FiltersContext";
 import { useUi } from "../context/UiContext";
 
 export default function Settings() {
-  const { retailer, period, setRetailer, setPeriod, retailers, periods } = useFilters();
+  const { retailer, category, setRetailer, setCategory, retailers, categories } = useFilters();
   const { toast, openAlert } = useUi();
 
   return (
@@ -19,9 +19,10 @@ export default function Settings() {
             </select>
           </div>
           <div className="field">
-            <label>Default reporting period</label>
-            <select className="input" value={period} onChange={(e) => setPeriod(e.target.value)}>
-              {periods.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            <label>Default category</label>
+            <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="">All categories</option>
+              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <button className="btn btn-primary btn-block" onClick={() => toast("Workspace defaults saved.")}>Save defaults</button>

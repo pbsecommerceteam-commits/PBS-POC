@@ -15,7 +15,8 @@ const SEVERITY_GROUP: Record<string, { label: string; order: number }> = {
 };
 
 export function GlobalHeader() {
-  const { retailer, period, dateRange, setRetailer, setPeriod, setDateRange, retailers, periods } = useFilters();
+  const { retailer, category, dateRange, setRetailer, setCategory, setDateRange, retailers, categories } = useFilters();
+  const categoryOptions = [{ id: "", name: "All categories" }, ...categories.map((c) => ({ id: c, name: c }))];
   const { notifDismissed, notifications, markAllRead } = useUi();
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -56,7 +57,7 @@ export function GlobalHeader() {
     <header ref={rootRef} className="sl-header">
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <FilterSelect label="Retailer" value={retailer} onChange={setRetailer} options={retailers} width={168} />
-        <FilterSelect label="Period" value={period} onChange={setPeriod} options={periods} width={156} />
+        <FilterSelect label="Category" value={category} onChange={setCategory} options={categoryOptions} width={156} />
         <DateRangePicker value={dateRange} onChange={setDateRange} />
       </div>
 
