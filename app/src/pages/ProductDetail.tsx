@@ -10,7 +10,7 @@ import { useFilters } from "../context/FiltersContext";
 import { useUi } from "../context/UiContext";
 import { useChartHover } from "../hooks/useChartHover";
 import { lineChart, barChart, spark } from "../lib/charts";
-import { kpiCard, cell, table } from "../lib/format";
+import { kpiCard, cell, table, seriesToCsv, downloadCsv } from "../lib/format";
 import { fetchProduct } from "../data/mockData";
 
 // No user-facing period control exists any more (see FiltersContext) --
@@ -82,9 +82,18 @@ export default function ProductDetail() {
 
   const rankChart = lineChart({ id: "d-rank", title: "Keyword Coverage Trend", subtitle: "Of the 10 tracked keywords, how many genuinely surfaced this SKU · Real crawl data (Sep 8–29)",
     labels, lo: 0, hi: 10, ticks: [0, 2, 4, 6, 8, 10], fmt: (v) => Math.round(v) + "/10", hideLegend: true, series: [{ name: "Keyword Coverage", values: t.coverage }] }, hover, onEnter);
+  /* Real MAP (Minimum Advertised Price), from the separate reference
+     workbook the user supplies -- has no weekly series of its own (a
+     static brand policy value, not something the crawl observes day to
+     day), so it's drawn as a flat reference line, widening the chart's own
+     range so the line never renders clipped when MAP sits above/below
+     every observed price point. */
+  const priceLo = Math.min(lo, p.mapPrice ?? lo), priceHi = Math.max(hi, p.mapPrice ?? hi);
   const priceChart = lineChart({ id: "d-price", title: "Price Trend", subtitle: "Shelf price over the period" + realNote + " · Competitor prices illustrative — no resolvable competitor entity in the raw crawl",
-    labels, lo: lo * 0.94, hi: hi * 1.06, ticks: [lo * 0.96, (lo + hi) / 2, hi * 1.04], fmt: (v) => "$" + v.toFixed(2), hideLegend: true,
+    labels, lo: priceLo * 0.94, hi: priceHi * 1.06, ticks: [priceLo * 0.96, (priceLo + priceHi) / 2, priceHi * 1.04], fmt: (v) => "$" + v.toFixed(2), hideLegend: true,
     series: [{ name: "Price", values: t.price }],
+    target: p.mapPrice ?? undefined, targetLabel: "MAP Price",
+    badge: p.mapPrice != null ? "MAP $" + p.mapPrice.toFixed(2) : undefined,
     footer: detail.priceComparison.map((c: any) => ({ label: c.name, value: "$" + c.price.toFixed(2), color: c.price < p.price ? "var(--status-neutral-fg)" : "var(--status-positive-fg)" })) }, hover, onEnter);
   const stockChart = barChart({ id: "d-stock", title: "Stock Availability 1P + 3P Trend", subtitle: "In-stock rate at this retailer" + realNote, badge: "Target 98%",
     labels, values: t.stock, valueName: "In stock", lo: 60, hi: 100, ticks: [60, 70, 80, 90, 100], fmt: (v) => v.toFixed(1) + "%", target: 98,
@@ -95,6 +104,13 @@ export default function ProductDetail() {
   const reviewsChart = lineChart({ id: "d-reviews", title: "Review Count Trend", subtitle: "Total tracked reviews over the period" + realNote,
     labels, lo: reviewsLo * 0.97, hi: reviewsHi * 1.04, ticks: [reviewsLo, (reviewsLo + reviewsHi) / 2, reviewsHi], fmt: (v) => Math.round(v).toLocaleString(), hideLegend: true,
     series: [{ name: "Review count", values: t.reviews }] }, hover, onEnter);
+
+  /* One export per chart -- same labels/series the chart itself draws, plus
+     MAP as an extra flat column on the price chart when tracked. */
+  const exportChart = (filename: string, label: string, series: Array<{ name: string; values: number[] }>, extra?: { name: string; value: number }) => {
+    downloadCsv(filename, seriesToCsv(labels, series, extra));
+    toast("Exported " + label + ".");
+  };
 
   const facts = [
     { label: "Keyword coverage", value: Math.round((p.keywordCoverage / 10) * 100) + "%", sub: p.keywordCoverage + " of 10 tracked keywords" },
@@ -159,11 +175,11 @@ export default function ProductDetail() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
-        <ChartCard c={rankChart} onLeave={onLeave} />
-        <ChartCard c={priceChart} onLeave={onLeave} />
-        <ChartCard c={stockChart} onLeave={onLeave} />
-        <ChartCard c={ratingChart} onLeave={onLeave} />
-        <ChartCard c={reviewsChart} onLeave={onLeave} />
+        <ChartCard c={rankChart} onLeave={onLeave} onExportCsv={() => exportChart("shelfline-" + p.id + "-keyword-coverage-trend.csv", "Keyword Coverage Trend", [{ name: "Keyword Coverage", values: t.coverage }])} />
+        <ChartCard c={priceChart} onLeave={onLeave} onExportCsv={() => exportChart("shelfline-" + p.id + "-price-trend.csv", "Price Trend", [{ name: "Price", values: t.price }], p.mapPrice != null ? { name: "MAP Price", value: p.mapPrice } : undefined)} />
+        <ChartCard c={stockChart} onLeave={onLeave} onExportCsv={() => exportChart("shelfline-" + p.id + "-stock-availability-trend.csv", "Stock Availability Trend", [{ name: "In Stock %", values: t.stock }])} />
+        <ChartCard c={ratingChart} onLeave={onLeave} onExportCsv={() => exportChart("shelfline-" + p.id + "-rating-trend.csv", "Rating Trend", [{ name: "Rating", values: t.rating }])} />
+        <ChartCard c={reviewsChart} onLeave={onLeave} onExportCsv={() => exportChart("shelfline-" + p.id + "-review-count-trend.csv", "Review Count Trend", [{ name: "Review Count", values: t.reviews }])} />
       </div>
 
       <DataTable t={contentChecklistTable} />

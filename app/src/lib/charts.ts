@@ -112,6 +112,11 @@ export interface LineChartOptions {
   series: SeriesInput[];
   previous?: number[];
   target?: number;
+  /** Label for the target line's tooltip row and hover legend -- defaults
+   *  to "Target". Lets a caller reuse the same dashed-reference-line
+   *  mechanism for a value that isn't a goal (e.g. "MAP Price") without the
+   *  tooltip misdescribing it as one. */
+  targetLabel?: string;
   modes?: Array<{ label: string; cls: string; go: () => void }>;
   span?: string;
   badge?: string;
@@ -148,7 +153,7 @@ export function lineChart(o: LineChartOptions, hover: HoverState | null, onHover
     };
   });
   const step = (g.W - g.L - g.R) / Math.max(1, n - 1);
-  const tipRows = drawn.concat(o.target != null ? [{ name: "Target", values: o.labels.map(() => o.target as number) }] : []);
+  const tipRows = drawn.concat(o.target != null ? [{ name: o.targetLabel || "Target", values: o.labels.map(() => o.target as number) }] : []);
   const hv = buildHover(hover, o.id, o.labels, x, step, tipRows, fmt, (idx) => onHoverEnter(o.id, idx));
   const stride = labelStride(n);
   return {

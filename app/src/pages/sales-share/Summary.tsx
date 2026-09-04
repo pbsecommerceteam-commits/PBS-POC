@@ -8,7 +8,7 @@ import { useFilters } from "../../context/FiltersContext";
 import { useUi } from "../../context/UiContext";
 import { useChartHover } from "../../hooks/useChartHover";
 import { lineChart, barChart, spark } from "../../lib/charts";
-import { kpiCard, cell, delta, deltaColor } from "../../lib/format";
+import { kpiCard, cell, delta, deltaColor, seriesToCsv, downloadCsv } from "../../lib/format";
 import { REAL_BUYBOX_COMPETITOR, REAL_BUYBOX_TIMELINE, REAL_PRICE_TIMELINE } from "../../data/mockData";
 import type { SalesShareContext } from "./Layout";
 import type { Product } from "../../models/types";
@@ -188,17 +188,33 @@ export default function SalesShareSummary() {
     ] }; }),
   };
 
-  const priceHi = Math.max(40, Math.ceil((pidx.value + 10) / 10) * 10);
+  /* Real average MAP price across every SKU that has one tracked -- MAP
+     itself has no weekly series (it's a static brand policy value, not
+     something the crawl observes day to day), so it's drawn as a flat
+     reference line the same way every other "Target" line on this chart
+     type already works, just relabeled so the tooltip doesn't call a
+     price floor a goal. */
+  const avgMapPrice = withMap.length ? withMap.reduce((a: number, p: Product) => a + p.mapPrice!, 0) / withMap.length : null;
+
+  const priceHi = Math.max(40, Math.ceil((Math.max(pidx.value, avgMapPrice ?? 0) + 10) / 10) * 10);
   const priceTrend = lineChart({
     id: "price-trend", title: "Average Price Trend", subtitle: "Real pooled average price across the selected period",
     labels: sh.labels, lo: 0, hi: priceHi, ticks: [0, priceHi / 4, priceHi / 2, (priceHi * 3) / 4, priceHi], fmt: (v) => "$" + v.toFixed(2), hideLegend: true,
     series: [{ name: "Average price", values: pidx.spark }], span: "1 / -1",
+    target: avgMapPrice ?? undefined, targetLabel: "Avg MAP Price",
+    badge: avgMapPrice != null ? "Avg MAP $" + avgMapPrice.toFixed(2) : undefined,
     footer: [
       { label: "Average price now", value: "$" + pidx.value.toFixed(2), color: "var(--status-positive-fg)" },
       { label: "Previous period", value: "$" + (pidx.value - pidx.delta).toFixed(2), color: "inherit" },
       { label: "Change", value: (pidx.delta >= 0 ? "↑ " : "↓ ") + "$" + Math.abs(pidx.delta).toFixed(2), color: deltaColor(pidx.delta, true) },
     ],
   }, hover, onEnter);
+  const exportPriceTrend = () => {
+    const series = [{ name: "Average Price", values: pidx.spark }];
+    const extra = avgMapPrice != null ? { name: "Avg MAP Price", value: Number(avgMapPrice.toFixed(2)) } : undefined;
+    downloadCsv("shelfline-average-price-trend.csv", seriesToCsv(sh.labels, series, extra));
+    toast("Exported Average Price Trend.");
+  };
 
   const retailerHi = Math.max(20, Math.ceil((Math.max(...sh.retailers.map((r: any) => r.avgPrice)) + 5) / 5) * 5);
   const retailerPriceChart = barChart({
@@ -207,6 +223,11 @@ export default function SalesShareSummary() {
     valueName: "Avg price", lo: 0, hi: retailerHi, ticks: [0, retailerHi / 4, retailerHi / 2, (retailerHi * 3) / 4, retailerHi], fmt: (v) => "$" + v.toFixed(2),
     fill: () => "var(--color-accent-700)",
   }, hover, onEnter);
+  const exportRetailerPriceChart = () => {
+    const series = [{ name: "Avg Price", values: sh.retailers.map((r: any) => r.avgPrice) }];
+    downloadCsv("shelfline-average-price-by-retailer.csv", seriesToCsv(sh.retailers.map((r: any) => r.name), series));
+    toast("Exported Average Price by Retailer.");
+  };
 
   const tierFields: Array<{ key: "listPrice" | "currentPrice" | "subscriptionPrice"; label: string }> = [
     { key: "listPrice", label: "List price" }, { key: "currentPrice", label: "Current price" }, { key: "subscriptionPrice", label: "Subscription price" },
@@ -260,15 +281,15 @@ export default function SalesShareSummary() {
         <Card padding="18px 20px" interactive onClick={() => setDrill(belowMapTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5 }}>Below MAP</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: belowMap.length > 0 ? "var(--status-negative-fg)" : "inherit" }}>{belowMap.length}<span style={{ fontSize: 16, fontWeight: 500 }}> / {withMap.length}</span></div>
-          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Priced under real MAP, {withMap.length} of {sh.products.length} SKUs tracked</div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Priced under MAP, of SKUs tracked</div>
         </Card>
       </div>
 
       {drill && <DrilldownModal t={drill} onClose={() => setDrill(null)} />}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
-        <ChartCard c={priceTrend} onLeave={onLeave} />
-        <ChartCard c={retailerPriceChart} onLeave={onLeave} />
+        <ChartCard c={priceTrend} onLeave={onLeave} onExportCsv={exportPriceTrend} />
+        <ChartCard c={retailerPriceChart} onLeave={onLeave} onExportCsv={exportRetailerPriceChart} />
       </div>
 
       <Card padding="20px 22px">

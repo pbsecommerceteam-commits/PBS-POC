@@ -22,6 +22,32 @@ export function columnsToCsv<T>(rows: T[], columns: Column<T>[]): string {
   return lines.join("\n");
 }
 
+/** Turns a chart's raw labels + series into a downloadable CSV -- the same
+ *  x-axis labels the chart itself renders, one column per series (and an
+ *  optional flat reference column, e.g. a target/MAP price line), so the
+ *  export always matches exactly what's on screen. */
+export function seriesToCsv(labels: string[], series: Array<{ name: string; values: number[] }>, extra?: { name: string; value: number }): string {
+  const cell = (v: unknown) => {
+    const s = String(v == null ? "" : v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const header = ["Date", ...series.map((s) => s.name), ...(extra ? [extra.name] : [])].map(cell).join(",");
+  const rows = labels.map((l, i) => [l, ...series.map((s) => s.values[i]), ...(extra ? [extra.value] : [])].map(cell).join(","));
+  return [header, ...rows].join("\n");
+}
+
+/** The one Blob-download mechanics every CSV export in the app uses --
+ *  centralized so a chart's "Export" button and a page's "Export" button
+ *  don't each redefine the same six lines. */
+export function downloadCsv(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
 export interface Cell {
   text: string;
   sub: string;

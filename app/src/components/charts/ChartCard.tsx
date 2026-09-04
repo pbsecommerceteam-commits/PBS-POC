@@ -7,7 +7,7 @@ import type { ChartConfig } from "../../lib/charts";
  *  empty for the chart type they don't produce. The chart math is untouched
  *  from the original prototype; only the chrome around it — title block,
  *  mode switch, grid, tooltip, legend, footer — is redesigned. */
-export function ChartCard({ c, onLeave }: { c: ChartConfig; onLeave: () => void }) {
+export function ChartCard({ c, onLeave, onExportCsv }: { c: ChartConfig; onLeave: () => void; onExportCsv?: () => void }) {
   return (
     <Card padding="20px 22px 16px" style={{ position: "relative", gridColumn: c.span }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
@@ -30,6 +30,11 @@ export function ChartCard({ c, onLeave }: { c: ChartConfig; onLeave: () => void 
                 <button key={m.label} type="button" className={"sl-tab" + (m.cls === "btn-primary" ? " is-active" : "")} onClick={m.go}>{m.label}</button>
               ))}
             </div>
+          )}
+          {onExportCsv && (
+            <button type="button" className="btn btn-ghost" onClick={onExportCsv} style={{ fontSize: 12, padding: "5px 10px", minHeight: "auto" }}>
+              ⬇ Export
+            </button>
           )}
         </div>
       </div>
