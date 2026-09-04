@@ -5,7 +5,7 @@ import { OpportunityCard } from "../../components/ui/OpportunityCard";
 import { SortableTable, type Column } from "../../components/table/SortableTable";
 import { Pagination } from "../../components/table/Pagination";
 import { Tabs } from "../../components/ui/Tabs";
-import { Badge, opportunityTone } from "../../components/ui/Badge";
+import { opportunityTone } from "../../components/ui/Badge";
 import { ProductCell } from "../../components/ui/ProductCell";
 import { useUi } from "../../context/UiContext";
 import { useSortedPage } from "../../hooks/useSortedPage";
@@ -67,7 +67,12 @@ export const SALES_COLUMNS: Column<Product>[] = [
   { key: "priceChangePct", label: "Price Change", align: "center", sortable: true, render: (p) => <span style={{ color: deltaColor(p.priceChangePct) }}>{delta(p.priceChangePct, "%")}</span>, csv: (p) => p.priceChangePct },
   { key: "priceIndex", label: "Price Index", align: "center", sortable: true, render: (p) => <span>{(p.priceIndex * 100).toFixed(0)}</span>, csv: (p) => (p.priceIndex * 100).toFixed(0) },
   { key: "stockStatusRaw", label: "Stock Status", align: "center", sortable: true, render: (p) => p.stockStatusRaw ?? "—", csv: (p) => p.stockStatusRaw ?? "" },
-  { key: "buyBox", label: "Buy Box", align: "center", render: (p) => <Badge tone={p.buyBox ? "positive" : "neutral"}>{p.buyBox ? "Held" : "Lost"}</Badge>, csv: (p) => p.buyBox ? "Held" : "Lost" },
+  { key: "buyBoxRate", label: "Buy Box", align: "center", sortable: true, render: (p) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
+      <span className="sl-progress-track" style={{ width: 40 }}><span className="sl-progress-fill" style={{ width: p.buyBoxRate + "%" }}></span></span>
+      <span style={{ fontWeight: 600, minWidth: 40 }}>{p.buyBoxRate}%</span>
+    </div>
+  ), csv: (p) => p.buyBoxRate },
   { key: "buyBoxSeller", label: "Buy Box Seller", align: "center", sortable: true, render: (p) => p.buyBoxSeller ?? "—", csv: (p) => p.buyBoxSeller ?? "" },
   { key: "buyBoxShipper", label: "Buy Box Shipper", align: "center", sortable: true, render: (p) => p.buyBoxShipper ?? "—", csv: (p) => p.buyBoxShipper ?? "" },
   { key: "spbUrl", label: "Listing Link", align: "center", render: (p) => p.spbUrl

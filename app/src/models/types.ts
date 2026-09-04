@@ -78,6 +78,10 @@ export interface Product {
   bulletsText: string[];
   ingredientsText: string | null;
   variations: string[];
+  /** Real: share of tracked crawl days this listing held the 1P buy box
+   *  (0-100). buyBox (Held/Lost) is a deterministic majority read of this
+   *  rate (>=50%), not a random roll. */
+  buyBoxRate: number;
   buyBox: boolean;
   opportunity: OpportunityLevel;
   shelfScore: number;

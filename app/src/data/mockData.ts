@@ -726,8 +726,7 @@ function classifyStockStatus(raw: string | null): "In Stock" | "Low Stock" | "Ou
   return "In Stock";
 }
 
-function productFor(p: (typeof catalog)[number], key: string) {
-  const r = rng(hash(p.id + key));
+function productFor(p: (typeof catalog)[number]) {
   return {
     id: p.id,
     name: p.name,
@@ -811,7 +810,13 @@ function productFor(p: (typeof catalog)[number], key: string) {
     bulletsText: (p as any).bulletsText ?? [],
     ingredientsText: (p as any).ingredientsText ?? null,
     variations: (p as any).variations ?? [],
-    buyBox: r() < (p.buyBoxRate ?? 0.78),
+    // Real -- average share of tracked days this listing held the 1P buy
+    // box (catalog buyBoxRate, 0-1) expressed as a 0-100 rate, same scale
+    // convention as inStockRate above. buyBox (the Held/Lost badge) is a
+    // deterministic real-majority read of that rate, not a random roll --
+    // no session-to-session flicker on a number that doesn't change.
+    buyBoxRate: round((p.buyBoxRate ?? 0.78) * 100, 1),
+    buyBox: (p.buyBoxRate ?? 0.78) >= 0.5,
     opportunity: "" as string,
   };
 }
@@ -865,7 +870,7 @@ function withSalesMetrics(q: any, key: string) {
 
 function poolFor(retailer: string, key: string, category?: string) {
   return catalog.filter((p) => (retailer === "all" || p.retailer === retailer) && (!category || p.category === category)).map((p) => {
-    const q = productFor(p, key);
+    const q = productFor(p);
     q.opportunity = scoreOpportunity(q);
     return withSalesMetrics(withShelfMetrics(q), key);
   });
@@ -1474,7 +1479,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
   const byRetailer = retailers.slice(1).map((rt) => {
     const rr = rowRng(key, "shelfRetailer", rt.id);
     const b = RETAILER_BIAS[rt.id];
-    const own = catalog.filter((p) => p.retailer === rt.id && (!category || p.category === category)).map((p) => withShelfMetrics(productFor(p, key)));
+    const own = catalog.filter((p) => p.retailer === rt.id && (!category || p.category === category)).map((p) => withShelfMetrics(productFor(p)));
     const realVisibility = realCurrentValueSos(rt.id, period, dateRange, rangeMatch?.idx, category);
     const visibility = realVisibility != null ? round(realVisibility, 1) : round(clamp(0.3 + b.sos + (rr() - 0.5) * 0.4, 0, 3), 1);
     const realAvailability = realCurrentValue(rt.id, "stockRate", period, dateRange, wideMatch?.idx, category);
@@ -1732,7 +1737,7 @@ function salesData(retailer: string, period: string, dateRange?: DateRange | nul
   const byRetailer = retailers.slice(1).map((rt) => {
     const rr = rowRng(key, "salesRetailer", rt.id);
     const own = catalog.filter((p) => p.retailer === rt.id)
-      .map((p) => withSalesMetrics(withShelfMetrics(productFor(p, key)), key));
+      .map((p) => withSalesMetrics(withShelfMetrics(productFor(p)), key));
     const rSales = sum(own, (p) => p.sales) || Math.round(total / 4);
     const rPrev = sum(own, (p) => p.prevSales) || 1;
     return {
@@ -1911,15 +1916,14 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
        (direct 0-4 indexing, no +1 offset needed). */
     const rangeMatch = dateRange ? matchRangeWeeks(dateRange, REAL_WEEK_DATES) : null;
     const key = retailer + "|" + period + (dateRange ? "|" + dateRange.start + ".." + dateRange.end : "");
-    const p: any = withSalesMetrics(withShelfMetrics(productFor(base, key)), key);
+    const p: any = withSalesMetrics(withShelfMetrics(productFor(base)), key);
     p.opportunity = scoreOpportunity(p);
     const labels = rangeMatch ? rangeMatch.idx.map((i) => REAL_WEEK_LABELS[i]) : labelsFor(period);
     const n = labels.length;
     const seed = hash(id + key);
     const sw = swing[period] || 1;
-    const r = rng(seed + 99);
     const catPool = catalog.filter((x) => x.category === base.category)
-      .map((x) => withSalesMetrics(withShelfMetrics(productFor(x, key)), key));
+      .map((x) => withSalesMetrics(withShelfMetrics(productFor(x)), key));
     const catTotal = catPool.reduce((a, x) => a + x.sales, 0);
     const catPrev = catPool.reduce((a, x) => a + x.prevSales, 0) || 1;
     const catGrowth = round(((catTotal - catPrev) / catPrev) * 100, 1);
@@ -1980,7 +1984,7 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
         const matchId = CROSS_RETAILER_MATCH[id]?.[rt.id];
         const match = matchId ? (catalog as any[]).find((x) => x.id === matchId) : null;
         if (match) {
-          const mp = withShelfMetrics(productFor(match, rt.id + "|" + period));
+          const mp = withShelfMetrics(productFor(match));
           return {
             retailer: rt.name, rank: mp.keywordCoverage, price: mp.price, inStock: mp.inStockRate,
             rating: mp.rating, content: mp.contentScore, listed: true, isSelf: false, matched: true,
@@ -2018,11 +2022,12 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
           return { retailer: rt.name, sales: s, growth: round((rr() - 0.45) * 24, 1), units: Math.round(s / p.price) };
         }),
       },
+      // Real -- REAL_BUYBOX_COMPETITOR gives an exact real day-count when a
+      // named 3P seller is on record; otherwise this states the real
+      // buyBoxRate directly instead of a fabricated day-count.
       note: REAL_BUYBOX_COMPETITOR[id]
         ? "Buy box won by " + REAL_BUYBOX_COMPETITOR[id].seller + " for " + REAL_BUYBOX_COMPETITOR[id].daysWon + " of 30 tracked days."
-        : p.buyBox
-        ? "Buy box held for the full period."
-        : "Buy box lost for " + (1 + Math.round(r() * 4)) + " days in the period.",
+        : "Buy box held on " + p.buyBoxRate + "% of tracked days.",
     });
   }, LATENCY));
 }

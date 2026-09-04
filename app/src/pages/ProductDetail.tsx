@@ -103,7 +103,7 @@ export default function ProductDetail() {
     { label: "Content completeness", value: p.contentScore + "%", sub: "of content checks passed" },
     { label: "Rating", value: p.rating.toFixed(2), sub: "average rating" },
     { label: "Review count", value: p.reviews.toLocaleString(), sub: "tracked reviews" },
-    { label: "Buy Box Ownership 1P", value: p.buyBox ? "Held" : "Lost", sub: detail.note },
+    { label: "Buy Box Ownership 1P", value: p.buyBoxRate + "%", sub: detail.note },
   ];
 
   const contentChecklistTable = table("Content checklist", "Requirement-level detail behind the content score",

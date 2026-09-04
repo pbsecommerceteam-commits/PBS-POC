@@ -33,6 +33,7 @@ export const productSorters: Record<string, (a: Product, b: Product) => number> 
   retailerId: (a, b) => a.retailerId.localeCompare(b.retailerId),
   vendorStockNo: (a, b) => (a.vendorStockNo ?? "").localeCompare(b.vendorStockNo ?? ""),
   siteCategory: (a, b) => (a.siteCategory ?? "").localeCompare(b.siteCategory ?? ""),
+  buyBoxRate: (a, b) => a.buyBoxRate - b.buyBoxRate,
   buyBoxSeller: (a, b) => (a.buyBoxSeller ?? "").localeCompare(b.buyBoxSeller ?? ""),
   buyBoxShipper: (a, b) => (a.buyBoxShipper ?? "").localeCompare(b.buyBoxShipper ?? ""),
   has360Image: (a, b) => Number(b.has360Image) - Number(a.has360Image),
