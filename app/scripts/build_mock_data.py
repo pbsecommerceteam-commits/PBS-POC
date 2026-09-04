@@ -356,9 +356,18 @@ def main():
                 if in_stock_flags:
                     last_known_stock = round(100.0 * sum(in_stock_flags) / len(in_stock_flags), 1)
                 stock_rate = last_known_stock
-                own_flags = [is_own_seller(r.get("Buy box seller"), code) for r in bucket]
-                if own_flags:
-                    last_known_buybox = round(100.0 * sum(own_flags) / len(own_flags))
+                # Same "in-stock AND owned" definition as the real
+                # REAL_ROLLUP_WEEKLY Buy Box Ownership 1P KPI below -- an
+                # out-of-stock day can never count as owned, since there's
+                # no live buy box to hold while unavailable. Every row in
+                # the bucket still counts in the denominator regardless of
+                # stock status (matches the KPI's "opportunity" framing).
+                owned_flags = [
+                    1 if (is_in_stock(r.get("Stock status")) and is_own_seller(r.get("Buy box seller"), code)) else 0
+                    for r in bucket
+                ]
+                if bucket:
+                    last_known_buybox = round(100.0 * sum(owned_flags) / len(bucket))
                 buybox_rate = last_known_buybox
             else:
                 pv = last_known_price
@@ -390,7 +399,16 @@ def main():
         cat = CATEGORY_NORMALIZE.get(latest.get("Category name"), latest.get("Category name"))
         all_prices = [price_value(r) for r in prows if price_value(r) is not None]
         stock_flags_all = [f for f in (is_in_stock(r.get("Stock status")) for r in prows) if f is not None]
-        buybox_flags_all = [is_own_seller(r.get("Buy box seller"), code) for r in prows]
+        # Same "in-stock AND owned" definition as the real Buy Box Ownership
+        # 1P KPI (REAL_ROLLUP_WEEKLY below) -- an out-of-stock day can never
+        # count as owned, since there's no live buy box to hold while
+        # unavailable. Denominator (len(prows), used where this feeds
+        # buyBoxRate below) still counts every tracked row regardless of
+        # stock status, matching the KPI's "opportunity" framing.
+        buybox_flags_all = [
+            bool(is_in_stock(r.get("Stock status")) and is_own_seller(r.get("Buy box seller"), code))
+            for r in prows
+        ]
         price_change_pct = None
         if len(all_prices) >= 2 and all_prices[0]:
             price_change_pct = round(((all_prices[-1] - all_prices[0]) / all_prices[0]) * 100, 1)
