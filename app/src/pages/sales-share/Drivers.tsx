@@ -209,7 +209,7 @@ export default function SalesShareDrivers() {
           <div>
             <div className="sl-muted" style={{ fontSize: 12.5 }}>MAP Compliance</div>
             <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 24, marginTop: 4, color: mapCompliancePct != null && mapCompliancePct < 90 ? "var(--status-negative-fg)" : "inherit" }}>{mapCompliancePct != null ? mapCompliancePct.toFixed(1) + "%" : "—"}</div>
-            <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 4 }}>Of SKUs tracked under MAP</div>
+            <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 4 }}>Priced at or above MAP, of SKUs tracked</div>
           </div>
         </div>
         {belowMap.length > 0 && (
