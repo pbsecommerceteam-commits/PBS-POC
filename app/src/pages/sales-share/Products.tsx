@@ -5,7 +5,7 @@ import { OpportunityCard } from "../../components/ui/OpportunityCard";
 import { SortableTable, type Column } from "../../components/table/SortableTable";
 import { Pagination } from "../../components/table/Pagination";
 import { Tabs } from "../../components/ui/Tabs";
-import { opportunityTone } from "../../components/ui/Badge";
+import { Badge, opportunityTone } from "../../components/ui/Badge";
 import { ProductCell } from "../../components/ui/ProductCell";
 import { useUi } from "../../context/UiContext";
 import { useSortedPage } from "../../hooks/useSortedPage";
@@ -41,7 +41,11 @@ const visibilityDelta = (p: Product) => p.keywordCoverageDelta;
    metrics, not raw fields, and worth keeping alongside them. "Competitor
    Price" is deliberately still not a column: REAL_BUYBOX_COMPETITOR only
    carries who won the box and for how long, never a competitor's price,
-   so Buy Box is the honest substitute. Hoisted to module scope (not a
+   so Buy Box is the honest substitute. MAP Price/MAP Status are the one
+   pair sourced outside the Price tab -- a real MAP reference workbook the
+   user supplies separately (see build_mock_data.py's load_map_price);
+   null MAP Price means that SKU genuinely isn't tracked under MAP, not a
+   fabricated policy. Hoisted to module scope (not a
    `const` inside the component) so sales-share/Layout.tsx can reuse the
    exact same columns -- with the exact same `csv` extractors -- for its
    default export, with no second column list to keep in sync. There's no
@@ -57,6 +61,12 @@ export const SALES_COLUMNS: Column<Product>[] = [
   { key: "currentPrice", label: "Current Price", align: "center", sortable: true, render: (p) => <span>${(p.currentPrice ?? p.price).toFixed(2)}</span>, csv: (p) => (p.currentPrice ?? p.price).toFixed(2) },
   { key: "listPrice", label: "List Price", align: "center", sortable: true, render: (p) => <span>{p.listPrice != null ? "$" + p.listPrice.toFixed(2) : "—"}</span>, csv: (p) => p.listPrice != null ? p.listPrice.toFixed(2) : "" },
   { key: "subscriptionPrice", label: "Subscription Price", align: "center", sortable: true, render: (p) => <span>{p.subscriptionPrice != null ? "$" + p.subscriptionPrice.toFixed(2) : "—"}</span>, csv: (p) => p.subscriptionPrice != null ? p.subscriptionPrice.toFixed(2) : "" },
+  { key: "mapPrice", label: "MAP Price", align: "center", sortable: true, render: (p) => <span>{p.mapPrice != null ? "$" + p.mapPrice.toFixed(2) : "—"}</span>, csv: (p) => p.mapPrice != null ? p.mapPrice.toFixed(2) : "" },
+  { key: "mapStatus", label: "MAP Status", align: "center", sortable: true, render: (p) => {
+    if (p.mapPrice == null) return <span className="sl-faint">Not tracked</span>;
+    const under = (p.currentPrice ?? p.price) < p.mapPrice;
+    return <Badge tone={under ? "critical" : "positive"}>{under ? "Under MAP" : "Compliant"}</Badge>;
+  }, csv: (p) => p.mapPrice == null ? "Not tracked" : (p.currentPrice ?? p.price) < p.mapPrice ? "Under MAP" : "Compliant" },
   { key: "couponValue", label: "Coupon Value", align: "center", sortable: true, render: (p) => p.couponValue ?? "—", csv: (p) => p.couponValue ?? "" },
   { key: "priceDiff", label: "Price Difference", align: "center", render: (p) => {
     const cur = p.currentPrice ?? p.price;

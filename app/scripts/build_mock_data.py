@@ -7,7 +7,13 @@ prints the generated TypeScript for the static block of mockData.ts (retailers
 through REAL_ROLLUP_WEEKLY, plus categories and keywordSet) to stdout.
 
 Usage:
-    python build_mock_data.py <path-to-xlsx> > generated_block.ts
+    python build_mock_data.py <path-to-xlsx> [path-to-map-price-xlsx] > generated_block.ts
+
+The optional second argument is a separate MAP (Minimum Advertised Price)
+reference workbook -- MAP is a brand policy value, not something the crawl
+itself observes, so it's supplied as its own file rather than a tab on the
+main workbook. See load_map_price() for exactly how it's read; omitting it
+leaves every product's mapPrice honestly null rather than fabricated.
 
 Also writes a JSON debug dump (build_debug.json, next to the output) with every
 intermediate table, for spot-checking derived numbers against the raw workbook
@@ -151,6 +157,48 @@ def load_sheet(wb, name):
     return rows
 
 
+def load_map_price(path):
+    """Loads the MAP (Minimum Advertised Price) reference table -- a
+    separate workbook the user supplies alongside the main crawl (MAP is a
+    brand-set policy value, not something the crawl itself observes).
+    Scans every sheet for one whose header row contains a "Map Price"
+    column (rather than hardcoding a sheet name/position), so a future
+    refreshed file can rename or reorder its tabs without breaking this.
+    Returns site_code -> {str(native retailer id): map price}, skipping
+    any row with no retailer site/id match or a blank MAP price (a real
+    "no MAP set for this SKU", not a fabricated 0)."""
+    wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    out = defaultdict(dict)
+    for ws in wb.worksheets:
+        rows_iter = ws.iter_rows(values_only=True)
+        header = None
+        for row in rows_iter:
+            if row and any(c is not None for c in row):
+                header = row
+                break
+        if not header:
+            continue
+        header_norm = [str(h).strip().lower() if h is not None else "" for h in header]
+        if "map price" not in header_norm:
+            continue
+        site_i = next((i for i, h in enumerate(header_norm) if h == "retailer site"), None)
+        id_i = next((i for i, h in enumerate(header_norm) if h == "retailer id"), None)
+        map_i = header_norm.index("map price")
+        if site_i is None or id_i is None:
+            continue
+        for row in rows_iter:
+            if row is None or all(c is None for c in row):
+                continue
+            code = site_code(row[site_i])
+            native = row[id_i]
+            if not code or native is None:
+                continue
+            mp = row[map_i]
+            if isinstance(mp, (int, float)):
+                out[code][str(native)] = float(mp)
+    return out
+
+
 def is_in_stock(status):
     if status is None:
         return None
@@ -191,6 +239,11 @@ def token_set(name):
 def main():
     path = sys.argv[1]
     wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    # Optional second workbook: a real MAP (Minimum Advertised Price)
+    # reference table, supplied separately from the main crawl since MAP is
+    # a brand policy value, not something the crawl observes. Absent this
+    # arg, every product's mapPrice is honestly null rather than fabricated.
+    map_price_by_site = load_map_price(sys.argv[2]) if len(sys.argv) > 2 else {}
 
     content_rows = load_sheet(wb, "Content")
     price_rows = load_sheet(wb, "Price")
@@ -459,6 +512,12 @@ def main():
         # relationship to the retailer's own taxonomy is ambiguous in the
         # source data and risks misrepresenting what the number means).
         retailer_id = latest.get("Retailer id")
+        # Real MAP price, matched by the same (retailer, native id) key used
+        # for spbUrl/CROSS_RETAILER_MATCH/REAL_KEYWORD_MATCH elsewhere in
+        # this pipeline -- None when the MAP workbook has no row for this
+        # SKU (not tracked under MAP), an honest gap rather than a
+        # fabricated policy price.
+        map_price = map_price_by_site.get(code, {}).get(str(native_id))
         vendor_stock_no = latest.get("Vendor stock no")
         site_category = latest.get("Site category")
         buy_box_seller_raw = latest.get("Buy box seller")
@@ -521,6 +580,7 @@ def main():
             "listPrice": round(list_price, 2) if list_price is not None else None,
             "currentPrice": round(current_price, 2) if current_price is not None else None,
             "subscriptionPrice": round(subscription_price, 2) if subscription_price is not None else None,
+            "mapPrice": round(map_price, 2) if map_price is not None else None,
             "spbUrl": spb_url,
             "stockStatusRaw": stock_status_raw,
             "couponValue": coupon_value,
@@ -878,7 +938,7 @@ def main():
     out.append("export const catalog = [")
     for p in catalog:
         out.append(
-            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, spbUrl: %s, stockStatusRaw: %s, couponValue: %s, contentChecks: %s, titleLength: %s, imageUrl: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, vendorStockNo: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, hasIngredients: %s, descriptionText: %s, bulletsText: %s, ingredientsText: %s, variations: %s },"
+            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, mapPrice: %s, spbUrl: %s, stockStatusRaw: %s, couponValue: %s, contentChecks: %s, titleLength: %s, imageUrl: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, vendorStockNo: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, hasIngredients: %s, descriptionText: %s, bulletsText: %s, ingredientsText: %s, variations: %s },"
             % (
                 ts_str(p["id"]), ts_str(p["name"]), ts_str(p["brand"]), ts_str(p["category"]), ts_str(p["retailer"]),
                 ts_num(p["rank"], 1), ts_num(p["price"], 0), ts_num(p["avgSellingPrice"], p["price"] or 0),
@@ -886,6 +946,7 @@ def main():
                 ts_num(p["content"], 0), ts_num(p["stockBias"], 1.0), ts_num(p["buyBoxRate"], 1.0),
                 ts_num(p["priceChangePct"], 0.0), ts_str(p["priceGroup"]),
                 ts_num_or_null(p["listPrice"]), ts_num_or_null(p["currentPrice"]), ts_num_or_null(p["subscriptionPrice"]),
+                ts_num_or_null(p["mapPrice"]),
                 ts_str(p["spbUrl"]), ts_str(p["stockStatusRaw"]), ts_str(p["couponValue"]),
                 json.dumps(p["contentChecks"]),
                 ts_num(p["titleLength"], 0), ts_str(p["imageUrl"]), ts_num(p["imageCount"], 0), ts_num(p["bulletCount"], 0),

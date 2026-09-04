@@ -41,6 +41,14 @@ export default function SalesShareSummary() {
     (p.listPrice != null && (p.currentPrice ?? p.price) < p.listPrice) || p.couponValue != null,
   ).length;
 
+  /* Real MAP (Minimum Advertised Price), from a separate reference
+     workbook the user supplies (not the crawl itself -- MAP is a brand
+     policy value). Only SKUs with a genuine MAP row count toward either
+     number; a SKU with none is neither compliant nor a violation, it's
+     simply not tracked. */
+  const withMap = sh.products.filter((p: Product) => p.mapPrice != null);
+  const belowMap = withMap.filter((p: Product) => (p.currentPrice ?? p.price) < p.mapPrice!);
+
   const priceHi = Math.max(40, Math.ceil((pidx.value + 10) / 10) * 10);
   const priceTrend = lineChart({
     id: "price-trend", title: "Average Price Trend", subtitle: "Real pooled average price across the selected period",
@@ -109,6 +117,11 @@ export default function SalesShareSummary() {
           <div className="sl-muted" style={{ fontSize: 12.5 }}>SKUs on Promotion</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{onPromotion}<span style={{ fontSize: 16, fontWeight: 500 }}> / {sh.products.length}</span></div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Marked down from list, or carrying a coupon</div>
+        </Card>
+        <Card padding="18px 20px">
+          <div className="sl-muted" style={{ fontSize: 12.5 }}>Below MAP</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: belowMap.length > 0 ? "var(--status-negative-fg)" : "inherit" }}>{belowMap.length}<span style={{ fontSize: 16, fontWeight: 500 }}> / {withMap.length}</span></div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Priced under real MAP, {withMap.length} of {sh.products.length} SKUs tracked</div>
         </Card>
       </div>
 

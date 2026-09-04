@@ -70,6 +70,20 @@ export default function SalesShareDrivers() {
     .sort((a, b) => b.pctOff - a.pctOff)
     .slice(0, 8);
 
+  /* Real MAP (Minimum Advertised Price), from a separate reference
+     workbook the user supplies (not the crawl -- MAP is a brand policy
+     value, see build_mock_data.py's load_map_price). Only SKUs with a
+     genuine MAP row count as tracked; a SKU with none is neither
+     compliant nor a violation. */
+  const withMap = (sd.products as Product[]).filter((p) => p.mapPrice != null);
+  const mapGaps = withMap.map((p) => {
+    const eff = p.currentPrice ?? p.price;
+    const gapDollar = p.mapPrice! - eff;
+    return { p, eff, gapDollar, gapPct: (gapDollar / p.mapPrice!) * 100 };
+  });
+  const belowMap = mapGaps.filter((d) => d.gapDollar > 0).sort((a, b) => b.gapPct - a.gapPct);
+  const mapCompliancePct = withMap.length ? ((withMap.length - belowMap.length) / withMap.length) * 100 : null;
+
   /* Category-level average list/current price -- distinct from Summary's
      per-product "Largest Price Gap" list (this is a category-level
      aggregate) and from the Price-Index-points framing this section used
@@ -175,6 +189,53 @@ export default function SalesShareDrivers() {
           )}
         </Card>
       </div>
+
+      <Card padding="20px 22px">
+        <div style={{ marginBottom: 16 }}>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>MAP Compliance</h3>
+          <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Real MAP (Minimum Advertised Price) reference data -- a SKU with no MAP row is not tracked, not counted as compliant or a violation</div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,160px),1fr))", gap: 16 }}>
+          <div>
+            <div className="sl-muted" style={{ fontSize: 12.5 }}>SKUs Tracked Under MAP</div>
+            <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 24, marginTop: 4 }}>{withMap.length}<span style={{ fontSize: 14, fontWeight: 500 }}> / {sd.products.length}</span></div>
+            <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 4 }}>Have a real MAP price on file</div>
+          </div>
+          <div>
+            <div className="sl-muted" style={{ fontSize: 12.5 }}>Below MAP</div>
+            <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 24, marginTop: 4, color: belowMap.length > 0 ? "var(--status-negative-fg)" : "inherit" }}>{belowMap.length}</div>
+            <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 4 }}>Priced under their real MAP</div>
+          </div>
+          <div>
+            <div className="sl-muted" style={{ fontSize: 12.5 }}>MAP Compliance</div>
+            <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 24, marginTop: 4, color: mapCompliancePct != null && mapCompliancePct < 90 ? "var(--status-negative-fg)" : "inherit" }}>{mapCompliancePct != null ? mapCompliancePct.toFixed(1) + "%" : "—"}</div>
+            <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 4 }}>Of SKUs tracked under MAP</div>
+          </div>
+        </div>
+        {belowMap.length > 0 && (
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border-subtle)", overflowX: "auto" }}>
+            <div className="sl-muted" style={{ fontSize: 12.5, marginBottom: 8 }}>Products below MAP</div>
+            <table className="sl-table">
+              <thead><tr>
+                <th style={{ textAlign: "left" }}>Product</th>
+                <th style={{ textAlign: "right" }}>MAP Price</th>
+                <th style={{ textAlign: "right" }}>Effective Price</th>
+                <th style={{ textAlign: "right" }}>Under MAP</th>
+              </tr></thead>
+              <tbody>
+                {belowMap.map(({ p, eff, gapDollar, gapPct }) => (
+                  <tr className="sl-row is-clickable" key={p.id} onClick={() => navigate("/product/" + p.id)}>
+                    <td><div className="sl-table-name">{p.name}</div></td>
+                    <td style={{ textAlign: "right" }}>${p.mapPrice!.toFixed(2)}</td>
+                    <td style={{ textAlign: "right" }}>${eff.toFixed(2)}</td>
+                    <td style={{ textAlign: "right", fontWeight: 600, color: "var(--status-negative-fg)" }}>−${gapDollar.toFixed(2)} ({gapPct.toFixed(1)}%)</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       <Card padding="20px 22px">
         <div style={{ marginBottom: 14 }}>

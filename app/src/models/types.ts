@@ -45,6 +45,11 @@ export interface Product {
   listPrice: number | null;
   currentPrice: number | null;
   subscriptionPrice: number | null;
+  /** Real MAP (Minimum Advertised Price), from a separate reference
+   *  workbook the user supplies (not part of the crawl -- MAP is a brand
+   *  policy value, not something crawled). Null when that workbook has no
+   *  MAP row for this SKU, an honest "not tracked under MAP", not 0. */
+  mapPrice: number | null;
   /** Direct link to the crawled retailer listing page (Price tab's "Spb url"). */
   spbUrl: string | null;
   /** The literal crawled availability sentence (Price tab's "Stock status", e.g. "Only 1 left in stock - order soon."), distinct from the derived 3-bucket stockStatus below. */

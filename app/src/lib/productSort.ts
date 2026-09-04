@@ -3,6 +3,12 @@ import type { Product } from "../models/types";
 const STOCK_ORDER: Record<string, number> = { "In Stock": 0, "Low Stock": 1, "Out of Stock": 2 };
 const OPP_ORDER: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
 
+/** % gap between effective price and real MAP price (negative = priced
+ *  under MAP, a violation) -- Infinity for SKUs with no MAP tracked, so
+ *  they always sort as the least urgent, never mixed in among genuine
+ *  violations. */
+const mapGapPct = (p: Product) => (p.mapPrice ? (((p.currentPrice ?? p.price) - p.mapPrice) / p.mapPrice) * 100 : Infinity);
+
 /** One comparator per sortable product column, shared by every product
  *  table (Overview, Digital Shelf, Performance Intelligence) so sort behavior — and
  *  the string/enum/numeric special-casing — is defined once. */
@@ -16,6 +22,8 @@ export const productSorters: Record<string, (a: Product, b: Product) => number> 
   currentPrice: (a, b) => (a.currentPrice ?? a.price) - (b.currentPrice ?? b.price),
   listPrice: (a, b) => (a.listPrice ?? Infinity) - (b.listPrice ?? Infinity),
   subscriptionPrice: (a, b) => (a.subscriptionPrice ?? Infinity) - (b.subscriptionPrice ?? Infinity),
+  mapPrice: (a, b) => (a.mapPrice ?? Infinity) - (b.mapPrice ?? Infinity),
+  mapStatus: (a, b) => mapGapPct(a) - mapGapPct(b),
   couponValue: (a, b) => (a.couponValue ?? "").localeCompare(b.couponValue ?? ""),
   priceChangePct: (a, b) => a.priceChangePct - b.priceChangePct,
   stockStatus: (a, b) => STOCK_ORDER[a.stockStatus] - STOCK_ORDER[b.stockStatus],
