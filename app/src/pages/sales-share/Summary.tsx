@@ -3,15 +3,48 @@ import { useNavigate, useOutletContext } from "react-router-dom";
 import { KpiCard } from "../../components/ui/KpiCard";
 import { ChartCard } from "../../components/charts/ChartCard";
 import { Card } from "../../components/ui/Card";
-import { DrilldownModal } from "../../components/ui/DrilldownModal";
+import { DrilldownModal, type DrillTableConfig } from "../../components/ui/DrilldownModal";
 import { useFilters } from "../../context/FiltersContext";
 import { useUi } from "../../context/UiContext";
 import { useChartHover } from "../../hooks/useChartHover";
 import { lineChart, barChart, spark } from "../../lib/charts";
-import { kpiCard, cell, table, delta, deltaColor, type TableConfig } from "../../lib/format";
-import { REAL_BUYBOX_COMPETITOR } from "../../data/mockData";
+import { kpiCard, cell, delta, deltaColor } from "../../lib/format";
+import { REAL_BUYBOX_COMPETITOR, REAL_BUYBOX_TIMELINE, REAL_PRICE_TIMELINE } from "../../data/mockData";
 import type { SalesShareContext } from "./Layout";
 import type { Product } from "../../models/types";
+
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const fmtDate = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return MONTH_ABBR[m - 1] + " " + d; };
+
+/** Real day-by-day buy-box holder behind a SKU's Competitor Days Won count
+ *  (see REAL_BUYBOX_TIMELINE / build_mock_data.py) -- exactly which dates
+ *  we held it vs. which dates the named competitor did, not just the
+ *  aggregate count. */
+function buyBoxDateDetail(pid: string) {
+  const timeline = (REAL_BUYBOX_TIMELINE as any)[pid];
+  if (!timeline || !timeline.length) return undefined;
+  return { cols: ["Date", "Held By"], rows: timeline.map((e: any) => [fmtDate(e.date), e.holder]) };
+}
+
+/** Real day-by-day price behind a SKU's whole-month priceChangePct (see
+ *  REAL_PRICE_TIMELINE) -- collapsed to just the dates the price actually
+ *  moved, since printing every identical tracked day would bury the real
+ *  change events that answer "which date did it change". */
+function priceDateDetail(pid: string) {
+  const timeline = (REAL_PRICE_TIMELINE as any)[pid];
+  if (!timeline || !timeline.length) return undefined;
+  const rows: string[][] = [];
+  let prev: number | null = null;
+  timeline.forEach((e: any, i: number) => {
+    if (i === 0) { rows.push([fmtDate(e.date), "$" + e.price.toFixed(2) + " (first observed)"]); prev = e.price; return; }
+    if (e.price !== prev) {
+      const diff = e.price - prev!;
+      rows.push([fmtDate(e.date), "$" + prev!.toFixed(2) + " → $" + e.price.toFixed(2) + " (" + (diff > 0 ? "+" : "−") + "$" + Math.abs(diff).toFixed(2) + ")"]);
+      prev = e.price;
+    }
+  });
+  return { cols: ["Date", "Price Change"], rows };
+}
 
 export default function SalesShareSummary() {
   const { sh, categoryFilter, setCategoryFilter } = useOutletContext<SalesShareContext>();
@@ -20,7 +53,7 @@ export default function SalesShareSummary() {
   const navigate = useNavigate();
   const { hover, onEnter, onLeave } = useChartHover();
   const [catSort, setCatSort] = useState({ key: "overall", dir: "desc" as "asc" | "desc" });
-  const [drill, setDrill] = useState<TableConfig | null>(null);
+  const [drill, setDrill] = useState<DrillTableConfig | null>(null);
   const goToProduct = (id: string) => { setDrill(null); navigate("/product/" + id); };
 
   const pidx = sh.kpis.find((k: any) => k.id === "pidx");
@@ -74,65 +107,86 @@ export default function SalesShareSummary() {
     .map((p: Product) => ({ p, eff: p.currentPrice ?? p.price, pct: ((p.listPrice! - (p.currentPrice ?? p.price)) / p.listPrice!) * 100 }))
     .sort((a: any, b: any) => b.pct - a.pct);
 
-  /* One TableConfig per clickable KPI tile above -- built with the same
-     table()/cell() helpers DataTable consumes, so DrilldownModal can
-     render any of them with no per-metric special-casing. Average Price
-     is deliberately not one of these: it already has its own trend chart
-     right below, so a redundant SKU list would add nothing. */
-  const priceIncreasedTable = table("Price Increased", `${priceIncreased} SKUs with a real whole-month price increase`,
-    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "Previous Price", align: "right" }, { label: "Current Price", align: "right" }, { label: "Change", align: "right" }],
-    priceIncreasedProducts.map((p: Product) => { const prev = impliedPreviousPrice(p); return { cells: [
+  /* One DrillTableConfig per clickable KPI tile above -- built with the same
+     cell() helper DataTable consumes, so DrilldownModal can render any of
+     them with no per-metric special-casing. Average Price is deliberately
+     not one of these: it already has its own trend chart right below, so a
+     redundant SKU list would add nothing. Price Increased/Dropped and Buy
+     Box Lost also carry a per-row `detail` -- the real day-by-day series
+     behind that row's summary number, expandable via DrilldownModal's
+     "View dates" toggle. */
+  const priceIncreasedTable: DrillTableConfig = {
+    title: "Price Increased", subtitle: `${priceIncreased} SKUs with a real whole-month price increase`,
+    cols: [{ label: "Product", align: "left" }, { label: "Retailer", align: "center" }, { label: "Retailer ID", align: "center" }, { label: "Previous Price", align: "center" }, { label: "Current Price", align: "center" }, { label: "Change", align: "center" }],
+    rows: priceIncreasedProducts.map((p: Product) => { const prev = impliedPreviousPrice(p); return { cells: [
       cell(p.name, { onClick: () => goToProduct(p.id) }),
-      cell(p.retailerName),
-      cell(prev != null ? "$" + prev.toFixed(2) : "—", { align: "right" }),
-      cell("$" + p.price.toFixed(2), { align: "right" }),
-      cell(delta(p.priceChangePct, "%"), { align: "right", color: deltaColor(p.priceChangePct) }),
-    ] }; }));
-  const priceDroppedTable = table("Price Dropped", `${priceDropped} SKUs with a real whole-month price decrease`,
-    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "Previous Price", align: "right" }, { label: "Current Price", align: "right" }, { label: "Change", align: "right" }],
-    priceDroppedProducts.map((p: Product) => { const prev = impliedPreviousPrice(p); return { cells: [
+      cell(p.retailerName, { align: "center" }),
+      cell(p.retailerId, { align: "center" }),
+      cell(prev != null ? "$" + prev.toFixed(2) : "—", { align: "center" }),
+      cell("$" + p.price.toFixed(2), { align: "center" }),
+      cell(delta(p.priceChangePct, "%"), { align: "center", color: deltaColor(p.priceChangePct) }),
+    ], detail: priceDateDetail(p.id) }; }),
+  };
+  const priceDroppedTable: DrillTableConfig = {
+    title: "Price Dropped", subtitle: `${priceDropped} SKUs with a real whole-month price decrease`,
+    cols: [{ label: "Product", align: "left" }, { label: "Retailer", align: "center" }, { label: "Retailer ID", align: "center" }, { label: "Previous Price", align: "center" }, { label: "Current Price", align: "center" }, { label: "Change", align: "center" }],
+    rows: priceDroppedProducts.map((p: Product) => { const prev = impliedPreviousPrice(p); return { cells: [
       cell(p.name, { onClick: () => goToProduct(p.id) }),
-      cell(p.retailerName),
-      cell(prev != null ? "$" + prev.toFixed(2) : "—", { align: "right" }),
-      cell("$" + p.price.toFixed(2), { align: "right" }),
-      cell(delta(p.priceChangePct, "%"), { align: "right", color: deltaColor(p.priceChangePct) }),
-    ] }; }));
-  const buyBoxLostTable = table("Buy Box Lost (1P)", `${skusLost} of ${skusTracked} SKUs had a 3P seller win the buy box at some point this period`,
-    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "Competitor", align: "left" }, { label: "Days Won", align: "right" }, { label: "Buy Box Rate", align: "right" }],
-    buyBoxLostProducts.map(({ p, seller, daysWon }: any) => ({ cells: [
+      cell(p.retailerName, { align: "center" }),
+      cell(p.retailerId, { align: "center" }),
+      cell(prev != null ? "$" + prev.toFixed(2) : "—", { align: "center" }),
+      cell("$" + p.price.toFixed(2), { align: "center" }),
+      cell(delta(p.priceChangePct, "%"), { align: "center", color: deltaColor(p.priceChangePct) }),
+    ], detail: priceDateDetail(p.id) }; }),
+  };
+  const buyBoxLostTable: DrillTableConfig = {
+    title: "Buy Box Lost (1P)", subtitle: `${skusLost} of ${skusTracked} SKUs had a 3P seller win the buy box at some point this period`,
+    cols: [{ label: "Product", align: "left" }, { label: "Retailer", align: "center" }, { label: "Retailer ID", align: "center" }, { label: "Competitor", align: "center" }, { label: "Competitor Days Won", align: "center" }, { label: "Buy Box Rate", align: "center" }],
+    rows: buyBoxLostProducts.map(({ p, seller, daysWon }: any) => ({ cells: [
       cell(p.name, { onClick: () => goToProduct(p.id) }),
-      cell(p.retailerName),
-      cell(seller),
-      cell(daysWon + " of 30", { align: "right" }),
-      cell(p.buyBoxRate + "%", { align: "right", color: p.buyBoxRate < 50 ? "var(--status-negative-fg)" : "inherit" }),
-    ] })));
-  const discountTable = table("Average Price Discount", `${withList.length} of ${sh.products.length} SKUs posted a list price`,
-    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "List Price", align: "right" }, { label: "Current Price", align: "right" }, { label: "Discount", align: "right" }],
-    discountedProducts.map(({ p, eff, pct }: any) => ({ cells: [
+      cell(p.retailerName, { align: "center" }),
+      cell(p.retailerId, { align: "center" }),
+      cell(seller, { align: "center" }),
+      cell(daysWon + " of 30", { align: "center" }),
+      cell(p.buyBoxRate + "%", { align: "center", color: p.buyBoxRate < 50 ? "var(--status-negative-fg)" : "inherit" }),
+    ], detail: buyBoxDateDetail(p.id) })),
+  };
+  const discountTable: DrillTableConfig = {
+    title: "Average Price Discount", subtitle: `${withList.length} of ${sh.products.length} SKUs posted a list price`,
+    cols: [{ label: "Product", align: "left" }, { label: "Retailer", align: "center" }, { label: "Retailer ID", align: "center" }, { label: "List Price", align: "center" }, { label: "Current Price", align: "center" }, { label: "Discount", align: "center" }],
+    rows: discountedProducts.map(({ p, eff, pct }: any) => ({ cells: [
       cell(p.name, { onClick: () => goToProduct(p.id) }),
-      cell(p.retailerName),
-      cell("$" + p.listPrice!.toFixed(2), { align: "right" }),
-      cell("$" + eff.toFixed(2), { align: "right" }),
-      cell((pct >= 0 ? "" : "−") + Math.abs(pct).toFixed(1) + "%", { align: "right", color: deltaColor(pct, true) }),
-    ] })));
-  const promotionTable = table("SKUs on Promotion", `${onPromotion} of ${sh.products.length} SKUs marked down from list, or carrying a coupon`,
-    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "List Price", align: "right" }, { label: "Current Price", align: "right" }, { label: "Coupon", align: "left" }],
-    promotionProducts.map((p: Product) => ({ cells: [
+      cell(p.retailerName, { align: "center" }),
+      cell(p.retailerId, { align: "center" }),
+      cell("$" + p.listPrice!.toFixed(2), { align: "center" }),
+      cell("$" + eff.toFixed(2), { align: "center" }),
+      cell((pct >= 0 ? "" : "−") + Math.abs(pct).toFixed(1) + "%", { align: "center", color: deltaColor(pct, true) }),
+    ] })),
+  };
+  const promotionTable: DrillTableConfig = {
+    title: "SKUs on Promotion", subtitle: `${onPromotion} of ${sh.products.length} SKUs marked down from list, or carrying a coupon`,
+    cols: [{ label: "Product", align: "left" }, { label: "Retailer", align: "center" }, { label: "Retailer ID", align: "center" }, { label: "List Price", align: "center" }, { label: "Current Price", align: "center" }, { label: "Coupon", align: "center" }],
+    rows: promotionProducts.map((p: Product) => ({ cells: [
       cell(p.name, { onClick: () => goToProduct(p.id) }),
-      cell(p.retailerName),
-      cell(p.listPrice != null ? "$" + p.listPrice.toFixed(2) : "—", { align: "right" }),
-      cell("$" + (p.currentPrice ?? p.price).toFixed(2), { align: "right" }),
-      cell(p.couponValue ?? "—"),
-    ] })));
-  const belowMapTable = table("Below MAP", `${belowMap.length} of ${withMap.length} SKUs tracked under MAP are priced under it`,
-    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "MAP Price", align: "right" }, { label: "Effective Price", align: "right" }, { label: "Under MAP", align: "right" }],
-    belowMapProducts.map((p: Product) => { const eff = p.currentPrice ?? p.price; const gap = p.mapPrice! - eff; return { cells: [
+      cell(p.retailerName, { align: "center" }),
+      cell(p.retailerId, { align: "center" }),
+      cell(p.listPrice != null ? "$" + p.listPrice.toFixed(2) : "—", { align: "center" }),
+      cell("$" + (p.currentPrice ?? p.price).toFixed(2), { align: "center" }),
+      cell(p.couponValue ?? "—", { align: "center" }),
+    ] })),
+  };
+  const belowMapTable: DrillTableConfig = {
+    title: "Below MAP", subtitle: `${belowMap.length} of ${withMap.length} SKUs tracked under MAP are priced under it`,
+    cols: [{ label: "Product", align: "left" }, { label: "Retailer", align: "center" }, { label: "Retailer ID", align: "center" }, { label: "MAP Price", align: "center" }, { label: "Effective Price", align: "center" }, { label: "Under MAP", align: "center" }],
+    rows: belowMapProducts.map((p: Product) => { const eff = p.currentPrice ?? p.price; const gap = p.mapPrice! - eff; return { cells: [
       cell(p.name, { onClick: () => goToProduct(p.id) }),
-      cell(p.retailerName),
-      cell("$" + p.mapPrice!.toFixed(2), { align: "right" }),
-      cell("$" + eff.toFixed(2), { align: "right" }),
-      cell("−$" + gap.toFixed(2) + " (" + ((gap / p.mapPrice!) * 100).toFixed(1) + "%)", { align: "right", color: "var(--status-negative-fg)" }),
-    ] }; }));
+      cell(p.retailerName, { align: "center" }),
+      cell(p.retailerId, { align: "center" }),
+      cell("$" + p.mapPrice!.toFixed(2), { align: "center" }),
+      cell("$" + eff.toFixed(2), { align: "center" }),
+      cell("−$" + gap.toFixed(2) + " (" + ((gap / p.mapPrice!) * 100).toFixed(1) + "%)", { align: "center", color: "var(--status-negative-fg)" }),
+    ] }; }),
+  };
 
   const priceHi = Math.max(40, Math.ceil((pidx.value + 10) / 10) * 10);
   const priceTrend = lineChart({

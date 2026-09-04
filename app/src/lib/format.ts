@@ -25,7 +25,7 @@ export function columnsToCsv<T>(rows: T[], columns: Column<T>[]): string {
 export interface Cell {
   text: string;
   sub: string;
-  align: "left" | "right";
+  align: "left" | "right" | "center";
   tone?: BadgeTone;
   font: string;
   size: string;
@@ -39,7 +39,7 @@ export interface Cell {
   onClick?: () => void;
 }
 
-export function cell(text: string, o: { sub?: string; align?: "left" | "right"; tone?: BadgeTone; strong?: boolean; color?: string; wrap?: boolean; onClick?: () => void } = {}): Cell {
+export function cell(text: string, o: { sub?: string; align?: "left" | "right" | "center"; tone?: BadgeTone; strong?: boolean; color?: string; wrap?: boolean; onClick?: () => void } = {}): Cell {
   return {
     text, sub: o.sub || "", align: o.align || "left", tone: o.tone,
     font: o.strong ? "var(--font-heading)" : "var(--font-body)",
@@ -50,7 +50,7 @@ export function cell(text: string, o: { sub?: string; align?: "left" | "right"; 
 export interface TableConfig {
   title: string;
   subtitle: string;
-  cols: Array<{ label: string; align?: "left" | "right"; minWidth?: number }>;
+  cols: Array<{ label: string; align?: "left" | "right" | "center"; minWidth?: number }>;
   rows: Array<{ cells: Cell[] }>;
 }
 

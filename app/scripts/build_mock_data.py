@@ -331,6 +331,18 @@ def main():
     # ── build catalog + REAL_PRODUCT_WEEKLY ─────────────────────────────────
     catalog = []
     real_product_weekly = {}
+    # pid -> [{date, price}, ...], one entry per real daily crawl row that
+    # posted a price -- the day-by-day series behind priceChangePct, so a UI
+    # can show exactly which date a price moved rather than only the whole-
+    # month before/after. Every catalog product with at least one observed
+    # price gets an entry (not just ones that moved).
+    real_price_timeline = {}
+    # pid -> [{date, holder}, ...] -- who held the buy box each real tracked
+    # day this SKU was in stock ("You" or the real crawled seller name), the
+    # day-by-day series behind REAL_BUYBOX_COMPETITOR's daysWon count. Same
+    # r4/r6 exclusion as REAL_BUYBOX_COMPETITOR (their Buy Box Seller field
+    # is a store/location name, not a real marketplace competitor).
+    real_buybox_timeline = {}
     component_bucket_totals = defaultdict(list)
     # pid -> (code, native_id) with native_id in its ORIGINAL type (int or
     # str, whatever the Excel cell held) -- pid itself is always a string
@@ -385,6 +397,19 @@ def main():
 
         # price / stockRate / buyBoxRate weekly series bucketed from daily Price rows
         prows = price_by_product.get((code, native_id), [])
+
+        real_price_timeline[pid] = [
+            {"date": date_key(r.get("Crawl date")), "price": round(price_value(r), 2)}
+            for r in prows if price_value(r) is not None
+        ]
+        if code not in ("r4", "r6"):
+            real_buybox_timeline[pid] = [
+                {"date": date_key(r.get("Crawl date")),
+                 "holder": "You" if is_own_seller(r.get("Buy box seller"), code) else str(r.get("Buy box seller"))}
+                for r in prows
+                if is_in_stock(r.get("Stock status")) and r.get("Buy box seller")
+            ]
+
         price_series, stock_series, buybox_series = [], [], []
         # Last-Observation-Carried-Forward for weeks with no crawl rows at all
         # (a handful of products have gaps -- e.g. only Sep 1-2 + Sep 24-25) so
@@ -1004,6 +1029,25 @@ def main():
     out.append("export const REAL_BUYBOX_COMPETITOR: Record<string, { seller: string; daysWon: number }> = {")
     for pid, v in real_buybox_competitor.items():
         out.append(f'  {json.dumps(pid)}: {{ seller: {json.dumps(fix_mojibake(v["seller"]))}, daysWon: {v["daysWon"]} }},')
+    out.append("};")
+    out.append("")
+
+    # Day-by-day series behind priceChangePct/REAL_BUYBOX_COMPETITOR -- only
+    # emitted for products that have at least one entry, to keep this block
+    # from ballooning for the (few) SKUs with zero observed daily rows.
+    out.append("export const REAL_PRICE_TIMELINE: Record<string, Array<{ date: string; price: number }>> = {")
+    for pid, entries in real_price_timeline.items():
+        if not entries:
+            continue
+        out.append(f'  {json.dumps(pid)}: {json.dumps(entries)},')
+    out.append("};")
+    out.append("")
+
+    out.append("export const REAL_BUYBOX_TIMELINE: Record<string, Array<{ date: string; holder: string }>> = {")
+    for pid, entries in real_buybox_timeline.items():
+        if not entries:
+            continue
+        out.append(f'  {json.dumps(pid)}: {json.dumps([{"date": e["date"], "holder": fix_mojibake(e["holder"])} for e in entries])},')
     out.append("};")
     out.append("")
 
