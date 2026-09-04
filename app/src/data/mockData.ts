@@ -693,10 +693,22 @@ function itemPriceIndex(price: number, asp: number | null): number {
   return round(price / (asp || price), 3);
 }
 
+/* Real, deterministic classification of the Price tab's raw "Stock status"
+   text from the latest crawl day (stockStatusRaw) -- e.g. "In Stock.",
+   "Out Of Stock", "Currently unavailable.", "Temporarily out of stock.",
+   "Only 2 left in stock - order soon." (a genuine low-stock signal in the
+   raw crawl, not invented). Replaces the old per-session random status
+   roll, which could disagree with the real crawl entirely. */
+function classifyStockStatus(raw: string | null): "In Stock" | "Low Stock" | "Out of Stock" {
+  if (!raw) return "In Stock";
+  const s = raw.toLowerCase();
+  if (s.includes("out of stock") || s.includes("unavailable") || s.includes("temporarily out")) return "Out of Stock";
+  if (s.includes("only") && s.includes("left")) return "Low Stock";
+  return "In Stock";
+}
+
 function productFor(p: (typeof catalog)[number], key: string) {
   const r = rng(hash(p.id + key));
-  const roll = r();
-  const status = roll < p.stockBias - 0.28 ? "In Stock" : roll < p.stockBias + 0.14 ? "Low Stock" : "Out of Stock";
   return {
     id: p.id,
     name: p.name,
@@ -726,11 +738,12 @@ function productFor(p: (typeof catalog)[number], key: string) {
     spbUrl: (p as any).spbUrl ?? null,
     stockStatusRaw: (p as any).stockStatusRaw ?? null,
     couponValue: (p as any).couponValue ?? null,
-    stockStatus: status as "In Stock" | "Low Stock" | "Out of Stock",
-    inStockRate: round(clamp(
-      p.stockBias * 100 + (r() - 0.5) * 2 -
-      (status === "Out of Stock" ? 4 + r() * 4 : status === "Low Stock" ? 1 + r() * 1 : 0),
-      0, 100), 1),
+    // Real -- badge from the latest raw crawl status, rate from the
+    // product's real share of crawled days in stock (stockBias). Neither
+    // is jittered: a "current status" and a "% of days" figure both have
+    // one honest real answer, not a session-to-session random one.
+    stockStatus: classifyStockStatus((p as any).stockStatusRaw ?? null),
+    inStockRate: round((p.stockBias ?? 1) * 100, 1),
     /* Same reasoning as price above: rating/reviews are the real crawled
        facts, not something to jitter session to session. The old
        clamp(..., 1, 5) also forced products with no rating at all
