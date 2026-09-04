@@ -5,6 +5,19 @@
 import type { BadgeTone } from "../components/ui/Badge";
 import type { Column } from "../components/table/SortableTable";
 
+/** RFC4180-ish quoting for one CSV cell -- the one escaping rule every CSV
+ *  builder below shares. */
+function csvCell(v: unknown): string {
+  const s = String(v == null ? "" : v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+/** Generic header+rows -> CSV string. The primitive every export in the
+ *  app builds on, so a new export shape never has to re-implement quoting. */
+export function rowsToCsv(headers: string[], rows: Array<Array<string | number>>): string {
+  return [headers.map(csvCell).join(","), ...rows.map((r) => r.map(csvCell).join(","))].join("\n");
+}
+
 /** Turns whatever `Column<T>[]` a page is currently showing (already
  *  filtered to the visible/ordered subset it wants) into a CSV string,
  *  using each column's `csv` extractor -- so an export is always exactly
@@ -13,13 +26,7 @@ import type { Column } from "../components/table/SortableTable";
  *  skipped rather than exported blank. */
 export function columnsToCsv<T>(rows: T[], columns: Column<T>[]): string {
   const withCsv = columns.filter((c): c is Column<T> & { csv: (row: T) => string | number | null | undefined } => !!c.csv);
-  const cell = (v: unknown) => {
-    const s = String(v == null ? "" : v);
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  };
-  const lines = [withCsv.map((c) => cell(c.label)).join(",")]
-    .concat(rows.map((row) => withCsv.map((c) => cell(c.csv(row))).join(",")));
-  return lines.join("\n");
+  return rowsToCsv(withCsv.map((c) => c.label), rows.map((row) => withCsv.map((c) => c.csv(row) ?? "")));
 }
 
 /** Turns a chart's raw labels + series into a downloadable CSV -- the same
@@ -27,13 +34,9 @@ export function columnsToCsv<T>(rows: T[], columns: Column<T>[]): string {
  *  optional flat reference column, e.g. a target/MAP price line), so the
  *  export always matches exactly what's on screen. */
 export function seriesToCsv(labels: string[], series: Array<{ name: string; values: number[] }>, extra?: { name: string; value: number }, xLabel = "Date"): string {
-  const cell = (v: unknown) => {
-    const s = String(v == null ? "" : v);
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  };
-  const header = [xLabel, ...series.map((s) => s.name), ...(extra ? [extra.name] : [])].map(cell).join(",");
-  const rows = labels.map((l, i) => [l, ...series.map((s) => s.values[i]), ...(extra ? [extra.value] : [])].map(cell).join(","));
-  return [header, ...rows].join("\n");
+  const headers = [xLabel, ...series.map((s) => s.name), ...(extra ? [extra.name] : [])];
+  const rows = labels.map((l, i) => [l, ...series.map((s) => s.values[i]), ...(extra ? [extra.value] : [])]);
+  return rowsToCsv(headers, rows);
 }
 
 /** The one Blob-download mechanics every CSV export in the app uses --

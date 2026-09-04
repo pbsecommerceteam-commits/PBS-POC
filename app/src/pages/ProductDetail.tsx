@@ -10,7 +10,7 @@ import { useFilters } from "../context/FiltersContext";
 import { useUi } from "../context/UiContext";
 import { useChartHover } from "../hooks/useChartHover";
 import { lineChart, barChart, spark } from "../lib/charts";
-import { kpiCard, cell, table, seriesToCsv, downloadCsv } from "../lib/format";
+import { kpiCard, cell, table, seriesToCsv, rowsToCsv, downloadCsv } from "../lib/format";
 import { fetchProduct } from "../data/mockData";
 
 // No user-facing period control exists any more (see FiltersContext) --
@@ -121,6 +121,10 @@ export default function ProductDetail() {
     { label: "Review count", value: p.reviews.toLocaleString(), sub: "tracked reviews" },
     { label: "Buy Box Ownership 1P", value: p.buyBoxRate + "%", sub: detail.note },
   ];
+  const exportFacts = () => {
+    downloadCsv("shelfline-" + p.id + "-key-facts.csv", rowsToCsv(["Metric", "Value", "Detail"], facts.map((f) => [f.label, f.value, f.sub])));
+    toast("Exported key facts.");
+  };
 
   const contentChecklistTable = table("Content checklist", "Requirement-level detail behind the content score",
     [{ label: "Requirement", align: "left" }, { label: "Status", align: "left" }],
@@ -159,7 +163,11 @@ export default function ProductDetail() {
             <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 30, lineHeight: 1.1 }}>{p.shelfScore}</div>
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 18, marginTop: 20, paddingTop: 18, borderTop: "1px solid var(--border-subtle)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 20, paddingTop: 18, borderTop: "1px solid var(--border-subtle)" }}>
+          <div className="sl-eyebrow">Key facts</div>
+          <button type="button" className="btn btn-ghost" onClick={exportFacts} style={{ fontSize: 12, padding: "5px 10px", minHeight: "auto" }}>⬇ Export</button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 18, marginTop: 12 }}>
           {facts.map((f) => (
             <div key={f.label} style={{ minWidth: 0 }}>
               <div className="sl-eyebrow">{f.label}</div>
