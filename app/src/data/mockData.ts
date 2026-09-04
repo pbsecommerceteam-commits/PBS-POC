@@ -1434,11 +1434,11 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     const priceIndex = own.length ? round(avg(own, (p) => p.priceIndex, 3) * 100, 1) : round(98 + rr() * 8, 1);
     const buyBoxPresence = realBuyBox != null ? round(realBuyBox, 1) : (own.length ? Math.round((own.filter((p) => p.buyBox).length / own.length) * 100) : Math.round(60 + rr() * 30));
     const avgPrice = realCurrentAvgPrice(rt.id, period, dateRange, wideMatch?.idx, category) ?? (own.length ? avg(own, (p) => p.price, 2) : 0);
-    // See snapshot()'s retailerPerformance overall comment -- same
-    // divide-by-the-20%-target convention.
+    // Same formula/weights/clamp as snapshot()'s retailerPerformance
+    // overall -- see the comment there.
     const shelfScore = clamp(Math.round(
       (visibility / 20) * 25 + (availability / 100) * 30 + (content / 100) * 25 + (rating / 5) * 20
-    ), 25, 100);
+    ), 30, 100);
     return {
       id: rt.id, name: rt.name, skus: own.length, visibility, availability, content, rating, priceIndex, buyBoxPresence, avgPrice, shelfScore,
       visibilityDelta: round((rr() - 0.5) * 4.5, 1),
