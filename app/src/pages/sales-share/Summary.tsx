@@ -19,7 +19,6 @@ export default function SalesShareSummary() {
   const [catSort, setCatSort] = useState({ key: "overall", dir: "desc" as "asc" | "desc" });
 
   const pidx = sh.kpis.find((k: any) => k.id === "pidx");
-  const buybox = sh.kpis.find((k: any) => k.id === "buybox");
   const priceIncreased = sh.products.filter((p: Product) => p.priceChangePct > 0).length;
   const priceDropped = sh.products.filter((p: Product) => p.priceChangePct < 0).length;
   const { skusTracked, skusLost, topSeller } = sh.buyBoxLoss;
@@ -101,7 +100,6 @@ export default function SalesShareSummary() {
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: skusLost > 0 ? "var(--status-negative-fg)" : "inherit" }}>{skusLost}<span style={{ fontSize: 16, fontWeight: 500 }}> / {skusTracked}</span></div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>{topSeller ? "Top 3P seller: " + topSeller : "No 3P buy-box loss in scope"}</div>
         </Card>
-        <KpiCard k={kpiCard(buybox, spark)} />
         <Card padding="18px 20px">
           <div className="sl-muted" style={{ fontSize: 12.5 }}>Average Price Discount</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: avgDiscountPct > 0 ? "var(--status-positive-fg)" : "inherit" }}>{avgDiscountPct.toFixed(1)}%</div>
