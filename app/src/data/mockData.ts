@@ -275,8 +275,8 @@ export const keywordSet = [
    Intelligence's Attribute coverage table. */
 export const CONTENT_CHECK_LABELS: Record<string, string> = {
   title: "Title over 75 characters",
-  images: "Fewer than 5 images",
-  bulletCount: "Fewer than 5 bullet points",
+  images: "5 or more images",
+  bulletCount: "5 or more bullet points",
   bulletCaps: "Bullets not capitalized",
   bulletLength: "Bullets outside 150–200 characters",
   description: "Description outside 200–2,000 characters",
@@ -1391,7 +1391,11 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       // Real -- average keywordCoverage (0-10) across the pool; delta is a
       // real 0 (see REAL_KEYWORD_MATCH's comment -- no movement was
       // observed across the real crawl weeks), not fabricated jitter.
-      { id: "coverage", label: "Avg Keyword Coverage", unit: "", target: 10, value: avgCoverage, delta: 0, spark: series(seed + 9, n, avgCoverage, avgCoverage, 0, 1), labels },
+      // id is "avgcoverage" (not "coverage") to avoid colliding with
+      // ProductDetail's per-product KpiCard, which reuses id "coverage" for
+      // an integer 0-10 count -- this one is a fractional portfolio
+      // average, so kpiCard() needs to format it with its own digit rule.
+      { id: "avgcoverage", label: "Avg Keyword Coverage", unit: "", target: 10, value: avgCoverage, delta: 0, spark: series(seed + 9, n, avgCoverage, avgCoverage, 0, 1), labels },
       { id: "reviews", label: "Review Count", unit: "", target: 20000, value: reviewVolume, delta: Math.round(reviewVolume * 0.04), spark: series(seed + 10, n, reviewVolume * 0.94, reviewVolume, reviewVolume * 0.01, 0), labels },
       { id: "gap", label: "Gap to Leader", unit: " pts", target: 0, value: round(last(leader) - last(sos), 1), delta: round((first(leader) - first(sos)) * -1 + (last(leader) - last(sos)), 1), spark: leader.map((v, i) => round(v - sos[i], 1)), labels: visibilityLabels },
       { id: "issues", label: "Content Issues", unit: "", target: 0, value: pool.filter((p) => p.contentScore < 80).length, delta: -1, spark: series(seed + 11, n, pool.filter((p) => p.contentScore < 80).length + 2, pool.filter((p) => p.contentScore < 80).length, 0.6, 0).map((v) => clamp(v, 0, 30)), labels },
@@ -1497,26 +1501,32 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
     retailerPerformance: retailers.slice(1).map((rt) => {
       const rr = rowRng(key, "retailerPerf", rt.id);
       const b = RETAILER_BIAS[rt.id];
+      /* Search Visibility (sos) is kept computed here for any future/
+         backend use, but is no longer what Overall Score is built from or
+         what the frontend shows -- see the retired kpi("sos", ...) note
+         above. Overall Score's real "how findable is this retailer" term
+         is now Keyword Coverage (0-10 real matches per SKU, scaled to 0-100
+         the same way the per-product shelfScore formula does), matching
+         categoryPerformance below and shelfData()'s byRetailer/byCategory. */
       const realSos = realCurrentValueSos(rt.id, period, dateRange, rangeMatch?.idx, category);
       const sosR = realSos != null ? round(realSos, 1) : round(clamp(0.3 + b.sos + (rr() - 0.5) * 0.4, 0, 3), 1);
+      const retailerProducts = catalog.filter((p) => p.retailer === rt.id && (!category || p.category === category));
+      const coverageR = retailerProducts.length ? round((retailerProducts.reduce((a, p) => a + (REAL_KEYWORD_MATCH[p.id] ?? []).length, 0) / retailerProducts.length) * 10, 1) : 0;
       const realStock = realCurrentValue(rt.id, "stockRate", period, dateRange, wideMatch?.idx, category);
       const realContent = realCurrentValue(rt.id, "content", period, dateRange, wideMatch?.idx, category);
       const realRating = realCurrentValue(rt.id, "rating", period, dateRange, wideMatch?.idx, category);
       const inStockR = realStock != null ? round(realStock, 1) : round(clamp(96.5 + b.stock + (rr() - 0.5) * 3, 85, 100), 1);
       const contentR = realContent != null ? Math.round(realContent) : clamp(Math.round(85 + b.content + (rr() - 0.5) * 8), 40, 100);
       const ratingR = realRating != null ? round(realRating, 2) : round(clamp(4.3 + b.rating + (rr() - 0.5) * 0.2, 3.4, 5), 2);
-      /* sosR's normalization benchmark: the Search Visibility KPI's own
-         20% target (see the kpi("sos", ...) target above) -- same
-         "divide by the metric's real target" convention this term always
-         used, just updated from the old 40% target to the new 20%. */
       const overall = Math.round(
-        (sosR / 20) * 25 + (inStockR / 100) * 30 + (contentR / 100) * 25 + (ratingR / 5) * 20
+        (coverageR / 100) * 25 + (inStockR / 100) * 30 + (contentR / 100) * 25 + (ratingR / 5) * 20
       );
       return {
         id: rt.id, name: rt.name, sos: sosR, sosDelta: round((rr() - 0.5) * 4, 1),
+        coverage: coverageR,
         inStock: inStockR, inStockDelta: round((rr() - 0.5) * 2, 1),
         content: contentR, rating: ratingR,
-        skus: catalog.filter((p) => p.retailer === rt.id && (!category || p.category === category)).length,
+        skus: retailerProducts.length,
         overall: clamp(overall, 30, 100),
       };
     }),
@@ -1524,15 +1534,19 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       const rr = rowRng(key, "categoryPerf", c);
       const inCat = pool.filter((p) => p.category === c);
       const avg = (f: (p: any) => number, d: number) => (inCat.length ? round(inCat.reduce((a, p) => a + f(p), 0) / inCat.length, d) : 0);
+      // Same retirement as retailerPerformance above -- sos kept for the
+      // backend, Overall Score now driven by real Keyword Coverage.
       const sosC = round(clamp(0.3 + rr() * 1.2 + bias.sos / 2, 0, 3), 1);
+      const coverageC = inCat.length ? round(avg((p) => p.keywordCoverage, 2) * 10, 1) : 0;
       const availC = inCat.length ? avg((p) => p.inStockRate, 1) : round(94 + rr() * 5, 1);
       const contentC = inCat.length ? Math.round(avg((p) => p.contentScore, 0)) : Math.round(74 + rr() * 20);
       const ratingC = inCat.length ? avg((p) => p.rating, 2) : round(clamp(4.3 + rr() * 0.4, 3.4, 5), 2);
       // Same formula/weights/clamp as snapshot()'s retailerPerformance
       // overall -- see the comment there.
-      const overall = Math.round((sosC / 20) * 25 + (availC / 100) * 30 + (contentC / 100) * 25 + (ratingC / 5) * 20);
+      const overall = Math.round((coverageC / 100) * 25 + (availC / 100) * 30 + (contentC / 100) * 25 + (ratingC / 5) * 20);
       return {
         category: c, skus: inCat.length, sos: sosC, sosDelta: round((rr() - 0.5) * 5, 1),
+        coverage: coverageC,
         availability: availC, content: contentC, rating: ratingC, overall: clamp(overall, 30, 100),
       };
     }),
@@ -1545,8 +1559,8 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
 /* Analytics layer: insights are derived from the snapshot, never authored as
    copy in the UI. Each carries the action the user should take next. */
 function deriveInsights(s: any) {
-  const sos = s.kpis.find((k: any) => k.id === "sos");
-  const topCat = s.categoryPerformance.slice().sort((a: any, b: any) => b.sos - a.sos)[0];
+  const coverageKpi = s.kpis.find((k: any) => k.id === "avgcoverage");
+  const topCat = s.categoryPerformance.slice().sort((a: any, b: any) => b.coverage - a.coverage)[0];
   const lowAvail = s.products.filter((p: any) => p.inStockRate < 95);
   const weakContent = s.products.filter((p: any) => p.contentScore < 80);
   const ownIndex = s.products.length
@@ -1559,11 +1573,11 @@ function deriveInsights(s: any) {
 
   const list: any[] = [];
   list.push({
-    id: "i-sos",
-    kind: sos.delta >= 0 ? "positive" : "warning",
-    title: sos.delta >= 0 ? "Search visibility improved" : "Search visibility slipped",
-    body: "Share of search " + (sos.delta >= 0 ? "increased " : "fell ") + Math.abs(sos.delta).toFixed(1) +
-      " pts over the period, led by " + topCat.category + " at " + topCat.sos.toFixed(1) + "% share.",
+    id: "i-coverage",
+    kind: coverageKpi.value > 0 ? "positive" : "warning",
+    title: coverageKpi.value > 0 ? "Keyword coverage tracked" : "Low keyword coverage",
+    body: "SKUs surfaced under an average of " + coverageKpi.value.toFixed(1) + " of 10 tracked keywords this period, led by " +
+      topCat.category + " at " + (topCat.coverage / 10).toFixed(1) + " of 10.",
     action: "View details", target: "sales",
   });
   list.push({
@@ -1678,8 +1692,11 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     const rr = rowRng(key, "shelfRetailer", rt.id);
     const b = RETAILER_BIAS[rt.id];
     const own = catalog.filter((p) => p.retailer === rt.id && (!category || p.category === category)).map((p) => withShelfMetrics(productFor(p)));
-    const realVisibility = realCurrentValueSos(rt.id, period, dateRange, rangeMatch?.idx, category);
-    const visibility = realVisibility != null ? round(realVisibility, 1) : round(clamp(0.3 + b.sos + (rr() - 0.5) * 0.4, 0, 3), 1);
+    // Real -- average keywordCoverage (0-10) across this retailer's own
+    // SKUs, expressed as a % (same convention as byCategory below, and as
+    // snapshot()'s retailerPerformance.coverage -- Search Visibility (sos)
+    // is retired from this formula, kept only in the backend).
+    const visibility = own.length ? round(avg(own, (p) => p.keywordCoverage, 2) * 10, 1) : round(2 + rr() * 3, 1);
     const realAvailability = realCurrentValue(rt.id, "stockRate", period, dateRange, wideMatch?.idx, category);
     const realContent = realCurrentValue(rt.id, "content", period, dateRange, wideMatch?.idx, category);
     const realRating = realCurrentValue(rt.id, "rating", period, dateRange, wideMatch?.idx, category);
@@ -1691,9 +1708,11 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     const buyBoxPresence = realBuyBox != null ? round(realBuyBox, 1) : (own.length ? Math.round((own.filter((p) => p.buyBox).length / own.length) * 100) : Math.round(60 + rr() * 30));
     const avgPrice = realCurrentAvgPrice(rt.id, period, dateRange, wideMatch?.idx, category) ?? (own.length ? avg(own, (p) => p.price, 2) : 0);
     // Same formula/weights/clamp as snapshot()'s retailerPerformance
-    // overall -- see the comment there.
+    // overall -- see the comment there. visibility is now a real 0-100
+    // Keyword Coverage percentage (matching byCategory below), not the
+    // old 0-3ish Search Visibility scale, hence /100 not /20.
     const shelfScore = clamp(Math.round(
-      (visibility / 20) * 25 + (availability / 100) * 30 + (content / 100) * 25 + (rating / 5) * 20
+      (visibility / 100) * 25 + (availability / 100) * 30 + (content / 100) * 25 + (rating / 5) * 20
     ), 30, 100);
     return {
       id: rt.id, name: rt.name, skus: own.length, visibility, availability, content, rating, priceIndex, buyBoxPresence, avgPrice, shelfScore,

@@ -137,7 +137,7 @@ export interface KpiVM {
  *  KpiCard component renders. Ported verbatim from Component#kpiCard. */
 export function kpiCard(k: { id: string; label: string; unit: string; value: number; delta: number; target: number; spark: number[]; labels?: string[] }, sparkFn: (vals: number[]) => { d: string; area: string; points: Array<{ x: number; y: number }>; W: number }): KpiVM {
   const inverted = ["oos", "rank", "gap", "issues", "pidx"].indexOf(k.id) >= 0;
-  const digits = k.id === "rating" || k.id === "pidx" ? 2 : (k.id === "rank" || k.unit === "%") ? 1 : 0;
+  const digits = k.id === "rating" || k.id === "pidx" ? 2 : (k.id === "rank" || k.id === "avgcoverage" || k.unit === "%") ? 1 : 0;
   const up = k.delta >= 0;
   const good = inverted ? !up : up;
   const sp = sparkFn(k.spark);

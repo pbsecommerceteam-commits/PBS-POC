@@ -37,24 +37,32 @@ export default function ReviewsProducts() {
   const navigate = useNavigate();
   const [stars, setStars] = useState<string[]>([]);
   const [stock, setStock] = useState<string[]>([]);
+  const [brand, setBrand] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
 
   const starCounts: Record<string, number> = {};
   products.forEach((p) => { const s = starOf(p); starCounts[s] = (starCounts[s] || 0) + 1; });
   const stockCounts: Record<string, number> = {};
   products.forEach((p) => { stockCounts[p.stockStatus] = (stockCounts[p.stockStatus] || 0) + 1; });
+  const brandCounts: Record<string, number> = {};
+  products.forEach((p) => { brandCounts[p.brand] = (brandCounts[p.brand] || 0) + 1; });
 
   const facets: FacetGroup[] = [
     { id: "stars", title: "Star rating", selected: stars, onChange: setStars, options: STAR_BUCKETS.map((id) => ({ id, label: id + " star" + (id === "1" ? "" : "s"), count: starCounts[id] || 0 })) },
     { id: "stock", title: "Stock status", selected: stock, onChange: setStock, options: ["In Stock", "Low Stock", "Out of Stock"].map((id) => ({ id, label: id, count: stockCounts[id] || 0 })) },
+    { id: "brand", title: "Brand", selected: brand, onChange: setBrand, options: Object.keys(brandCounts).sort().map((id) => ({ id, label: id, count: brandCounts[id] || 0 })) },
   ];
 
+  const q = search.trim().toLowerCase();
   const all: Product[] = useMemo(() => products.filter((p) =>
     (stars.length === 0 || stars.includes(starOf(p))) &&
-    (stock.length === 0 || stock.includes(p.stockStatus)),
-  ), [products, stars, stock]);
+    (stock.length === 0 || stock.includes(p.stockStatus)) &&
+    (brand.length === 0 || brand.includes(p.brand)) &&
+    (!q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)),
+  ), [products, stars, stock, brand, q]);
 
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
-    all, productSorters, "rating", 8, [stars, stock].join("|"),
+    all, productSorters, "rating", 8, [stars, stock, brand, q].join("|"),
   );
 
   /* Hands the shared header's Export button to THIS page's current
@@ -80,10 +88,13 @@ export default function ReviewsProducts() {
 
   return (
     <div style={{ display: "flex", gap: "var(--app-gap)", alignItems: "flex-start" }}>
-      <FacetPanel groups={facets} onClearAll={() => { setStars([]); setStock([]); }} />
+      <FacetPanel groups={facets} onClearAll={() => { setStars([]); setStock([]); setBrand([]); setSearch(""); }} />
       <Card padding="20px 22px 14px" style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
           <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Products</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{total} of {products.length} tracked SKUs</div></div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <input className="input" placeholder="Search product, SKU, ASIN…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minHeight: 32, fontSize: 12.5, maxWidth: 320 }} />
         </div>
         <SortableTable columns={REVIEWS_COLUMNS} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} resizable wrap />
         {all.length === 0 && (

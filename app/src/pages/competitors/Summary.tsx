@@ -2,24 +2,23 @@ import { useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { KpiCard } from "../../components/ui/KpiCard";
-import { ChartCard } from "../../components/charts/ChartCard";
 import { DrilldownModal } from "../../components/ui/DrilldownModal";
-import { useChartHover } from "../../hooks/useChartHover";
-import { lineChart, spark } from "../../lib/charts";
-import { kpiCard, cell, table, seriesToCsv, downloadCsv, type TableConfig } from "../../lib/format";
+import { spark } from "../../lib/charts";
+import { kpiCard, cell, table, type TableConfig } from "../../lib/format";
 import { REAL_BUYBOX_COMPETITOR } from "../../data/mockData";
-import { useUi } from "../../context/UiContext";
 import type { CompetitorsContext } from "./Layout";
 
+/* Search Visibility (the "sos"/"gap" KPIs and the Search Visibility Trend
+   chart this page used to show) is retired from the frontend -- kept
+   computed in mockData.ts for any future/backend use, but no longer
+   rendered or read here. Avg Keyword Coverage (real) takes the first
+   tile's place instead of a KPI-shaped gap. */
 export default function CompetitorsSummary() {
   const { snap } = useOutletContext<CompetitorsContext>();
-  const { hover, onEnter, onLeave } = useChartHover();
   const navigate = useNavigate();
-  const { toast } = useUi();
   const [drill, setDrill] = useState<TableConfig | null>(null);
 
-  const sos = snap.kpis.find((k: any) => k.id === "sos");
-  const gap = snap.kpis.find((k: any) => k.id === "gap");
+  const avgCoverage = snap.kpis.find((k: any) => k.id === "avgcoverage");
   const { skusTracked, skusLost, topSeller } = snap.buyBoxLoss;
   const buyBoxLostProducts = snap.products
     .filter((p: any) => REAL_BUYBOX_COMPETITOR[p.id])
@@ -34,35 +33,16 @@ export default function CompetitorsSummary() {
       cell(daysWon + " of 30", { align: "right" }),
       cell(p.buyBoxRate + "%", { align: "right", color: p.buyBoxRate < 50 ? "var(--status-negative-fg)" : "inherit" }),
     ] })));
-  /* Axis scaled to the actual data instead of a fixed 0-105 -- Search
-     Visibility's real scale dropped from ~90% to a few percent once it
-     was redefined as "our own results / total results" (see
-     REAL_SOS_WEEKLY), so a 0-100 axis would flatten every series into an
-     unreadable line along the bottom. */
-  const visVals = snap.visibility.series.flatMap((s: any) => s.values as number[]);
-  const visHi = Math.max(5, Math.ceil(Math.max(...visVals, 1) + 1));
-  const chart = lineChart({ id: "vis", title: "Search Visibility Trend", subtitle: "Share of search across the tracked keyword set · Illustrative — no resolvable competitor entity in the raw crawl",
-    labels: snap.visibility.labels, lo: 0, hi: visHi, ticks: [0, visHi / 4, visHi / 2, (visHi * 3) / 4, visHi], fmt: (v) => v.toFixed(1) + "%",
-    series: snap.visibility.series, previous: snap.visibility.previous, target: 20, span: "1 / -1" }, hover, onEnter);
-  const exportChart = () => {
-    const series = snap.visibility.series.map((s: any) => ({ name: s.name, values: s.values }));
-    downloadCsv("shelfline-search-visibility-trend.csv", seriesToCsv(snap.visibility.labels, series));
-    toast("Exported Search Visibility Trend.");
-  };
 
   return (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,238px),1fr))", gap: "var(--app-gap)" }}>
-        <KpiCard k={kpiCard(sos, spark)} />
-        <KpiCard k={kpiCard(gap, spark)} />
+        <KpiCard k={kpiCard(avgCoverage, spark)} />
         <Card padding="18px 20px" interactive onClick={() => setDrill(buyBoxLostTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5 }}>SKUs with 3P Buy Box Loss</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: skusLost > 0 ? "var(--status-negative-fg)" : "inherit" }}>{skusLost}<span style={{ fontSize: 16, fontWeight: 500 }}> / {skusTracked}</span></div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>{topSeller ? "Real — top 3P seller: " + topSeller : "Real — no 3P buy-box loss in scope"}</div>
         </Card>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
-        <ChartCard c={chart} onLeave={onLeave} onExportCsv={exportChart} />
       </div>
 
       {drill && <DrilldownModal t={drill} onClose={() => setDrill(null)} />}

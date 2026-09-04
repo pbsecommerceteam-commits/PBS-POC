@@ -34,7 +34,10 @@ export default function Overview() {
   const navigate = useNavigate();
   const [stockFilter, setStockFilter] = useState<StockStatus | "All">("All");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [brandFilter, setBrandFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+
+  const brands = useMemo(() => (snap ? Array.from(new Set(snap.products.map((p: Product) => p.brand))).sort() as string[] : []), [snap]);
 
   const all: Product[] = useMemo(() => {
     if (!snap) return [];
@@ -42,12 +45,13 @@ export default function Overview() {
     return snap.products.filter((p: Product) =>
       (stockFilter === "All" || p.stockStatus === stockFilter) &&
       (!categoryFilter || p.category === categoryFilter) &&
+      (!brandFilter || p.brand === brandFilter) &&
       (!q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q)),
     );
-  }, [snap, stockFilter, categoryFilter, searchTerm]);
+  }, [snap, stockFilter, categoryFilter, brandFilter, searchTerm]);
 
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
-    all, productSorters, "keywordCoverage", 8, [stockFilter, categoryFilter, searchTerm].join("|"),
+    all, productSorters, "keywordCoverage", 8, [stockFilter, categoryFilter, brandFilter, searchTerm].join("|"),
   );
 
   if (!snap) return <PageShell title="Overview" subtitle="Monitor digital shelf health across your retailers, products and categories."><div /></PageShell>;
@@ -93,7 +97,7 @@ export default function Overview() {
       exportDisabled={all.length === 0}
     >
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,238px),1fr))", gap: "var(--app-gap)" }}>
-        {["sos", "instock", "pidx", "content", "rating", "buybox"].map((id) => <KpiCard key={id} k={kpiCard(kpi(id), spark)} />)}
+        {["avgcoverage", "instock", "pidx", "content", "rating", "buybox"].map((id) => <KpiCard key={id} k={kpiCard(kpi(id), spark)} />)}
       </div>
 
       <section>
@@ -121,12 +125,12 @@ export default function Overview() {
         </div>
         <div style={{ overflowX: "auto" }}>
           <table className="sl-table">
-            <thead><tr><th>Retailer</th><th style={{ textAlign: "right" }}>Share of search</th><th style={{ textAlign: "right" }}>In stock</th><th style={{ textAlign: "right" }}>Content</th><th style={{ textAlign: "right" }}>Rating</th><th style={{ textAlign: "right", minWidth: 140 }}>Overall score</th></tr></thead>
+            <thead><tr><th>Retailer</th><th style={{ textAlign: "right" }}>Keyword coverage</th><th style={{ textAlign: "right" }}>In stock</th><th style={{ textAlign: "right" }}>Content</th><th style={{ textAlign: "right" }}>Rating</th><th style={{ textAlign: "right", minWidth: 140 }}>Overall score</th></tr></thead>
             <tbody>
               {snap.retailerPerformance.map((r: any) => (
                 <tr className="sl-row is-clickable" key={r.id} onClick={() => { setRetailer(r.id); toast("Scoped to " + r.name + "."); }}>
                   <td><div className="sl-table-name">{r.name}</div><div className="sl-table-sub">{r.skus} tracked SKUs</div></td>
-                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}><span style={{ fontWeight: 600 }}>{pct(r.sos)}</span> <span style={{ fontSize: 11.5, marginLeft: 6, color: deltaColor(r.sosDelta) }}>{delta(r.sosDelta)}</span></td>
+                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}><span style={{ fontWeight: 600 }}>{pct(r.coverage)}</span></td>
                   <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{pct(r.inStock)} <span style={{ fontSize: 11.5, marginLeft: 6, color: deltaColor(r.inStockDelta) }}>{delta(r.inStockDelta)}</span></td>
                   <td style={{ textAlign: "right" }}>{r.content}%</td>
                   <td style={{ textAlign: "right" }}>{r.rating.toFixed(2)}</td>
@@ -163,7 +167,7 @@ export default function Overview() {
                 </div>
                 <div className="sl-progress-track" style={{ margin: "10px 0" }}><span className="sl-progress-fill" style={{ width: c.overall + "%" }}></span></div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 11.5 }} className="sl-muted">
-                  <span>Visibility {pct(c.sos)}</span>
+                  <span>Coverage {pct(c.coverage)}</span>
                   <span>Avail. {pct(c.availability)}</span>
                   <span>Content {c.content}%</span>
                 </div>
@@ -184,9 +188,13 @@ export default function Overview() {
               className="input" type="text" placeholder="Search products, SKUs, brands…" value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)} style={{ minWidth: 200, height: 32, fontSize: 12.5 }}
             />
+            <select className="input" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)} style={{ height: 32, fontSize: 12.5, width: 160 }}>
+              <option value="">All brands</option>
+              {brands.map((b) => <option key={b} value={b}>{b}</option>)}
+            </select>
             <Tabs options={CATEGORY_TABS} value={categoryFilter} onChange={setCategoryFilter} size="sm" />
             <Tabs options={STOCK_TABS} value={stockFilter} onChange={setStockFilter} size="sm" />
-            {(stockFilter !== "All" || categoryFilter || searchTerm) && <button className="btn btn-ghost" onClick={() => { setStockFilter("All"); setCategoryFilter(""); setSearchTerm(""); toast("Filters cleared."); }} style={{ fontSize: 12.5 }}>Clear filters</button>}
+            {(stockFilter !== "All" || categoryFilter || brandFilter || searchTerm) && <button className="btn btn-ghost" onClick={() => { setStockFilter("All"); setCategoryFilter(""); setBrandFilter(""); setSearchTerm(""); toast("Filters cleared."); }} style={{ fontSize: 12.5 }}>Clear filters</button>}
           </div>
         </div>
         <SortableTable columns={columns} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} resizable wrap />
@@ -194,7 +202,7 @@ export default function Overview() {
           <div style={{ padding: "32px 4px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
             <div style={{ fontWeight: 600, fontSize: 15 }}>No products match these filters</div>
             <div className="sl-muted" style={{ fontSize: 13 }}>Try a different stock status, category, retailer or search term.</div>
-            <button className="btn btn-secondary" onClick={() => { setStockFilter("All"); setCategoryFilter(""); setSearchTerm(""); }}>Reset filters</button>
+            <button className="btn btn-secondary" onClick={() => { setStockFilter("All"); setCategoryFilter(""); setBrandFilter(""); setSearchTerm(""); }}>Reset filters</button>
           </div>
         )}
         <Pagination page={page} totalPages={totalPages} total={total} pageSize={8} onPage={setPage} />

@@ -9,7 +9,7 @@ import { useUi } from "../../context/UiContext";
 import { useChartHover } from "../../hooks/useChartHover";
 import { lineChart, barChart, spark } from "../../lib/charts";
 import { kpiCard, cell, delta, deltaColor, seriesToCsv, downloadCsv } from "../../lib/format";
-import { REAL_BUYBOX_COMPETITOR, REAL_BUYBOX_TIMELINE, REAL_PRICE_TIMELINE } from "../../data/mockData";
+import { REAL_BUYBOX_COMPETITOR, REAL_BUYBOX_TIMELINE, REAL_PRICE_TIMELINE, REAL_PRODUCT_WEEKLY, REAL_WEEK_LABELS } from "../../data/mockData";
 import type { SalesShareContext } from "./Layout";
 import type { Product } from "../../models/types";
 
@@ -19,11 +19,13 @@ const fmtDate = (iso: string) => { const [, m, d] = iso.split("-").map(Number); 
 /** Real day-by-day buy-box holder behind a SKU's Competitor Days Won count
  *  (see REAL_BUYBOX_TIMELINE / build_mock_data.py) -- exactly which dates
  *  we held it vs. which dates the named competitor did, not just the
- *  aggregate count. */
-function buyBoxDateDetail(pid: string) {
+ *  aggregate count. The raw timeline marks our own days "You"; shown here
+ *  as the SKU's actual retailer name instead, since every other holder in
+ *  the column is already a real named entity. */
+function buyBoxDateDetail(pid: string, retailerName: string) {
   const timeline = (REAL_BUYBOX_TIMELINE as any)[pid];
   if (!timeline || !timeline.length) return undefined;
-  return { cols: ["Date", "Held By"], rows: timeline.map((e: any) => [fmtDate(e.date), e.holder]) };
+  return { cols: ["Date", "Held By"], rows: timeline.map((e: any) => [fmtDate(e.date), e.holder === "You" ? retailerName : e.holder]) };
 }
 
 /** Real day-by-day price behind a SKU's whole-month priceChangePct (see
@@ -55,6 +57,8 @@ export default function SalesShareSummary() {
   const [catSort, setCatSort] = useState({ key: "overall", dir: "desc" as "asc" | "desc" });
   const [drill, setDrill] = useState<DrillTableConfig | null>(null);
   const goToProduct = (id: string) => { setDrill(null); navigate("/product/" + id); };
+  const [priceTrendSku, setPriceTrendSku] = useState("");
+  const [priceTrendCategory, setPriceTrendCategory] = useState("");
 
   const pidx = sh.kpis.find((k: any) => k.id === "pidx");
   const priceIncreasedProducts = sh.products.filter((p: Product) => p.priceChangePct > 0).sort((a: Product, b: Product) => b.priceChangePct - a.priceChangePct);
@@ -149,7 +153,7 @@ export default function SalesShareSummary() {
       cell(seller, { align: "center" }),
       cell(daysWon + " of 30", { align: "center" }),
       cell(p.buyBoxRate + "%", { align: "center", color: p.buyBoxRate < 50 ? "var(--status-negative-fg)" : "inherit" }),
-    ], detail: buyBoxDateDetail(p.id) })),
+    ], detail: buyBoxDateDetail(p.id, p.retailerName) })),
   };
   const discountTable: DrillTableConfig = {
     title: "Average Price Discount", subtitle: `${withList.length} of ${sh.products.length} SKUs posted a list price`,
@@ -196,24 +200,59 @@ export default function SalesShareSummary() {
      price floor a goal. */
   const avgMapPrice = withMap.length ? withMap.reduce((a: number, p: Product) => a + p.mapPrice!, 0) / withMap.length : null;
 
-  const priceHi = Math.max(40, Math.ceil((Math.max(pidx.value, avgMapPrice ?? 0) + 10) / 10) * 10);
+  /* SKU/Category scoping for Average Price Trend -- defaults to the
+     portfolio-wide real pooled series (pidx.spark); picking a SKU or
+     category switches to that specific real weekly price series from
+     REAL_PRODUCT_WEEKLY instead. Always the full real Sep 1-29 window
+     (not narrowed by an active custom date range), since that per-SKU
+     weekly table has no separate range-matched view of its own -- the
+     subtitle says so explicitly whenever a scope is active. */
+  const skuMatch = priceTrendSku.trim()
+    ? sh.products.find((p: Product) => (p.id + " " + p.name).toLowerCase().includes(priceTrendSku.trim().toLowerCase()))
+    : null;
+  const catProducts = priceTrendCategory ? sh.products.filter((p: Product) => p.category === priceTrendCategory) : [];
+
+  let trendLabels = sh.labels, trendValues = pidx.spark, trendMap = avgMapPrice;
+  let trendTitle = "Average Price Trend", trendSubtitle = "Real pooled average price across the selected period";
+  let trendValueLabel = "Average price", trendMapLabel = "Avg MAP Price";
+  if (skuMatch) {
+    const w = (REAL_PRODUCT_WEEKLY as any)[skuMatch.id];
+    if (w) {
+      trendLabels = REAL_WEEK_LABELS; trendValues = w.price; trendMap = skuMatch.mapPrice ?? null;
+      trendTitle = skuMatch.name; trendSubtitle = "Real crawl price, Sep 1–29 · " + skuMatch.retailerName;
+      trendValueLabel = "Price"; trendMapLabel = "MAP Price";
+    }
+  } else if (priceTrendCategory && catProducts.length) {
+    const withSeries = catProducts.map((p: Product) => (REAL_PRODUCT_WEEKLY as any)[p.id]?.price).filter((s: any): s is number[] => !!s);
+    if (withSeries.length) {
+      trendLabels = REAL_WEEK_LABELS;
+      trendValues = REAL_WEEK_LABELS.map((_l, i) => withSeries.reduce((a: number, s: number[]) => a + s[i], 0) / withSeries.length);
+      const catMapVals = catProducts.filter((p: Product) => p.mapPrice != null).map((p: Product) => p.mapPrice!);
+      trendMap = catMapVals.length ? catMapVals.reduce((a: number, v: number) => a + v, 0) / catMapVals.length : null;
+      trendTitle = priceTrendCategory + " Average Price Trend"; trendSubtitle = "Real pooled average price, Sep 1–29 · " + priceTrendCategory + " category";
+      trendValueLabel = "Average price"; trendMapLabel = "Avg MAP Price";
+    }
+  }
+  const trendLast = trendValues[trendValues.length - 1], trendFirst = trendValues[0];
+
+  const priceHi = Math.max(40, Math.ceil((Math.max(...trendValues, trendMap ?? 0) + 10) / 10) * 10);
   const priceTrend = lineChart({
-    id: "price-trend", title: "Average Price Trend", subtitle: "Real pooled average price across the selected period",
-    labels: sh.labels, lo: 0, hi: priceHi, ticks: [0, priceHi / 4, priceHi / 2, (priceHi * 3) / 4, priceHi], fmt: (v) => "$" + v.toFixed(2), hideLegend: true,
-    series: [{ name: "Average price", values: pidx.spark }], span: "1 / -1",
-    target: avgMapPrice ?? undefined, targetLabel: "Avg MAP Price",
-    badge: avgMapPrice != null ? "Avg MAP $" + avgMapPrice.toFixed(2) : undefined,
+    id: "price-trend", title: trendTitle, subtitle: trendSubtitle,
+    labels: trendLabels, lo: 0, hi: priceHi, ticks: [0, priceHi / 4, priceHi / 2, (priceHi * 3) / 4, priceHi], fmt: (v) => "$" + v.toFixed(2), hideLegend: true,
+    series: [{ name: trendValueLabel, values: trendValues }], span: "1 / -1",
+    target: trendMap ?? undefined, targetLabel: trendMapLabel,
+    badge: trendMap != null ? trendMapLabel + " $" + trendMap.toFixed(2) : undefined,
     footer: [
-      { label: "Average price now", value: "$" + pidx.value.toFixed(2), color: "var(--status-positive-fg)" },
-      { label: "Previous period", value: "$" + (pidx.value - pidx.delta).toFixed(2), color: "inherit" },
-      { label: "Change", value: (pidx.delta >= 0 ? "↑ " : "↓ ") + "$" + Math.abs(pidx.delta).toFixed(2), color: deltaColor(pidx.delta, true) },
+      { label: trendValueLabel + " now", value: "$" + trendLast.toFixed(2), color: "var(--status-positive-fg)" },
+      { label: "Start of period", value: "$" + trendFirst.toFixed(2), color: "inherit" },
+      { label: "Change", value: (trendLast >= trendFirst ? "↑ " : "↓ ") + "$" + Math.abs(trendLast - trendFirst).toFixed(2), color: deltaColor(trendLast - trendFirst, true) },
     ],
   }, hover, onEnter);
   const exportPriceTrend = () => {
-    const series = [{ name: "Average Price", values: pidx.spark }];
-    const extra = avgMapPrice != null ? { name: "Avg MAP Price", value: Number(avgMapPrice.toFixed(2)) } : undefined;
-    downloadCsv("shelfline-average-price-trend.csv", seriesToCsv(sh.labels, series, extra));
-    toast("Exported Average Price Trend.");
+    const series = [{ name: trendValueLabel, values: trendValues }];
+    const extra = trendMap != null ? { name: trendMapLabel, value: Number(trendMap.toFixed(2)) } : undefined;
+    downloadCsv("shelfline-average-price-trend.csv", seriesToCsv(trendLabels, series, extra));
+    toast("Exported " + trendTitle + ".");
   };
 
   const retailerHi = Math.max(20, Math.ceil((Math.max(...sh.retailers.map((r: any) => r.avgPrice)) + 5) / 5) * 5);
@@ -286,6 +325,29 @@ export default function SalesShareSummary() {
       </div>
 
       {drill && <DrilldownModal t={drill} onClose={() => setDrill(null)} />}
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <span className="sl-muted" style={{ fontSize: 12.5 }}>Average Price Trend scope:</span>
+        <input
+          className="input" list="price-trend-sku-options" placeholder="Search a SKU or product…"
+          value={priceTrendSku} onChange={(e) => { setPriceTrendSku(e.target.value); if (e.target.value) setPriceTrendCategory(""); }}
+          style={{ minHeight: 32, fontSize: 12.5, width: 240 }}
+        />
+        <datalist id="price-trend-sku-options">
+          {sh.products.map((p: Product) => <option key={p.id} value={p.name}>{p.id.toUpperCase()}</option>)}
+        </datalist>
+        <select
+          className="input" value={priceTrendCategory}
+          onChange={(e) => { setPriceTrendCategory(e.target.value); if (e.target.value) setPriceTrendSku(""); }}
+          style={{ minHeight: 32, fontSize: 12.5, width: 160 }}
+        >
+          <option value="">All categories</option>
+          {sh.categories.map((c: any) => <option key={c.category} value={c.category}>{c.category}</option>)}
+        </select>
+        {(priceTrendSku || priceTrendCategory) && (
+          <button className="btn btn-ghost" onClick={() => { setPriceTrendSku(""); setPriceTrendCategory(""); }} style={{ fontSize: 12.5 }}>Reset to portfolio</button>
+        )}
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
         <ChartCard c={priceTrend} onLeave={onLeave} onExportCsv={exportPriceTrend} />
