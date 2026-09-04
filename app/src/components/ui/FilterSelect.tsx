@@ -10,14 +10,21 @@ import { useEffect, useRef, useState } from "react";
  *  click-outside-to-close popover pattern GlobalHeader's notifications/
  *  profile menus and ColumnPicker already use) guarantees the same
  *  appearance regardless of OS/browser. */
-export function FilterSelect({ label, value, onChange, options, width }: {
+export function FilterSelect({ label, value, onChange, options, width, searchable, searchPlaceholder }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  options: Array<{ id: string; name: string }>;
+  options: Array<{ id: string; name: string; sub?: string }>;
   width?: number;
+  /** Adds a type-to-filter box at the top of the popover -- for a list too
+   *  long to scan (e.g. every tracked SKU), matched against both `name`
+   *  and, when present, each option's `sub` (a secondary identifier like a
+   *  retailer's own native product id). */
+  searchable?: boolean;
+  searchPlaceholder?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
   const current = options.find((o) => o.id === value);
 
@@ -30,6 +37,13 @@ export function FilterSelect({ label, value, onChange, options, width }: {
     document.addEventListener("keydown", onKey);
     return () => { document.removeEventListener("click", onClick); document.removeEventListener("keydown", onKey); };
   }, []);
+
+  useEffect(() => { if (!open) setQuery(""); }, [open]);
+
+  const q = query.trim().toLowerCase();
+  const visibleOptions = searchable && q
+    ? options.filter((o) => o.name.toLowerCase().includes(q) || (o.sub ?? "").toLowerCase().includes(q))
+    : options;
 
   return (
     <div ref={rootRef} style={{ position: "relative", flex: "none" }}>
@@ -49,8 +63,17 @@ export function FilterSelect({ label, value, onChange, options, width }: {
         </svg>
       </button>
       {open && (
-        <div className="sl-panel sl-pop-in" role="listbox" style={{ position: "absolute", top: 40, left: 0, minWidth: Math.max(width ?? 0, 180), maxHeight: 320, overflowY: "auto", zIndex: 30, padding: "6px 0" }}>
-          {options.map((o) => (
+        <div className="sl-panel sl-pop-in" role="listbox" style={{ position: "absolute", top: 40, left: 0, minWidth: Math.max(width ?? 0, 240), maxHeight: 360, overflowY: "auto", zIndex: 30, padding: "6px 0" }}>
+          {searchable && (
+            <div style={{ padding: "2px 10px 8px", position: "sticky", top: 0, background: "var(--surface-elevated)" }}>
+              <input
+                autoFocus className="input" placeholder={searchPlaceholder ?? "Search…"} value={query}
+                onChange={(e) => setQuery(e.target.value)} onClick={(e) => e.stopPropagation()}
+                style={{ minHeight: 30, fontSize: 12.5, width: "100%" }}
+              />
+            </div>
+          )}
+          {visibleOptions.map((o) => (
             <button
               key={o.id}
               type="button"
@@ -58,11 +81,13 @@ export function FilterSelect({ label, value, onChange, options, width }: {
               aria-selected={o.id === value}
               className="sl-palette__row"
               onClick={() => { onChange(o.id); setOpen(false); }}
-              style={{ width: "100%", justifyContent: "space-between", fontWeight: o.id === value ? 600 : 400, color: o.id === value ? "var(--color-accent-700)" : "var(--text-primary)" }}
+              style={{ width: "100%", justifyContent: "space-between", gap: 10, fontWeight: o.id === value ? 600 : 400, color: o.id === value ? "var(--color-accent-700)" : "var(--text-primary)" }}
             >
-              {o.name}
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.name}</span>
+              {o.sub && <span className="sl-faint" style={{ fontSize: 11, flex: "none" }}>{o.sub}</span>}
             </button>
           ))}
+          {searchable && visibleOptions.length === 0 && <div className="sl-muted" style={{ fontSize: 12.5, padding: "8px 12px" }}>No matches.</div>}
         </div>
       )}
     </div>

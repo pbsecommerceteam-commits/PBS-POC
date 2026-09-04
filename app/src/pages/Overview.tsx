@@ -29,7 +29,7 @@ const CATEGORY_TABS: Array<{ id: string; label: string }> = [
 
 export default function Overview() {
   const { snap } = useDashboardData();
-  const { setRetailer } = useFilters();
+  const { setRetailer, sku, setSku } = useFilters();
   const { toast } = useUi();
   const navigate = useNavigate();
   const [stockFilter, setStockFilter] = useState<StockStatus | "All">("All");
@@ -39,8 +39,15 @@ export default function Overview() {
 
   const brands = useMemo(() => (snap ? Array.from(new Set(snap.products.map((p: Product) => p.brand))).sort() as string[] : []), [snap]);
 
+  /* The global header's SKU filter pinpoints one item -- when set, it wins
+     outright over every local tab/search on this page (that's the point:
+     an unambiguous "show me this exact product", not one more AND'd-in
+     condition that a stale local filter could zero out). Auto-corrected
+     retailer/category (see FiltersContext.setSku) means the matching
+     product is always present in snap.products by the time this runs. */
   const all: Product[] = useMemo(() => {
     if (!snap) return [];
+    if (sku) return snap.products.filter((p: Product) => p.id === sku);
     const q = searchTerm.trim().toLowerCase();
     return snap.products.filter((p: Product) =>
       (stockFilter === "All" || p.stockStatus === stockFilter) &&
@@ -48,10 +55,10 @@ export default function Overview() {
       (!brandFilter || p.brand === brandFilter) &&
       (!q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q)),
     );
-  }, [snap, stockFilter, categoryFilter, brandFilter, searchTerm]);
+  }, [snap, sku, stockFilter, categoryFilter, brandFilter, searchTerm]);
 
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
-    all, productSorters, "keywordCoverage", 8, [stockFilter, categoryFilter, brandFilter, searchTerm].join("|"),
+    all, productSorters, "keywordCoverage", 8, [sku, stockFilter, categoryFilter, brandFilter, searchTerm].join("|"),
   );
 
   if (!snap) return <PageShell title="Overview" subtitle="Monitor digital shelf health across your retailers, products and categories."><div /></PageShell>;
@@ -181,28 +188,34 @@ export default function Overview() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Product performance</h3>
-            <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{total} of {snap.products.length} tracked SKUs{categoryFilter ? ` · ${categoryFilter}` : ""}</div>
+            <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+              {sku ? "Pinned to one SKU via the header filter" : `${total} of ${snap.products.length} tracked SKUs${categoryFilter ? ` · ${categoryFilter}` : ""}`}
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <input
-              className="input" type="text" placeholder="Search products, SKUs, brands…" value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)} style={{ minWidth: 200, height: 32, fontSize: 12.5 }}
-            />
-            <select className="input" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)} style={{ height: 32, fontSize: 12.5, width: 160 }}>
-              <option value="">All brands</option>
-              {brands.map((b) => <option key={b} value={b}>{b}</option>)}
-            </select>
-            <Tabs options={CATEGORY_TABS} value={categoryFilter} onChange={setCategoryFilter} size="sm" />
-            <Tabs options={STOCK_TABS} value={stockFilter} onChange={setStockFilter} size="sm" />
-            {(stockFilter !== "All" || categoryFilter || brandFilter || searchTerm) && <button className="btn btn-ghost" onClick={() => { setStockFilter("All"); setCategoryFilter(""); setBrandFilter(""); setSearchTerm(""); toast("Filters cleared."); }} style={{ fontSize: 12.5 }}>Clear filters</button>}
-          </div>
+          {sku ? (
+            <button className="btn btn-ghost" onClick={() => setSku("")} style={{ fontSize: 12.5 }}>Show all products</button>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <input
+                className="input" type="text" placeholder="Search products, SKUs, brands…" value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)} style={{ minWidth: 200, height: 32, fontSize: 12.5 }}
+              />
+              <select className="input" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)} style={{ height: 32, fontSize: 12.5, width: 160 }}>
+                <option value="">All brands</option>
+                {brands.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
+              <Tabs options={CATEGORY_TABS} value={categoryFilter} onChange={setCategoryFilter} size="sm" />
+              <Tabs options={STOCK_TABS} value={stockFilter} onChange={setStockFilter} size="sm" />
+              {(stockFilter !== "All" || categoryFilter || brandFilter || searchTerm) && <button className="btn btn-ghost" onClick={() => { setStockFilter("All"); setCategoryFilter(""); setBrandFilter(""); setSearchTerm(""); toast("Filters cleared."); }} style={{ fontSize: 12.5 }}>Clear filters</button>}
+            </div>
+          )}
         </div>
         <SortableTable columns={columns} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} resizable wrap />
         {all.length === 0 && (
           <div style={{ padding: "32px 4px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
-            <div style={{ fontWeight: 600, fontSize: 15 }}>No products match these filters</div>
-            <div className="sl-muted" style={{ fontSize: 13 }}>Try a different stock status, category, retailer or search term.</div>
-            <button className="btn btn-secondary" onClick={() => { setStockFilter("All"); setCategoryFilter(""); setBrandFilter(""); setSearchTerm(""); }}>Reset filters</button>
+            <div style={{ fontWeight: 600, fontSize: 15 }}>{sku ? "That SKU isn't tracked in the current scope" : "No products match these filters"}</div>
+            <div className="sl-muted" style={{ fontSize: 13 }}>{sku ? "Try clearing the header's SKU filter." : "Try a different stock status, category, retailer or search term."}</div>
+            <button className="btn btn-secondary" onClick={() => { setSku(""); setStockFilter("All"); setCategoryFilter(""); setBrandFilter(""); setSearchTerm(""); }}>Reset filters</button>
           </div>
         )}
         <Pagination page={page} totalPages={totalPages} total={total} pageSize={8} onPage={setPage} />

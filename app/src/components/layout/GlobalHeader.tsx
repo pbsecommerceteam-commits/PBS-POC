@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useFilters } from "../../context/FiltersContext";
 import { useUi } from "../../context/UiContext";
 import { useAuth } from "../../context/AuthContext";
 import { FilterSelect } from "../ui/FilterSelect";
 import { DateRangePicker } from "../ui/DateRangePicker";
 import { SearchPalette } from "./SearchPalette";
-import { user } from "../../data/mockData";
+import { user, catalog } from "../../data/mockData";
 
 const SEVERITY_GROUP: Record<string, { label: string; order: number }> = {
   high: { label: "Critical", order: 0 },
@@ -14,12 +14,31 @@ const SEVERITY_GROUP: Record<string, { label: string; order: number }> = {
   low: { label: "Information", order: 2 },
 };
 
+/* Every tracked SKU, real name + the retailer's own native product id
+   (what the user searches "by retailer ID or Product name") -- built once
+   at module scope since catalog never changes at runtime. */
+const SKU_OPTIONS = [
+  { id: "", name: "All SKUs" },
+  ...catalog.map((p) => ({ id: p.id, name: p.name, sub: p.retailerId || undefined })),
+];
+
 export function GlobalHeader() {
-  const { retailer, category, dateRange, setRetailer, setCategory, setDateRange, retailers, categories } = useFilters();
+  const { retailer, category, dateRange, sku, setRetailer, setCategory, setDateRange, setSku, retailers, categories } = useFilters();
   const categoryOptions = [{ id: "", name: "All categories" }, ...categories.map((c) => ({ id: c, name: c }))];
   const { notifDismissed, notifications, markAllRead } = useUi();
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  /* Picking a SKU is "go look at this one item", not just a background
+     scope change -- jump to Overview (where the product table can show its
+     row) the same way a notification/search-palette pick jumps straight
+     to Product Detail, just staying one level up so the surrounding real
+     portfolio context (retailer/category performance) is still visible. */
+  const onSkuChange = (id: string) => {
+    setSku(id);
+    if (id && location.pathname !== "/") navigate("/");
+  };
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -58,6 +77,7 @@ export function GlobalHeader() {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <FilterSelect label="Retailer" value={retailer} onChange={setRetailer} options={retailers} width={168} />
         <FilterSelect label="Category" value={category} onChange={setCategory} options={categoryOptions} width={178} />
+        <FilterSelect label="SKU" value={sku} onChange={onSkuChange} options={SKU_OPTIONS} width={190} searchable searchPlaceholder="Product name or retailer ID…" />
         <DateRangePicker value={dateRange} onChange={setDateRange} />
       </div>
 
