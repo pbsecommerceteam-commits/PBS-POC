@@ -1,7 +1,6 @@
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { useUi } from "../../context/UiContext";
-import { catalog, retailers, CROSS_RETAILER_MATCH } from "../../data/mockData";
 import type { Product } from "../../models/types";
 import type { SalesShareContext } from "./Layout";
 
@@ -21,52 +20,6 @@ function parseCoupon(raw: string): { dollar: number | null; pct: number | null }
   const pctOnly = raw.match(/^([\d.]+)%?$/);
   if (pctOnly) return { dollar: null, pct: parseFloat(pctOnly[1]) };
   return null;
-}
-
-const retailerName = (id: string) => retailers.find((r) => r.id === id)?.name ?? id;
-
-/* Genuine cross-retailer product matches (same brand, >=45% name overlap,
-   see CROSS_RETAILER_MATCH in mockData.ts). Deliberately one-hop only --
-   each anchor id's own declared matches (exactly the same lookup
-   ProductDetail's retailerPerformance already uses) -- rather than
-   transitively chaining through other products' unrelated matches, which
-   can silently conflate two different near-duplicate SKUs that each
-   happen to fuzzy-match the same third listing. Reads the full catalog
-   rather than the page-scoped sd.products -- a "same product, different
-   retailer" comparison is meaningless once narrowed to a single retailer,
-   so this ignores the retailer filter by design (still honors the
-   category filter below). Clusters are deduped by their member-id set so
-   a symmetric pair (A matches B, B matches A) is only reported once. */
-function buildRetailerPriceSpread(categoryFilter: string) {
-  const catalogById = new Map(catalog.map((c) => [c.id, c] as const));
-  const seen = new Set<string>();
-  const results: Array<{ name: string; lowest: number; lowestRetailer: string; lowestId: string; highest: number; highestRetailer: string }> = [];
-
-  Object.entries(CROSS_RETAILER_MATCH).forEach(([anchorId, matches]) => {
-    const memberIds = Array.from(new Set([anchorId, ...Object.values(matches)]));
-    const dedupeKey = memberIds.slice().sort().join(",");
-    if (seen.has(dedupeKey)) return;
-    seen.add(dedupeKey);
-
-    const items = memberIds.map((id) => catalogById.get(id)).filter((it): it is NonNullable<typeof it> => !!it);
-    const scoped = categoryFilter ? items.filter((it) => it.category === categoryFilter) : items;
-    const priced = scoped
-      .map((it) => ({ item: it, eff: it.currentPrice ?? it.price }))
-      .filter((x) => x.eff != null && x.eff > 0) as Array<{ item: (typeof catalog)[number]; eff: number }>;
-    if (priced.length < 2) return;
-    const lowest = priced.reduce((a, b) => (b.eff < a.eff ? b : a));
-    const highest = priced.reduce((a, b) => (b.eff > a.eff ? b : a));
-    if (lowest.item.id === highest.item.id) return;
-    results.push({
-      name: scoped[0].name,
-      lowest: lowest.eff, lowestRetailer: retailerName(lowest.item.retailer), lowestId: lowest.item.id,
-      highest: highest.eff, highestRetailer: retailerName(highest.item.retailer),
-    });
-  });
-
-  return results
-    .map((r) => ({ ...r, spreadPct: ((r.highest - r.lowest) / r.lowest) * 100 }))
-    .sort((a, b) => b.spreadPct - a.spreadPct);
 }
 
 export default function SalesShareDrivers() {
@@ -111,8 +64,6 @@ export default function SalesShareDrivers() {
   const avgCouponPct = avg(coupons.map((c) => c.parsed.pct!));
   const maxCouponPct = coupons.length ? Math.max(...coupons.map((c) => c.parsed.pct!)) : null;
   const topCoupons = maxCouponPct != null ? coupons.filter((c) => c.parsed.pct === maxCouponPct) : [];
-
-  const priceSpread = buildRetailerPriceSpread(categoryFilter).slice(0, 8);
 
   const largestDiscounts = discounts
     .filter((d) => d.pctOff > 0)
@@ -224,37 +175,6 @@ export default function SalesShareDrivers() {
           )}
         </Card>
       </div>
-
-      <Card padding="20px 22px">
-        <div style={{ marginBottom: 14 }}>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Retailer Price Spread</h3>
-          <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Same product compared across every retailer it's genuinely matched at — ignores the retailer filter by design</div>
-        </div>
-        {priceSpread.length === 0 ? (
-          <div className="sl-muted" style={{ fontSize: 12.5 }}>No cross-retailer matched products in scope.</div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table className="sl-table">
-              <thead><tr>
-                <th style={{ textAlign: "left" }}>Product</th>
-                <th style={{ textAlign: "right" }}>Lowest</th>
-                <th style={{ textAlign: "right" }}>Highest</th>
-                <th style={{ textAlign: "right" }}>Price Spread</th>
-              </tr></thead>
-              <tbody>
-                {priceSpread.map((r) => (
-                  <tr className="sl-row is-clickable" key={r.name + r.lowestId} onClick={() => navigate("/product/" + r.lowestId)}>
-                    <td><div className="sl-table-name">{r.name}</div></td>
-                    <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>${r.lowest.toFixed(2)} <span className="sl-faint">({r.lowestRetailer})</span></td>
-                    <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>${r.highest.toFixed(2)} <span className="sl-faint">({r.highestRetailer})</span></td>
-                    <td style={{ textAlign: "right", fontWeight: 600, color: "var(--status-positive-fg)" }}>{r.spreadPct.toFixed(1)}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
 
       <Card padding="20px 22px">
         <div style={{ marginBottom: 14 }}>

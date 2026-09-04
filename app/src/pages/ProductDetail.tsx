@@ -10,7 +10,7 @@ import { useFilters } from "../context/FiltersContext";
 import { useUi } from "../context/UiContext";
 import { useChartHover } from "../hooks/useChartHover";
 import { lineChart, barChart, spark } from "../lib/charts";
-import { kpiCard, cell, table, pct } from "../lib/format";
+import { kpiCard, cell, table } from "../lib/format";
 import { fetchProduct } from "../data/mockData";
 
 // No user-facing period control exists any more (see FiltersContext) --
@@ -106,21 +106,6 @@ export default function ProductDetail() {
     { label: "Buy Box Ownership 1P", value: p.buyBox ? "Held" : "Lost", sub: detail.note },
   ];
 
-  const retailerPerfTable = table("Retailer comparison", "This exact SKU at its home retailer, plus genuine same-brand matches found elsewhere in our tracked sample — not a claim this product is listed everywhere",
-    [{ label: "Retailer", align: "left" }, { label: "Retailer ID", align: "left" }, { label: "Rank", align: "right" }, { label: "Price", align: "right" },
-     { label: "In Stock", align: "right" }, { label: "Rating", align: "right" }, { label: "Content completeness", align: "right" }, { label: "Listing", align: "left" }, { label: "Item URL", align: "left" }],
-    detail.retailerPerformance.map((r: any) => ({ cells: [
-      cell(r.retailer), cell(r.retailerId || "—"),
-      cell(r.matched ? "#" + r.rank : "—", { align: "right", strong: r.matched }),
-      cell(r.matched ? "$" + r.price.toFixed(2) : "—", { align: "right" }),
-      cell(r.matched ? pct(r.inStock) : "—", { align: "right", color: r.matched && r.inStock >= 98 ? "var(--status-positive-fg)" : "inherit" }),
-      cell(r.matched ? r.rating.toFixed(2) : "—", { align: "right" }), cell(r.matched ? r.content + "%" : "—", { align: "right" }),
-      cell(r.isSelf ? "Home retailer" : r.matched ? "Matched product" : "Not tracked in sample", { tone: r.isSelf ? "positive" : r.matched ? "neutral" : "neutral" }),
-      r.itemUrl
-        ? cell("View listing →", { onClick: () => window.open(r.itemUrl, "_blank", "noopener,noreferrer") })
-        : cell("—"),
-    ] })));
-
   const contentChecklistTable = table("Content checklist", "Requirement-level detail behind the content score",
     [{ label: "Requirement", align: "left" }, { label: "Weight", align: "left" }, { label: "Status", align: "left" }],
     detail.contentBreakdown.map((c: any) => ({ cells: [
@@ -181,7 +166,6 @@ export default function ProductDetail() {
         <ChartCard c={reviewsChart} onLeave={onLeave} />
       </div>
 
-      <DataTable t={retailerPerfTable} />
       <DataTable t={contentChecklistTable} />
     </PageShell>
   );
