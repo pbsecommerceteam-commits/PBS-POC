@@ -97,11 +97,16 @@ export interface KpiVM {
   goalText: string;
   sparkD: string;
   sparkArea: string;
+  sparkW: number;
+  /** One entry per spark point, in the same order as k.spark, for the
+   *  card's hover tooltip -- label is the point's date (empty if the
+   *  caller had none), value is formatted the same way as valueText. */
+  sparkPoints: Array<{ x: number; y: number; label: string; value: string }>;
 }
 
 /** Turns a raw KPI metric (value/delta/target/spark) into everything the
  *  KpiCard component renders. Ported verbatim from Component#kpiCard. */
-export function kpiCard(k: { id: string; label: string; unit: string; value: number; delta: number; target: number; spark: number[] }, sparkFn: (vals: number[]) => { d: string; area: string }): KpiVM {
+export function kpiCard(k: { id: string; label: string; unit: string; value: number; delta: number; target: number; spark: number[]; labels?: string[] }, sparkFn: (vals: number[]) => { d: string; area: string; points: Array<{ x: number; y: number }>; W: number }): KpiVM {
   const inverted = ["oos", "rank", "gap", "issues", "pidx"].indexOf(k.id) >= 0;
   const digits = k.id === "rating" || k.id === "pidx" ? 2 : (k.id === "rank" || k.unit === "%") ? 1 : 0;
   const up = k.delta >= 0;
@@ -123,6 +128,12 @@ export function kpiCard(k: { id: string; label: string; unit: string; value: num
     : k.id === "sales" ? (k.delta >= 0 ? "Above previous period" : "Below previous period")
     : ratio >= 1 ? "On target" : ratio >= 0.95 ? "Near target" : "Below target";
   const isMoney = k.id === "sales";
+  const fmtPoint = (v: number) => (isMoney ? money(v)
+    : k.id === "pidx" ? "$" + v.toFixed(2)
+    : k.id === "reviews" ? Math.round(v).toLocaleString()
+    : v.toFixed(digits).replace("-", "−")) + (isMoney || k.id === "pidx" ? "" : k.unit);
+  const labels = k.labels || [];
+  const sparkPoints = sp.points.map((pt, i) => ({ x: pt.x, y: pt.y, label: labels[i] || "", value: fmtPoint(k.spark[i]) }));
   return {
     label: k.label, unit: k.unit,
     valueText: isMoney ? money(k.value)
@@ -142,6 +153,6 @@ export function kpiCard(k: { id: string; label: string; unit: string; value: num
       : isMoney ? "Previous " + money(k.value - k.delta)
       : k.id === "catgrowth" ? "Portfolio " + k.target.toFixed(1) + "%"
       : "Target " + k.target + k.unit,
-    sparkD: sp.d, sparkArea: sp.area,
+    sparkD: sp.d, sparkArea: sp.area, sparkW: sp.W, sparkPoints,
   };
 }

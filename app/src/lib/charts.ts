@@ -42,7 +42,8 @@ export function spark(vals: number[]) {
   const x = (i: number) => p + (W - p * 2) * (vals.length < 2 ? 0 : i / (vals.length - 1));
   const y = (v: number) => p + (H - p * 2) * (1 - (v - lo) / span);
   const d = linePath(vals, x, y);
-  return { d, area: d + " L " + x(vals.length - 1).toFixed(1) + " " + H + " L " + x(0).toFixed(1) + " " + H + " Z" };
+  const points = vals.map((v, i) => ({ x: x(i), y: y(v) }));
+  return { d, area: d + " L " + x(vals.length - 1).toFixed(1) + " " + H + " L " + x(0).toFixed(1) + " " + H + " Z", points, W };
 }
 
 function labelStride(n: number) {

@@ -121,6 +121,7 @@ export interface KpiMetric {
   value: number;
   delta: number;
   spark: number[];
+  labels: string[];
 }
 
 export interface SalesMetric {

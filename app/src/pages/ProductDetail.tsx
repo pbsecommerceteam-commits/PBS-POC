@@ -66,10 +66,10 @@ export default function ProductDetail() {
   const initials = p.name.split(" ").filter(Boolean).slice(0, 2).map((w: string) => w[0]).join("");
 
   const kpis = [
-    { id: "coverage", label: "Keyword Coverage", unit: "", value: p.keywordCoverage, target: 10, delta: t.coverage[0] - p.keywordCoverage, spark: t.coverage },
-    { id: "instock", label: "Stock Availability 1P + 3P", unit: "%", value: p.inStockRate, target: 98, delta: Number((p.inStockRate - t.stock[0]).toFixed(1)), spark: t.stock },
-    { id: "rating", label: "Average Rating", unit: "", value: p.rating, target: 4.5, delta: Number((p.rating - t.rating[0]).toFixed(2)), spark: t.rating },
-    { id: "content", label: "Content Completeness", unit: "%", value: p.contentScore, target: 95, delta: 0, spark: t.stock.map((_v: number, i: number) => Math.round(p.contentScore - 4 + (i / labels.length) * 4)) },
+    { id: "coverage", label: "Keyword Coverage", unit: "", value: p.keywordCoverage, target: 10, delta: t.coverage[0] - p.keywordCoverage, spark: t.coverage, labels },
+    { id: "instock", label: "Stock Availability 1P + 3P", unit: "%", value: p.inStockRate, target: 98, delta: Number((p.inStockRate - t.stock[0]).toFixed(1)), spark: t.stock, labels },
+    { id: "rating", label: "Average Rating", unit: "", value: p.rating, target: 4.5, delta: Number((p.rating - t.rating[0]).toFixed(2)), spark: t.rating, labels },
+    { id: "content", label: "Content Completeness", unit: "%", value: p.contentScore, target: 95, delta: 0, spark: t.stock.map((_v: number, i: number) => Math.round(p.contentScore - 4 + (i / labels.length) * 4)), labels },
   ];
 
   const maxStars = Math.max(...detail.reviewMix.map((m: any) => m.count));

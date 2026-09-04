@@ -1158,11 +1158,11 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
      comment on those functions) is what the KPI card's big number and delta
      actually show whenever a date range is active; `vals` remains the
      spark/trend-chart series either way. */
-  const kpi = (id: string, label: string, unit: string, vals: number[], target: number, digits: number, range?: { value: number; delta: number } | null) => ({
+  const kpi = (id: string, label: string, unit: string, vals: number[], target: number, digits: number, range?: { value: number; delta: number } | null, lbls: string[] = labels) => ({
     id, label, unit, target,
     value: range ? round(range.value, digits) : last(vals),
     delta: round((range ? range.delta : last(vals) - first(vals)), digits),
-    spark: vals,
+    spark: vals, labels: lbls,
   });
 
   const r = rng(seed + 7);
@@ -1185,20 +1185,20 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       : null,
     generatedAt: "Today 06:40 UTC",
     kpis: [
-      kpi("sos", "Search Visibility", "%", sos, 20, 1, realRangeValueSos(retailer, dateRange ? rangeMatch!.idx : DEFAULT_NARROW_IDX, category)),
+      kpi("sos", "Search Visibility", "%", sos, 20, 1, realRangeValueSos(retailer, dateRange ? rangeMatch!.idx : DEFAULT_NARROW_IDX, category), visibilityLabels),
       kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1, realRangeValue(retailer, "stockRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2, realRangeValueAvgPrice(retailer, dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("content", "Content Completeness", "%", contentVals, 95, 0, realRangeValue(retailer, "content", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("buybox", "Buy Box Ownership 1P", "%", buyBoxSeries, 95, 1, realRangeValue(retailer, "buyBoxRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("rating", "Average Rating", "", ratingVals, 4.5, 2, realRangeValue(retailer, "rating", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
-      { id: "oos", label: "Out of Stock SKUs", unit: "", target: 0, value: oos, delta: Math.round((r() - 0.5) * 4), spark: series(seed + 8, n, oos + 1, oos, 0.7, 0).map((v) => clamp(v, 0, 20)) },
+      { id: "oos", label: "Out of Stock SKUs", unit: "", target: 0, value: oos, delta: Math.round((r() - 0.5) * 4), spark: series(seed + 8, n, oos + 1, oos, 0.7, 0).map((v) => clamp(v, 0, 20)), labels },
       // Real -- average keywordCoverage (0-10) across the pool; delta is a
       // real 0 (see REAL_KEYWORD_MATCH's comment -- no movement was
       // observed across the real crawl weeks), not fabricated jitter.
-      { id: "coverage", label: "Avg Keyword Coverage", unit: "", target: 10, value: avgCoverage, delta: 0, spark: series(seed + 9, n, avgCoverage, avgCoverage, 0, 1) },
-      { id: "reviews", label: "Review Count", unit: "", target: 20000, value: reviewVolume, delta: Math.round(reviewVolume * 0.04), spark: series(seed + 10, n, reviewVolume * 0.94, reviewVolume, reviewVolume * 0.01, 0) },
-      { id: "gap", label: "Gap to Leader", unit: " pts", target: 0, value: round(last(leader) - last(sos), 1), delta: round((first(leader) - first(sos)) * -1 + (last(leader) - last(sos)), 1), spark: leader.map((v, i) => round(v - sos[i], 1)) },
-      { id: "issues", label: "Content Issues", unit: "", target: 0, value: pool.filter((p) => p.contentScore < 80).length, delta: -1, spark: series(seed + 11, n, pool.filter((p) => p.contentScore < 80).length + 2, pool.filter((p) => p.contentScore < 80).length, 0.6, 0).map((v) => clamp(v, 0, 30)) },
+      { id: "coverage", label: "Avg Keyword Coverage", unit: "", target: 10, value: avgCoverage, delta: 0, spark: series(seed + 9, n, avgCoverage, avgCoverage, 0, 1), labels },
+      { id: "reviews", label: "Review Count", unit: "", target: 20000, value: reviewVolume, delta: Math.round(reviewVolume * 0.04), spark: series(seed + 10, n, reviewVolume * 0.94, reviewVolume, reviewVolume * 0.01, 0), labels },
+      { id: "gap", label: "Gap to Leader", unit: " pts", target: 0, value: round(last(leader) - last(sos), 1), delta: round((first(leader) - first(sos)) * -1 + (last(leader) - last(sos)), 1), spark: leader.map((v, i) => round(v - sos[i], 1)), labels: visibilityLabels },
+      { id: "issues", label: "Content Issues", unit: "", target: 0, value: pool.filter((p) => p.contentScore < 80).length, delta: -1, spark: series(seed + 11, n, pool.filter((p) => p.contentScore < 80).length + 2, pool.filter((p) => p.contentScore < 80).length, 0.6, 0).map((v) => clamp(v, 0, 30)), labels },
     ],
     visibility: {
       labels: visibilityLabels,
@@ -1473,9 +1473,9 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
   /* Same reasoning as snapshot() -- `range` (pooled, see realRangeValue's
      comment) drives the KPI card's headline value/delta under a custom
      date range; `vals` stays the spark/trend-chart series either way. */
-  const kpi = (id: string, label: string, unit: string, vals: number[], target: number, digits: number, range?: { value: number; delta: number } | null) => ({
+  const kpi = (id: string, label: string, unit: string, vals: number[], target: number, digits: number, range?: { value: number; delta: number } | null, lbls: string[] = labels) => ({
     id, label, unit, target, value: range ? round(range.value, digits) : last(vals),
-    delta: round((range ? range.delta : last(vals) - first(vals)), digits), spark: vals,
+    delta: round((range ? range.delta : last(vals) - first(vals)), digits), spark: vals, labels: lbls,
   });
 
   const byRetailer = retailers.slice(1).map((rt) => {
@@ -1628,7 +1628,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
       : null,
     generatedAt: "Today 06:40 UTC",
     kpis: [
-      kpi("sos", "Search Visibility", "%", sos, 20, 1, realRangeValueSos(retailer, dateRange ? rangeMatch!.idx : DEFAULT_NARROW_IDX, category)),
+      kpi("sos", "Search Visibility", "%", sos, 20, 1, realRangeValueSos(retailer, dateRange ? rangeMatch!.idx : DEFAULT_NARROW_IDX, category), visibilityLabels),
       kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1, realRangeValue(retailer, "stockRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2, realRangeValueAvgPrice(retailer, dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("content", "Content Completeness", "%", contentVals, 95, 0, realRangeValue(retailer, "content", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
