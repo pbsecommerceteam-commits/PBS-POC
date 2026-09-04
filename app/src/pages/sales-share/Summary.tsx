@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { KpiCard } from "../../components/ui/KpiCard";
 import { ChartCard } from "../../components/charts/ChartCard";
 import { Card } from "../../components/ui/Card";
+import { DrilldownModal } from "../../components/ui/DrilldownModal";
 import { useFilters } from "../../context/FiltersContext";
 import { useUi } from "../../context/UiContext";
 import { useChartHover } from "../../hooks/useChartHover";
 import { lineChart, barChart, spark } from "../../lib/charts";
-import { kpiCard, delta, deltaColor } from "../../lib/format";
+import { kpiCard, cell, table, delta, deltaColor, type TableConfig } from "../../lib/format";
+import { REAL_BUYBOX_COMPETITOR } from "../../data/mockData";
 import type { SalesShareContext } from "./Layout";
 import type { Product } from "../../models/types";
 
@@ -15,13 +17,28 @@ export default function SalesShareSummary() {
   const { sh, categoryFilter, setCategoryFilter } = useOutletContext<SalesShareContext>();
   const { setRetailer, retailer } = useFilters();
   const { toast } = useUi();
+  const navigate = useNavigate();
   const { hover, onEnter, onLeave } = useChartHover();
   const [catSort, setCatSort] = useState({ key: "overall", dir: "desc" as "asc" | "desc" });
+  const [drill, setDrill] = useState<TableConfig | null>(null);
+  const goToProduct = (id: string) => { setDrill(null); navigate("/product/" + id); };
 
   const pidx = sh.kpis.find((k: any) => k.id === "pidx");
-  const priceIncreased = sh.products.filter((p: Product) => p.priceChangePct > 0).length;
-  const priceDropped = sh.products.filter((p: Product) => p.priceChangePct < 0).length;
+  const priceIncreasedProducts = sh.products.filter((p: Product) => p.priceChangePct > 0).sort((a: Product, b: Product) => b.priceChangePct - a.priceChangePct);
+  const priceDroppedProducts = sh.products.filter((p: Product) => p.priceChangePct < 0).sort((a: Product, b: Product) => a.priceChangePct - b.priceChangePct);
+  const priceIncreased = priceIncreasedProducts.length;
+  const priceDropped = priceDroppedProducts.length;
   const { skusTracked, skusLost, topSeller } = sh.buyBoxLoss;
+  const buyBoxLostProducts = sh.products
+    .filter((p: Product) => REAL_BUYBOX_COMPETITOR[p.id])
+    .map((p: Product) => ({ p, ...REAL_BUYBOX_COMPETITOR[p.id] }))
+    .sort((a: any, b: any) => b.daysWon - a.daysWon);
+
+  /* Previous price implied by the real whole-month priceChangePct -- the
+     catalog only keeps first-vs-last percent change, not the first price
+     itself, so this reconstructs it rather than adding a new stored field
+     for a number the existing real field already implies exactly. */
+  const impliedPreviousPrice = (p: Product) => (p.priceChangePct > -100 ? p.price / (1 + p.priceChangePct / 100) : null);
 
   /* Discount % = (List Price - Effective Price) / List Price -- "Effective
      Price" is the currently displayed/paid price (Current Price, falling
@@ -37,9 +54,10 @@ export default function SalesShareSummary() {
   /* "On promotion" = genuinely marked down from list (current < list) or
      carrying a real crawled coupon -- either is a real, currently-active
      promotional mechanism, not a fabricated status. */
-  const onPromotion = sh.products.filter((p: Product) =>
+  const promotionProducts = sh.products.filter((p: Product) =>
     (p.listPrice != null && (p.currentPrice ?? p.price) < p.listPrice) || p.couponValue != null,
-  ).length;
+  );
+  const onPromotion = promotionProducts.length;
 
   /* Real MAP (Minimum Advertised Price), from a separate reference
      workbook the user supplies (not the crawl itself -- MAP is a brand
@@ -47,7 +65,74 @@ export default function SalesShareSummary() {
      number; a SKU with none is neither compliant nor a violation, it's
      simply not tracked. */
   const withMap = sh.products.filter((p: Product) => p.mapPrice != null);
-  const belowMap = withMap.filter((p: Product) => (p.currentPrice ?? p.price) < p.mapPrice!);
+  const belowMapProducts = withMap
+    .filter((p: Product) => (p.currentPrice ?? p.price) < p.mapPrice!)
+    .sort((a: Product, b: Product) => ((b.mapPrice! - (b.currentPrice ?? b.price)) / b.mapPrice!) - ((a.mapPrice! - (a.currentPrice ?? a.price)) / a.mapPrice!));
+  const belowMap = belowMapProducts;
+
+  const discountedProducts = withList
+    .map((p: Product) => ({ p, eff: p.currentPrice ?? p.price, pct: ((p.listPrice! - (p.currentPrice ?? p.price)) / p.listPrice!) * 100 }))
+    .sort((a: any, b: any) => b.pct - a.pct);
+
+  /* One TableConfig per clickable KPI tile above -- built with the same
+     table()/cell() helpers DataTable consumes, so DrilldownModal can
+     render any of them with no per-metric special-casing. Average Price
+     is deliberately not one of these: it already has its own trend chart
+     right below, so a redundant SKU list would add nothing. */
+  const priceIncreasedTable = table("Price Increased", `${priceIncreased} SKUs with a real whole-month price increase`,
+    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "Previous Price", align: "right" }, { label: "Current Price", align: "right" }, { label: "Change", align: "right" }],
+    priceIncreasedProducts.map((p: Product) => { const prev = impliedPreviousPrice(p); return { cells: [
+      cell(p.name, { onClick: () => goToProduct(p.id) }),
+      cell(p.retailerName),
+      cell(prev != null ? "$" + prev.toFixed(2) : "—", { align: "right" }),
+      cell("$" + p.price.toFixed(2), { align: "right" }),
+      cell(delta(p.priceChangePct, "%"), { align: "right", color: deltaColor(p.priceChangePct) }),
+    ] }; }));
+  const priceDroppedTable = table("Price Dropped", `${priceDropped} SKUs with a real whole-month price decrease`,
+    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "Previous Price", align: "right" }, { label: "Current Price", align: "right" }, { label: "Change", align: "right" }],
+    priceDroppedProducts.map((p: Product) => { const prev = impliedPreviousPrice(p); return { cells: [
+      cell(p.name, { onClick: () => goToProduct(p.id) }),
+      cell(p.retailerName),
+      cell(prev != null ? "$" + prev.toFixed(2) : "—", { align: "right" }),
+      cell("$" + p.price.toFixed(2), { align: "right" }),
+      cell(delta(p.priceChangePct, "%"), { align: "right", color: deltaColor(p.priceChangePct) }),
+    ] }; }));
+  const buyBoxLostTable = table("Buy Box Lost (1P)", `${skusLost} of ${skusTracked} SKUs had a 3P seller win the buy box at some point this period`,
+    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "Competitor", align: "left" }, { label: "Days Won", align: "right" }, { label: "Buy Box Rate", align: "right" }],
+    buyBoxLostProducts.map(({ p, seller, daysWon }: any) => ({ cells: [
+      cell(p.name, { onClick: () => goToProduct(p.id) }),
+      cell(p.retailerName),
+      cell(seller),
+      cell(daysWon + " of 30", { align: "right" }),
+      cell(p.buyBoxRate + "%", { align: "right", color: p.buyBoxRate < 50 ? "var(--status-negative-fg)" : "inherit" }),
+    ] })));
+  const discountTable = table("Average Price Discount", `${withList.length} of ${sh.products.length} SKUs posted a list price`,
+    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "List Price", align: "right" }, { label: "Current Price", align: "right" }, { label: "Discount", align: "right" }],
+    discountedProducts.map(({ p, eff, pct }: any) => ({ cells: [
+      cell(p.name, { onClick: () => goToProduct(p.id) }),
+      cell(p.retailerName),
+      cell("$" + p.listPrice!.toFixed(2), { align: "right" }),
+      cell("$" + eff.toFixed(2), { align: "right" }),
+      cell((pct >= 0 ? "" : "−") + Math.abs(pct).toFixed(1) + "%", { align: "right", color: deltaColor(pct, true) }),
+    ] })));
+  const promotionTable = table("SKUs on Promotion", `${onPromotion} of ${sh.products.length} SKUs marked down from list, or carrying a coupon`,
+    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "List Price", align: "right" }, { label: "Current Price", align: "right" }, { label: "Coupon", align: "left" }],
+    promotionProducts.map((p: Product) => ({ cells: [
+      cell(p.name, { onClick: () => goToProduct(p.id) }),
+      cell(p.retailerName),
+      cell(p.listPrice != null ? "$" + p.listPrice.toFixed(2) : "—", { align: "right" }),
+      cell("$" + (p.currentPrice ?? p.price).toFixed(2), { align: "right" }),
+      cell(p.couponValue ?? "—"),
+    ] })));
+  const belowMapTable = table("Below MAP", `${belowMap.length} of ${withMap.length} SKUs tracked under MAP are priced under it`,
+    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "MAP Price", align: "right" }, { label: "Effective Price", align: "right" }, { label: "Under MAP", align: "right" }],
+    belowMapProducts.map((p: Product) => { const eff = p.currentPrice ?? p.price; const gap = p.mapPrice! - eff; return { cells: [
+      cell(p.name, { onClick: () => goToProduct(p.id) }),
+      cell(p.retailerName),
+      cell("$" + p.mapPrice!.toFixed(2), { align: "right" }),
+      cell("$" + eff.toFixed(2), { align: "right" }),
+      cell("−$" + gap.toFixed(2) + " (" + ((gap / p.mapPrice!) * 100).toFixed(1) + "%)", { align: "right", color: "var(--status-negative-fg)" }),
+    ] }; }));
 
   const priceHi = Math.max(40, Math.ceil((pidx.value + 10) / 10) * 10);
   const priceTrend = lineChart({
@@ -93,37 +178,39 @@ export default function SalesShareSummary() {
     <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))", gap: "var(--app-gap)" }}>
         <KpiCard k={kpiCard(pidx, spark)} />
-        <Card padding="18px 20px">
+        <Card padding="18px 20px" interactive onClick={() => setDrill(priceIncreasedTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5 }}>Price Increased</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{priceIncreased}</div>
-          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real whole-month change</div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real whole-month change · click to view</div>
         </Card>
-        <Card padding="18px 20px">
+        <Card padding="18px 20px" interactive onClick={() => setDrill(priceDroppedTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5 }}>Price Dropped</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{priceDropped}</div>
-          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real whole-month change</div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real whole-month change · click to view</div>
         </Card>
-        <Card padding="18px 20px">
+        <Card padding="18px 20px" interactive onClick={() => setDrill(buyBoxLostTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5 }}>Buy Box Lost (1P)</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: skusLost > 0 ? "var(--status-negative-fg)" : "inherit" }}>{skusLost}<span style={{ fontSize: 16, fontWeight: 500 }}> / {skusTracked}</span></div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>{topSeller ? "Top 3P seller: " + topSeller : "No 3P buy-box loss in scope"}</div>
         </Card>
-        <Card padding="18px 20px">
+        <Card padding="18px 20px" interactive onClick={() => setDrill(discountTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5 }}>Average Price Discount</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: avgDiscountPct > 0 ? "var(--status-positive-fg)" : "inherit" }}>{avgDiscountPct.toFixed(1)}%</div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>(List − Current) ÷ List, {withList.length} of {sh.products.length} SKUs</div>
         </Card>
-        <Card padding="18px 20px">
+        <Card padding="18px 20px" interactive onClick={() => setDrill(promotionTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5 }}>SKUs on Promotion</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{onPromotion}<span style={{ fontSize: 16, fontWeight: 500 }}> / {sh.products.length}</span></div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Marked down from list, or carrying a coupon</div>
         </Card>
-        <Card padding="18px 20px">
+        <Card padding="18px 20px" interactive onClick={() => setDrill(belowMapTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5 }}>Below MAP</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: belowMap.length > 0 ? "var(--status-negative-fg)" : "inherit" }}>{belowMap.length}<span style={{ fontSize: 16, fontWeight: 500 }}> / {withMap.length}</span></div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Priced under real MAP, {withMap.length} of {sh.products.length} SKUs tracked</div>
         </Card>
       </div>
+
+      {drill && <DrilldownModal t={drill} onClose={() => setDrill(null)} />}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
         <ChartCard c={priceTrend} onLeave={onLeave} />
