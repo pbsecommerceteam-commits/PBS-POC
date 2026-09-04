@@ -55,25 +55,25 @@ export default function Overview() {
   const kpi = (id: string) => snap.kpis.find((k: any) => k.id === id);
 
   const columns: Column<Product>[] = [
-    { key: "name", label: "Product", minWidth: 260, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.category} imageUrl={p.imageUrl} /> },
-    { key: "searchRank", label: "Search Rank", align: "right", sortable: true, render: (p) => (
+    { key: "name", label: "Product", minWidth: 280, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.category} imageUrl={p.imageUrl} noClamp /> },
+    { key: "searchRank", label: "Search Rank", align: "center", sortable: true, render: (p) => (
       <><span style={{ fontWeight: 600 }}>#{p.searchRank}</span>
       <span style={{ fontSize: 11.5, marginLeft: 6, color: deltaColor(p.rankDelta) }}>{p.rankDelta === 0 ? "—" : (p.rankDelta > 0 ? "↑ " : "↓ ") + Math.abs(p.rankDelta)}</span></>
     ) },
-    { key: "price", label: "Price", align: "right", sortable: true, render: (p) => "$" + p.price.toFixed(2) },
-    { key: "stockStatus", label: "Stock", sortable: true, render: (p) => (
+    { key: "price", label: "Price", align: "center", sortable: true, render: (p) => "$" + p.price.toFixed(2) },
+    { key: "stockStatus", label: "Stock", align: "center", sortable: true, render: (p) => (
       <><Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge><div className="sl-table-sub">{p.inStockRate.toFixed(1)}% of days</div></>
     ) },
-    { key: "rating", label: "Rating", align: "right", sortable: true, render: (p) => (
+    { key: "rating", label: "Rating", align: "center", sortable: true, render: (p) => (
       <><div style={{ fontWeight: 500 }}>{p.rating.toFixed(2)}</div><div className="sl-table-sub">{p.reviews.toLocaleString()} reviews</div></>
     ) },
-    { key: "contentScore", label: "Content completeness", align: "right", sortable: true, render: (p) => (
-      <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
+    { key: "contentScore", label: "Content completeness", align: "center", sortable: true, render: (p) => (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
         <span className="sl-progress-track" style={{ width: 40 }}><span className="sl-progress-fill" style={{ width: p.contentScore + "%" }}></span></span>
         <span style={{ fontWeight: 600, minWidth: 30 }}>{p.contentScore}%</span>
       </div>
     ) },
-    { key: "opportunity", label: "Opportunity", sortable: true, render: (p) => <Badge tone={opportunityTone(p.opportunity)}>{p.opportunity}</Badge> },
+    { key: "opportunity", label: "Opportunity", align: "center", sortable: true, render: (p) => <Badge tone={opportunityTone(p.opportunity)}>{p.opportunity}</Badge> },
   ];
 
   return (
@@ -187,7 +187,7 @@ export default function Overview() {
             {(stockFilter !== "All" || categoryFilter || searchTerm) && <button className="btn btn-ghost" onClick={() => { setStockFilter("All"); setCategoryFilter(""); setSearchTerm(""); toast("Filters cleared."); }} style={{ fontSize: 12.5 }}>Clear filters</button>}
           </div>
         </div>
-        <SortableTable columns={columns} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} />
+        <SortableTable columns={columns} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} resizable wrap />
         {all.length === 0 && (
           <div style={{ padding: "32px 4px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
             <div style={{ fontWeight: 600, fontSize: 15 }}>No products match these filters</div>
