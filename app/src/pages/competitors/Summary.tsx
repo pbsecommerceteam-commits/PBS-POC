@@ -1,19 +1,37 @@
-import { useOutletContext } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { KpiCard } from "../../components/ui/KpiCard";
 import { ChartCard } from "../../components/charts/ChartCard";
+import { DrilldownModal } from "../../components/ui/DrilldownModal";
 import { useChartHover } from "../../hooks/useChartHover";
 import { lineChart, spark } from "../../lib/charts";
-import { kpiCard } from "../../lib/format";
+import { kpiCard, cell, table, type TableConfig } from "../../lib/format";
+import { REAL_BUYBOX_COMPETITOR } from "../../data/mockData";
 import type { CompetitorsContext } from "./Layout";
 
 export default function CompetitorsSummary() {
   const { snap } = useOutletContext<CompetitorsContext>();
   const { hover, onEnter, onLeave } = useChartHover();
+  const navigate = useNavigate();
+  const [drill, setDrill] = useState<TableConfig | null>(null);
 
   const sos = snap.kpis.find((k: any) => k.id === "sos");
   const gap = snap.kpis.find((k: any) => k.id === "gap");
   const { skusTracked, skusLost, topSeller } = snap.buyBoxLoss;
+  const buyBoxLostProducts = snap.products
+    .filter((p: any) => REAL_BUYBOX_COMPETITOR[p.id])
+    .map((p: any) => ({ p, ...REAL_BUYBOX_COMPETITOR[p.id] }))
+    .sort((a: any, b: any) => b.daysWon - a.daysWon);
+  const buyBoxLostTable = table("SKUs with 3P Buy Box Loss", `${skusLost} of ${skusTracked} SKUs had a 3P seller win the buy box at some point this period`,
+    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "Competitor", align: "left" }, { label: "Days Won", align: "right" }, { label: "Buy Box Rate", align: "right" }],
+    buyBoxLostProducts.map(({ p, seller, daysWon }: any) => ({ cells: [
+      cell(p.name, { onClick: () => { setDrill(null); navigate("/product/" + p.id); } }),
+      cell(p.retailerName),
+      cell(seller),
+      cell(daysWon + " of 30", { align: "right" }),
+      cell(p.buyBoxRate + "%", { align: "right", color: p.buyBoxRate < 50 ? "var(--status-negative-fg)" : "inherit" }),
+    ] })));
   /* Axis scaled to the actual data instead of a fixed 0-105 -- Search
      Visibility's real scale dropped from ~90% to a few percent once it
      was redefined as "our own results / total results" (see
@@ -30,7 +48,7 @@ export default function CompetitorsSummary() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,238px),1fr))", gap: "var(--app-gap)" }}>
         <KpiCard k={kpiCard(sos, spark)} />
         <KpiCard k={kpiCard(gap, spark)} />
-        <Card padding="18px 20px">
+        <Card padding="18px 20px" interactive onClick={() => setDrill(buyBoxLostTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5 }}>SKUs with 3P Buy Box Loss</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: skusLost > 0 ? "var(--status-negative-fg)" : "inherit" }}>{skusLost}<span style={{ fontSize: 16, fontWeight: 500 }}> / {skusTracked}</span></div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>{topSeller ? "Real — top 3P seller: " + topSeller : "Real — no 3P buy-box loss in scope"}</div>
@@ -39,6 +57,8 @@ export default function CompetitorsSummary() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
         <ChartCard c={chart} onLeave={onLeave} />
       </div>
+
+      {drill && <DrilldownModal t={drill} onClose={() => setDrill(null)} />}
     </>
   );
 }
