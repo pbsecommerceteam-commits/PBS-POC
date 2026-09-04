@@ -82,14 +82,14 @@ export default function ProductDetail() {
 
   const rankChart = lineChart({ id: "d-rank", title: "Keyword Coverage Trend", subtitle: "Of the 10 tracked keywords, how many genuinely surfaced this SKU · Real crawl data (Sep 8–29)",
     labels, lo: 0, hi: 10, ticks: [0, 2, 4, 6, 8, 10], fmt: (v) => Math.round(v) + "/10", hideLegend: true, series: [{ name: "Keyword Coverage", values: t.coverage }] }, hover, onEnter);
-  const priceChart = lineChart({ id: "d-price", title: "Price Trend", subtitle: "Shelf price over the period" + realNote,
+  const priceChart = lineChart({ id: "d-price", title: "Price Trend", subtitle: "Shelf price over the period" + realNote + " · Competitor prices illustrative — no resolvable competitor entity in the raw crawl",
     labels, lo: lo * 0.94, hi: hi * 1.06, ticks: [lo * 0.96, (lo + hi) / 2, hi * 1.04], fmt: (v) => "$" + v.toFixed(2), hideLegend: true,
     series: [{ name: "Price", values: t.price }],
     footer: detail.priceComparison.map((c: any) => ({ label: c.name, value: "$" + c.price.toFixed(2), color: c.price < p.price ? "var(--status-neutral-fg)" : "var(--status-positive-fg)" })) }, hover, onEnter);
   const stockChart = barChart({ id: "d-stock", title: "Stock Availability 1P + 3P Trend", subtitle: "In-stock rate at this retailer" + realNote, badge: "Target 98%",
     labels, values: t.stock, valueName: "In stock", lo: 60, hi: 100, ticks: [60, 70, 80, 90, 100], fmt: (v) => v.toFixed(1) + "%", target: 98,
     fill: (v) => (v >= 98 ? "var(--status-positive-fg)" : "var(--color-accent-300)") }, hover, onEnter);
-  const ratingChart = lineChart({ id: "d-rating", title: "Rating Trend", subtitle: "Average rating and review distribution" + realNote,
+  const ratingChart = lineChart({ id: "d-rating", title: "Rating Trend", subtitle: "Average rating" + realNote + " · Star breakdown illustrative — no per-star rating data in the raw crawl",
     labels, lo: 3.4, hi: 5, ticks: [3.4, 4, 4.5, 5], fmt: (v) => v.toFixed(2), hideLegend: true, series: [{ name: "Rating", values: t.rating }],
     footer: detail.reviewMix.map((m: any) => ({ label: m.stars + " star", value: m.count.toLocaleString(), color: m.count === maxStars ? "var(--status-positive-fg)" : "var(--status-neutral-fg)" })) }, hover, onEnter);
   const reviewsChart = lineChart({ id: "d-reviews", title: "Review Count Trend", subtitle: "Total tracked reviews over the period" + realNote,

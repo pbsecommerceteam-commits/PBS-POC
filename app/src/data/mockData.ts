@@ -2006,11 +2006,20 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
       contentBreakdown: Object.keys(CONTENT_CHECK_LABELS).map((cid) => ({
         name: CONTENT_CHECK_LABELS[cid], weight: "12.5%", pass: !p.contentChecks.includes(cid),
       })),
+      // Illustrative -- the raw crawl has an aggregate rating and a total
+      // review count (both real, used everywhere else), but no per-star
+      // breakdown to derive this split from. p.reviews (the total) is real;
+      // how it's divided across 5/4/3/2/1 stars here is not. Disclosed on
+      // the Rating Trend chart's subtitle in ProductDetail.tsx.
       reviewMix: [5, 4, 3, 2, 1].map((stars, i) => {
         const rr = rowRng(key, id + "-stars", String(stars));
         const w = [0.56, 0.24, 0.11, 0.05, 0.04][i] * (0.85 + rr() * 0.3);
         return { stars, count: Math.round(p.reviews * w) };
       }),
+      // Illustrative -- competitorBrands has no real counterpart (no
+      // competitor entity is resolvable from the raw crawl, same finding
+      // as Competitors > Summary). Disclosed on the Price Trend chart's
+      // subtitle in ProductDetail.tsx.
       priceComparison: competitorBrands.slice(0, 3).map((c) => {
         const rr = rowRng(key, id + "-price", c.id);
         return { name: c.name, price: round(p.price * (0.88 + rr() * 0.28), 2) };
