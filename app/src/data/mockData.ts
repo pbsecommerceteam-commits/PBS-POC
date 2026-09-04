@@ -264,22 +264,15 @@ export const keywordSet = [
   { id: "k10", term: "odor remover", volume: 0, ownRank: 0 }, // volume/ownRank illustrative -- no traffic data in source
 ];
 
-export const contentAttributes = [
-  { id: "a1", name: "Title conforms to retailer spec", weight: "High" },
-  { id: "a2", name: "Primary image ≥ 1500px", weight: "High" },
-  { id: "a3", name: "Six or more gallery images", weight: "Medium" },
-  { id: "a4", name: "Bullet copy present (5+)", weight: "High" },
-  { id: "a5", name: "A+ / enhanced module", weight: "Medium" },
-  { id: "a6", name: "Nutrition or ingredient panel", weight: "High" },
-  { id: "a7", name: "Video asset attached", weight: "Low" },
-];
-
 /* Plain-English labels for the 8 real, binary content checks computed in
    build_mock_data.py's content_completeness() -- see catalog[].contentChecks
    (ids of the checks a product currently FAILS) and
    REAL_PRODUCT_WEEKLY[id].content (the same rubric evaluated per real week).
-   Unlike contentAttributes above (illustrative, no real per-product pass/
-   fail data behind it), every count built from these ids is real. */
+   Every count built from these ids is real -- this replaced an earlier
+   illustrative "contentAttributes" list (fabricated names/weights, random
+   per-product pass/fail and random aggregate coverage/failing counts) that
+   used to drive Product Detail's Content checklist and Content
+   Intelligence's Attribute coverage table. */
 export const CONTENT_CHECK_LABELS: Record<string, string> = {
   title: "Title over 75 characters",
   images: "Fewer than 5 images",
@@ -1257,9 +1250,17 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
         leader: competitorBrands[Math.floor(rr() * 4)].name,
       };
     }),
-    contentCoverage: contentAttributes.map((a) => {
-      const rr = rowRng(key, "coverage", a.id);
-      return { id: a.id, name: a.name, weight: a.weight, coverage: clamp(Math.round(62 + rr() * 38 + bias.content / 2), 20, 100), failing: Math.round(rr() * 6) };
+    // Real -- the same 8 binary checks (CONTENT_CHECK_LABELS) that produce
+    // Content Completeness, not the illustrative contentAttributes list
+    // (fabricated names/weights, random coverage/failing counts). Equally
+    // weighted (12.5% each) honestly, since that's what the real rubric is.
+    contentCoverage: Object.keys(CONTENT_CHECK_LABELS).map((cid) => {
+      const failing = pool.filter((p) => p.contentChecks.includes(cid)).length;
+      return {
+        id: cid, name: CONTENT_CHECK_LABELS[cid], weight: "12.5%",
+        coverage: pool.length ? Math.round(((pool.length - failing) / pool.length) * 100) : 0,
+        failing,
+      };
     }),
     contentDistribution: [
       { bucket: "Below 60", count: pool.filter((p) => p.contentScore < 60).length },
@@ -1996,10 +1997,15 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
           listed: false, isSelf: false, matched: false, retailerId: null, itemUrl: null,
         };
       }),
-      contentBreakdown: contentAttributes.map((a) => {
-        const rr = rowRng(key, id + "-attr", a.id);
-        return { name: a.name, weight: a.weight, pass: rr() > 0.3 };
-      }),
+      // Real -- the same 8 binary checks (see CONTENT_CHECK_LABELS/
+      // content_completeness() in build_mock_data.py) that produce this
+      // product's real Content Completeness %, not an illustrative,
+      // randomly-rolled checklist unrelated to the real score shown
+      // elsewhere on this page. Equally weighted (12.5% each), honestly --
+      // no fabricated High/Medium/Low tiering.
+      contentBreakdown: Object.keys(CONTENT_CHECK_LABELS).map((cid) => ({
+        name: CONTENT_CHECK_LABELS[cid], weight: "12.5%", pass: !p.contentChecks.includes(cid),
+      })),
       reviewMix: [5, 4, 3, 2, 1].map((stars, i) => {
         const rr = rowRng(key, id + "-stars", String(stars));
         const w = [0.56, 0.24, 0.11, 0.05, 0.04][i] * (0.85 + rr() * 0.3);
