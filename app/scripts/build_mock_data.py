@@ -687,8 +687,29 @@ def main():
     # ── RETAILER_BIAS ────────────────────────────────────────────────────────
     portfolio_avg = {k: avg(real_rollup_weekly["portfolio"][k]) for k in ["stockRate", "buyBoxRate", "rating", "content"]}
 
-    # ── REAL_SOS_WEEKLY: keyword-coverage % per site per week, + portfolio ──
-    sos_by_site_week = defaultdict(lambda: defaultdict(list))  # site_code -> week -> [has_result bool per keyword row]
+    # ── REAL_SOS_WEEKLY: our own share of each keyword's results, per site/week ──
+    # "Search Visibility" = of every result the crawl found for our 10
+    # tracked generic keywords, what share are genuinely one of our own
+    # tracked SKUs -- not "did we return any result at all" (the metric's
+    # previous, much coarser definition). Each Share Of Search row carries
+    # up to 65 result slots (Url_1..Url_65 + Product_name_N); a result
+    # counts as "ours" when its Url_N contains one of this retailer's own
+    # tracked catalog ids (retailerId, the same native id used for
+    # spbUrl/CROSS_RETAILER_MATCH elsewhere in this pipeline) -- e.g.
+    # amazon.com/dp/<ASIN>, walmart.com/ip/<id>, homedepot.com/p/<id>.
+    # Pooled the same way every other rate in this file is pooled across
+    # weeks: sum of matches / sum of total results, never an average of
+    # per-week percentages (see REAL_ROLLUP_WEEKLY's stockRate comment for
+    # why -- a week with few results shouldn't count as heavily as one with
+    # many).
+    retailer_ids_by_code = defaultdict(set)
+    for p in catalog:
+        if p["retailerId"]:
+            retailer_ids_by_code[p["retailer"]].add(str(p["retailerId"]))
+
+    SOS_URL_SLOTS = 65
+    sos_matched_by_site_week = defaultdict(lambda: defaultdict(int))
+    sos_total_by_site_week = defaultdict(lambda: defaultdict(int))
     keywords_seen = set()
     for r in sos_rows:
         code = site_code(r.get("site"))
@@ -698,28 +719,50 @@ def main():
         if wk not in SOS_WEEKS:
             continue
         keywords_seen.add(r.get("keyword"))
-        has_result = r.get("Url_1") is not None
-        sos_by_site_week[code][wk].append(has_result)
+        tracked_ids = retailer_ids_by_code.get(code, set())
+        matched = 0
+        total = 0
+        for n in range(1, SOS_URL_SLOTS + 1):
+            u = r.get(f"Url_{n}")
+            if u is None:
+                continue
+            total += 1
+            u_str = str(u)
+            if any(rid in u_str for rid in tracked_ids):
+                matched += 1
+        sos_matched_by_site_week[code][wk] += matched
+        sos_total_by_site_week[code][wk] += total
 
     real_sos_weekly = {}
     for code in RETAILER_NAMES:
-        series = []
+        pct, matched_list, total_list = [], [], []
         for wk in SOS_WEEKS:
-            flags = sos_by_site_week.get(code, {}).get(wk, [])
-            series.append(round(100.0 * sum(flags) / len(flags), 1) if flags else 0.0)
-        real_sos_weekly[code] = series
-    real_sos_weekly["portfolio"] = [
-        round(sum(real_sos_weekly[c][wi] for c in RETAILER_NAMES) / len(RETAILER_NAMES), 1)
-        for wi in range(4)
-    ]
+            m = sos_matched_by_site_week.get(code, {}).get(wk, 0)
+            t = sos_total_by_site_week.get(code, {}).get(wk, 0)
+            pct.append(round(100.0 * m / t, 1) if t else 0.0)
+            matched_list.append(m)
+            total_list.append(t)
+        real_sos_weekly[code] = {"sos": pct, "sosSum": matched_list, "sosWeight": total_list}
+
+    # Portfolio pools raw matches/results across every retailer directly
+    # (same "portfolio" convention as REAL_ROLLUP_WEEKLY's scope loop
+    # above), not an average of the 7 retailers' already-computed
+    # percentages.
+    portfolio_matched = [sum(real_sos_weekly[c]["sosSum"][wi] for c in RETAILER_NAMES) for wi in range(4)]
+    portfolio_total = [sum(real_sos_weekly[c]["sosWeight"][wi] for c in RETAILER_NAMES) for wi in range(4)]
+    real_sos_weekly["portfolio"] = {
+        "sos": [round(100.0 * m / t, 1) if t else 0.0 for m, t in zip(portfolio_matched, portfolio_total)],
+        "sosSum": portfolio_matched,
+        "sosWeight": portfolio_total,
+    }
 
     bias = {}
     for code in RETAILER_NAMES:
         r_avg = {k: avg(real_rollup_weekly[code][k]) for k in ["stockRate", "buyBoxRate", "rating", "content"]} if code in real_rollup_weekly else {}
-        sos_avg_r = avg(real_sos_weekly[code])
-        sos_avg_p = avg(real_sos_weekly["portfolio"])
+        sos_avg_r = avg(real_sos_weekly[code]["sos"])
+        sos_avg_p = avg(real_sos_weekly["portfolio"]["sos"])
         bias[code] = {
-            "sos": round((sos_avg_r or 0) - (sos_avg_p or 0), 1),
+            "sos": round((sos_avg_r or 0) - (sos_avg_p or 0), 2),
             "stock": round((r_avg.get("stockRate") or 0) - (portfolio_avg["stockRate"] or 0), 1),
             "rating": round((r_avg.get("rating") or 0) - (portfolio_avg["rating"] or 0), 2),
             "content": round((r_avg.get("content") or 0) - (portfolio_avg["content"] or 0), 1),
@@ -851,9 +894,15 @@ def main():
     out.append("};")
     out.append("")
 
-    out.append("export const REAL_SOS_WEEKLY: Record<string, number[]> = {")
+    out.append("export const REAL_SOS_WEEKLY: Record<string, {")
+    out.append("  sos: number[];")
+    out.append("  /* Raw matched-result-count / total-result-count behind sos that week --")
+    out.append("     pool (sum numerator / sum denominator), never average, when combining")
+    out.append("     multiple weeks, same reasoning as REAL_ROLLUP_WEEKLY's stockRateSum. */")
+    out.append("  sosSum: number[]; sosWeight: number[];")
+    out.append("}> = {")
     for k, v in real_sos_weekly.items():
-        out.append(f"  {json.dumps(k)}: {json.dumps(v)},")
+        out.append(f'  {json.dumps(k)}: {{ sos: {json.dumps(v["sos"])}, sosSum: {json.dumps(v["sosSum"])}, sosWeight: {json.dumps(v["sosWeight"])} }},')
     out.append("};")
     out.append("")
 

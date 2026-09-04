@@ -14,8 +14,15 @@ export default function CompetitorsSummary() {
   const sos = snap.kpis.find((k: any) => k.id === "sos");
   const gap = snap.kpis.find((k: any) => k.id === "gap");
   const { skusTracked, skusLost, topSeller } = snap.buyBoxLoss;
+  /* Axis scaled to the actual data instead of a fixed 0-105 -- Search
+     Visibility's real scale dropped from ~90% to a few percent once it
+     was redefined as "our own results / total results" (see
+     REAL_SOS_WEEKLY), so a 0-100 axis would flatten every series into an
+     unreadable line along the bottom. */
+  const visVals = snap.visibility.series.flatMap((s: any) => s.values as number[]);
+  const visHi = Math.max(5, Math.ceil(Math.max(...visVals, 1) + 1));
   const chart = lineChart({ id: "vis", title: "Search Visibility Trend", subtitle: "Share of search across the tracked keyword set · Illustrative — no resolvable competitor entity in the raw crawl",
-    labels: snap.visibility.labels, lo: 0, hi: 105, ticks: [0, 20, 40, 60, 80, 100], fmt: (v) => v.toFixed(1) + "%",
+    labels: snap.visibility.labels, lo: 0, hi: visHi, ticks: [0, visHi / 4, visHi / 2, (visHi * 3) / 4, visHi], fmt: (v) => v.toFixed(1) + "%",
     series: snap.visibility.series, previous: snap.visibility.previous, target: 40, span: "1 / -1" }, hover, onEnter);
 
   return (

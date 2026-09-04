@@ -330,21 +330,26 @@ const round = (v: number, p = 1) => Number(v.toFixed(p));
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /* Derived from the real September crawl (see build_mock_data.py): sos = this
-   retailer's average tracked-keyword result-coverage % (REAL_SOS_WEEKLY)
-   minus the portfolio average; stock/rating/content = this retailer's
-   5-week average vs. the 117-SKU portfolio average (REAL_ROLLUP_WEEKLY).
-   Chewy's -31.0 sos reflects a genuine finding — the tracked keywords
-   returned zero ranked results on Chewy 40% of the time this period,
-   vs. 0% for Amazon/Walmart/PetSmart. */
+   retailer's average share of its own tracked keywords' search results
+   (REAL_SOS_WEEKLY -- of every result returned for the 10 tracked generic
+   keywords, what share are genuinely one of our own tracked SKUs) minus the
+   portfolio average; stock/rating/content = this retailer's 5-week average
+   vs. the 117-SKU portfolio average (REAL_ROLLUP_WEEKLY). The portfolio's
+   own real share is a flat 0.3% (6 of ~2,100+ results per week are one of
+   our tracked SKUs) -- PetSmart's +1.65 reflects a genuine finding, its
+   "Deshedding Brush" keyword returns 4 of our own FURminator tools among
+   its results every week, far above the portfolio baseline; most retailers
+   sit at or near 0% since our narrow 117-SKU sample rarely appears among
+   these fixed generic keywords' results at all. */
 const RETAILER_BIAS: Record<string, { sos: number; stock: number; rating: number; content: number }> = {
   all: { sos: 0, stock: 0, rating: 0, content: 0 },
-  "r1": { sos: 9.0, stock: 4.8, rating: 0.02, content: 1.1 }, // Amazon.com
-  "r2": { sos: -31.0, stock: 38.9, rating: -0.48, content: 0.8 }, // Chewy
-  "r3": { sos: 9.0, stock: 3.2, rating: -0.02, content: -1.2 }, // Walmart
-  "r4": { sos: 1.5, stock: -3.4, rating: -0.26, content: 4.5 }, // The Home Depot
-  "r5": { sos: 9.0, stock: 38.9, rating: 0.39, content: -10.5 }, // PetSmart
-  "r6": { sos: 4.0, stock: -58.9, rating: -0.02, content: 7.8 }, // Lowe's
-  "r7": { sos: -1.0, stock: 2.2, rating: 0.41, content: -7.6 }, // Petco
+  "r1": { sos: -0.3, stock: 4.8, rating: 0.02, content: 1.1 }, // Amazon.com
+  "r2": { sos: -0.3, stock: 38.9, rating: -0.48, content: 0.8 }, // Chewy
+  "r3": { sos: -0.1, stock: 3.2, rating: -0.02, content: -1.2 }, // Walmart
+  "r4": { sos: -0.3, stock: -3.4, rating: -0.26, content: 4.5 }, // The Home Depot
+  "r5": { sos: 1.65, stock: 38.9, rating: 0.39, content: -10.5 }, // PetSmart
+  "r6": { sos: 0.27, stock: -58.9, rating: -0.02, content: 7.8 }, // Lowe's
+  "r7": { sos: -0.3, stock: 2.2, rating: 0.41, content: -7.6 }, // Petco
 };
 
 const MONTHS = ["Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"];
@@ -522,15 +527,21 @@ export const REAL_PRODUCT_WEEKLY: Record<string, {
   "r1-B000IO1TDU": { rating: [4.6, 4.6, 4.6, 4.6, 4.6], reviews: [1651, 1677, 1685, 1722, 1757], price: [5.97, 5.98, 5.98, 5.98, 5.98], stockRate: [100.0, 100.0, 100.0, 100.0, 100.0], buyBoxRate: [100, 100, 100, 100, 100], content: [88, 88, 88, 88, 88] },
 };
 
-export const REAL_SOS_WEEKLY: Record<string, number[]> = {
-  "r1": [100.0, 100.0, 100.0, 100.0],
-  "r2": [60.0, 60.0, 60.0, 60.0],
-  "r3": [100.0, 100.0, 100.0, 100.0],
-  "r4": [90.0, 90.0, 90.0, 100.0],
-  "r5": [100.0, 100.0, 100.0, 100.0],
-  "r6": [100.0, 100.0, 100.0, 80.0],
-  "r7": [90.0, 90.0, 90.0, 90.0],
-  "portfolio": [91.4, 91.4, 91.4, 90.0],
+export const REAL_SOS_WEEKLY: Record<string, {
+  sos: number[];
+  /* Raw matched-result-count / total-result-count behind sos that week --
+     pool (sum numerator / sum denominator), never average, when combining
+     multiple weeks, same reasoning as REAL_ROLLUP_WEEKLY's stockRateSum. */
+  sosSum: number[]; sosWeight: number[];
+}> = {
+  "r1": { sos: [0.0, 0.0, 0.0, 0.0], sosSum: [0, 0, 0, 0], sosWeight: [416, 458, 421, 479] },
+  "r2": { sos: [0.0, 0.0, 0.0, 0.0], sosSum: [0, 0, 0, 0], sosWeight: [216, 216, 216, 216] },
+  "r3": { sos: [0.2, 0.2, 0.2, 0.2], sosSum: [1, 1, 1, 1], sosWeight: [441, 438, 447, 443] },
+  "r4": { sos: [0.0, 0.0, 0.0, 0.0], sosSum: [0, 0, 0, 0], sosWeight: [299, 302, 297, 409] },
+  "r5": { sos: [2.0, 2.0, 2.0, 1.8], sosSum: [4, 4, 4, 4], sosWeight: [203, 203, 203, 228] },
+  "r6": { sos: [0.5, 0.5, 0.6, 0.7], sosSum: [1, 1, 1, 1], sosWeight: [189, 209, 162, 151] },
+  "r7": { sos: [0.0, 0.0, 0.0, 0.0], sosSum: [0, 0, 0, 0], sosWeight: [352, 351, 351, 352] },
+  "portfolio": { sos: [0.3, 0.3, 0.3, 0.3], sosSum: [6, 6, 6, 6], sosWeight: [2116, 2177, 2097, 2278] },
 };
 
 /* Genuine cross-retailer matches within our own 117-SKU sample — same brand
@@ -894,17 +905,19 @@ function realRangeValueAvgPrice(retailer: string, idx: number[], category?: stri
   return { value, delta };
 }
 
-/* Same pooling principle as realRangeValue, applied to Share Of Search
-   (constant 10-keyword denominator every week, so plain averaging across
-   matched weeks is already the correct pooled result -- no weight array
-   needed) and to Price Index (a ratio of continuous values, not a
-   count-based rate, so averaging across weeks is standard practice). */
+/* Same pooling principle as realRangeValue -- pool raw sosSum/sosWeight
+   (matched results / total results) across the matched weeks, never average
+   the already-computed per-week sos%, since a week with few total results
+   shouldn't count as heavily as one with many. */
 function realRangeValueSos(retailer: string, idx: number[], category?: string): { value: number; delta: number } | null {
   if (category) return null; // see realRangeValue's comment -- no category dimension in this table
   const row = REAL_SOS_WEEKLY[retailer === "all" ? "portfolio" : retailer];
   if (!row || !idx.length) return null;
-  const value = idx.reduce((s, i) => s + row[i], 0) / idx.length;
-  const delta = row[idx[idx.length - 1]] - row[idx[0]];
+  const totalWeight = idx.reduce((s, i) => s + row.sosWeight[i], 0);
+  const value = totalWeight
+    ? (idx.reduce((s, i) => s + row.sosSum[i], 0) / totalWeight) * 100
+    : idx.reduce((s, i) => s + row.sos[i], 0) / idx.length;
+  const delta = row.sos[idx[idx.length - 1]] - row.sos[idx[0]];
   return { value, delta };
 }
 
@@ -1004,25 +1017,25 @@ function realRollupSeries(period: string, retailer: string, field: "stockRate" |
   return row[field];
 }
 
-/* REAL_SOS_WEEKLY holds "% of tracked-keyword searches that returned any
-   ranked result" per retailer per week (e.g. Amazon/Walmart/PetSmart 100%,
-   Chewy ~60% -- i.e. 40% of Chewy's tracked-keyword searches this period
-   returned zero ranked results). This is a genuine, real number computed by
-   build_mock_data.py from the Share Of Search tab, but it is a different
-   metric than "Search Visibility / share of search among competitors"
-   (which the KPI label above implies, compared against a 40% target) --
-   the Share Of Search tab is 10 generic keywords per retailer, not a
-   per-SKU competitive-share measurement, so this substitution is a
-   documented simplification, not a literal match. Retailer/portfolio-level
-   only -- there is no reliable way to attribute a keyword-level result to
-   one specific tracked SKU, so per-product search rank stays synthetic. */
+/* REAL_SOS_WEEKLY holds "of every result returned for our 10 tracked
+   generic keywords, what share are genuinely one of our own tracked SKUs"
+   per retailer per week -- a real, computed-from-the-raw-crawl number
+   (each Share Of Search row carries up to 65 individual result slots, each
+   with its own URL; a result counts as ours when that URL contains one of
+   this retailer's own tracked catalog ids). The portfolio's real baseline
+   is a flat 0.3% (6 of ~2,100+ results per week are genuinely one of our
+   117 tracked SKUs) -- most retailers sit at or near 0% for the same
+   reason: a narrow 117-SKU sample rarely appears among a fixed set of
+   generic keywords' results at all. Retailer/portfolio-level only -- rank
+   *within* the matched results isn't tracked, so per-product search rank
+   stays synthetic. */
 function realRollupSeriesSos(period: string, retailer: string, rangeIdx?: number[], category?: string): number[] | null {
   if (category) return null; // see realRangeValue's comment -- no category dimension in this table
   const row = REAL_SOS_WEEKLY[retailer === "all" ? "portfolio" : retailer];
   if (!row) return null;
-  if (rangeIdx) return rangeIdx.map((i) => row[i]);
+  if (rangeIdx) return rangeIdx.map((i) => row.sos[i]);
   if (period !== "4w") return null;
-  return row;
+  return row.sos;
 }
 
 /* Real weekly Average Price trend -- same convention as realRollupSeries
@@ -1053,20 +1066,22 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
   const bias = RETAILER_BIAS[retailer] || RETAILER_BIAS.all;
   const sw = swing[period] || 1;
 
-  /* Anchors rescaled to the real portfolio keyword-coverage baseline (~90%,
-     see REAL_SOS_WEEKLY) rather than the old ~34% synthetic "share of
-     search among competitors" scale -- leader/riser stay illustrative
-     (competitorBrands has no real counterpart), but must sit near the real
-     sos value or the "Gap to Leader" comparison reads as nonsense once sos
-     is real for the "4w" period. */
-  const sos = realRollupSeriesSos(period, retailer, rangeMatch?.idx, category) ?? series(seed + 1, n, 90 - 3 * sw + bias.sos, 90 + bias.sos, 0.9, 1);
+  /* Anchors rescaled to the real portfolio "share of our own tracked
+     keywords' results" baseline (~0.3%, see REAL_SOS_WEEKLY) rather than
+     the old ~90% "returned any result at all" scale -- leader/riser stay
+     illustrative (competitorBrands has no real counterpart), but must sit
+     near the real sos value or the "Gap to Leader" comparison reads as
+     nonsense once sos is real for the "4w" period. Clamped to a small
+     non-negative range since this is a genuine result-share percentage,
+     not an arbitrary score. */
+  const sos = realRollupSeriesSos(period, retailer, rangeMatch?.idx, category) ?? series(seed + 1, n, 0.3 - 0.05 * sw + bias.sos, 0.3 + bias.sos, 0.15, 1).map((v) => clamp(v, 0, 3));
   // leader/riser are paired point-for-point against sos (the "Gap to Leader"
   // KPI does sos[i] - leader[i]), so they must always match sos's own
   // length -- which is 4 (real SOS crawl weeks, Sep 8-29) when real data
   // applies, not necessarily n (5, the full real window every other metric
   // now defaults to, since SOS's crawl doesn't cover Sep 1-7).
-  const leader = series(seed + 2, sos.length, 93 + 1 * sw, 95, 0.6, 1);
-  const riser = series(seed + 3, sos.length, 78 - 8 * sw, 78, 1.1, 1);
+  const leader = series(seed + 2, sos.length, 3.0 + 0.1 * sw, 3.2, 0.3, 1).map((v) => Math.max(0.2, v));
+  const riser = series(seed + 3, sos.length, 2.1 - 0.3 * sw, 2.0, 0.3, 1).map((v) => Math.max(0.1, v));
   // labels (n-length) covers the full real window (Sep 1-29) once real data
   // applies with no custom range, but sos/leader/riser never have more than
   // 4 real points (Sep 8-29 -- SOS's crawl doesn't cover Sep 1-7). Slicing
@@ -1136,7 +1151,10 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
     ],
     visibility: {
       labels: visibilityLabels,
-      previous: sos.map((v, i) => round(v - 2.4 - (i % 3) * 0.3, 1)),
+      // Rescaled with sos above -- the old 2.4-point offset assumed a
+      // ~90% baseline; at the new ~0.3% scale that would go negative, so
+      // this now shaves a small fraction of a point instead, clamped to 0.
+      previous: sos.map((v, i) => round(clamp(v - 0.08 - (i % 3) * 0.02, 0, 3), 1)),
       series: [
         { id: "brand", name: "Your portfolio", values: sos, emphasis: true },
         { id: "cat", name: "Category leader", values: leader },
@@ -1224,15 +1242,21 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       const rr = rowRng(key, "retailerPerf", rt.id);
       const b = RETAILER_BIAS[rt.id];
       const realSos = realCurrentValueSos(rt.id, period, dateRange, rangeMatch?.idx, category);
-      const sosR = realSos != null ? round(realSos, 1) : round(clamp(31 + b.sos + (rr() - 0.5) * 6, 8, 55), 1);
+      const sosR = realSos != null ? round(realSos, 1) : round(clamp(0.3 + b.sos + (rr() - 0.5) * 0.4, 0, 3), 1);
       const realStock = realCurrentValue(rt.id, "stockRate", period, dateRange, wideMatch?.idx, category);
       const realContent = realCurrentValue(rt.id, "content", period, dateRange, wideMatch?.idx, category);
       const realRating = realCurrentValue(rt.id, "rating", period, dateRange, wideMatch?.idx, category);
       const inStockR = realStock != null ? round(realStock, 1) : round(clamp(96.5 + b.stock + (rr() - 0.5) * 3, 85, 100), 1);
       const contentR = realContent != null ? Math.round(realContent) : clamp(Math.round(85 + b.content + (rr() - 0.5) * 8), 40, 100);
       const ratingR = realRating != null ? round(realRating, 2) : round(clamp(4.3 + b.rating + (rr() - 0.5) * 0.2, 3.4, 5), 2);
+      /* sosR's normalization benchmark: 2% share of the tracked keywords'
+         results is a strong real result under the new Search Visibility
+         definition (see REAL_SOS_WEEKLY) -- was /40 when sos meant "did we
+         return any result at all" (~90% baseline); rescaled so this term
+         still carries meaningful weight instead of reading ~0 for every
+         retailer. */
       const overall = Math.round(
-        (sosR / 40) * 25 + (inStockR / 100) * 30 + (contentR / 100) * 25 + (ratingR / 5) * 20
+        (sosR / 2) * 25 + (inStockR / 100) * 30 + (contentR / 100) * 25 + (ratingR / 5) * 20
       );
       return {
         id: rt.id, name: rt.name, sos: sosR, sosDelta: round((rr() - 0.5) * 4, 1),
@@ -1246,10 +1270,13 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       const rr = rowRng(key, "categoryPerf", c);
       const inCat = pool.filter((p) => p.category === c);
       const avg = (f: (p: any) => number, d: number) => (inCat.length ? round(inCat.reduce((a, p) => a + f(p), 0) / inCat.length, d) : 0);
-      const sosC = round(clamp(14 + rr() * 30 + bias.sos / 2, 4, 58), 1);
+      const sosC = round(clamp(0.3 + rr() * 1.2 + bias.sos / 2, 0, 3), 1);
       const availC = inCat.length ? avg((p) => p.inStockRate, 1) : round(94 + rr() * 5, 1);
       const contentC = inCat.length ? Math.round(avg((p) => p.contentScore, 0)) : Math.round(74 + rr() * 20);
-      const overall = Math.round((sosC / 45) * 30 + (availC / 100) * 35 + (contentC / 100) * 35);
+      // See snapshot()'s retailerPerformance overall comment -- same /2
+      // rescale for the same reason (sosC's new realistic ceiling is ~2%,
+      // not the old ~58%).
+      const overall = Math.round((sosC / 2) * 30 + (availC / 100) * 35 + (contentC / 100) * 35);
       return {
         category: c, skus: inCat.length, sos: sosC, sosDelta: round((rr() - 0.5) * 5, 1),
         availability: availC, content: contentC, overall: clamp(overall, 25, 100),
@@ -1364,7 +1391,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
      and the same real-data-for-"4w" substitution, so the two pages never
      disagree about whether a number is real. */
   /* Same rescaled anchor as snapshot() above -- see the comment there. */
-  const sos = realRollupSeriesSos(period, retailer, rangeMatch?.idx, category) ?? series(seed + 1, n, 90 - 3 * sw + bias.sos, 90 + bias.sos, 0.9, 1);
+  const sos = realRollupSeriesSos(period, retailer, rangeMatch?.idx, category) ?? series(seed + 1, n, 0.3 - 0.05 * sw + bias.sos, 0.3 + bias.sos, 0.15, 1).map((v) => clamp(v, 0, 3));
   // See snapshot()'s identical comment -- sos can be shorter than labels/n
   // (4 real SOS weeks vs. up to 5 for everything else), so its own label
   // list needs the matching trailing slice.
@@ -1398,7 +1425,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     const b = RETAILER_BIAS[rt.id];
     const own = catalog.filter((p) => p.retailer === rt.id && (!category || p.category === category)).map((p) => withShelfMetrics(productFor(p, key)));
     const realVisibility = realCurrentValueSos(rt.id, period, dateRange, rangeMatch?.idx, category);
-    const visibility = realVisibility != null ? round(realVisibility, 1) : round(clamp(31 + b.sos + (rr() - 0.5) * 6, 8, 58), 1);
+    const visibility = realVisibility != null ? round(realVisibility, 1) : round(clamp(0.3 + b.sos + (rr() - 0.5) * 0.4, 0, 3), 1);
     const realAvailability = realCurrentValue(rt.id, "stockRate", period, dateRange, wideMatch?.idx, category);
     const realContent = realCurrentValue(rt.id, "content", period, dateRange, wideMatch?.idx, category);
     const realRating = realCurrentValue(rt.id, "rating", period, dateRange, wideMatch?.idx, category);
@@ -1409,8 +1436,10 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     const priceIndex = own.length ? round(avg(own, (p) => p.priceIndex, 3) * 100, 1) : round(98 + rr() * 8, 1);
     const buyBoxPresence = realBuyBox != null ? round(realBuyBox, 1) : (own.length ? Math.round((own.filter((p) => p.buyBox).length / own.length) * 100) : Math.round(60 + rr() * 30));
     const avgPrice = realCurrentAvgPrice(rt.id, period, dateRange, wideMatch?.idx, category) ?? (own.length ? avg(own, (p) => p.price, 2) : 0);
+    // See snapshot()'s retailerPerformance overall comment -- same /2
+    // rescale (visibility's new realistic ceiling is ~2-3%, not ~90%).
     const shelfScore = clamp(Math.round(
-      (visibility / 45) * 25 + (availability / 100) * 30 + (content / 100) * 25 + (rating / 5) * 20
+      (visibility / 2) * 25 + (availability / 100) * 30 + (content / 100) * 25 + (rating / 5) * 20
     ), 25, 100);
     return {
       id: rt.id, name: rt.name, skus: own.length, visibility, availability, content, rating, priceIndex, buyBoxPresence, avgPrice, shelfScore,
@@ -1538,7 +1567,9 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
       kpi("buybox", "Buy Box Ownership 1P", "%", buyBox, 95, 1, realRangeValue(retailer, "buyBoxRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
     ],
     visibility: {
-      labels: visibilityLabels, previous: sos.map((v, i) => round(v - 2.4 - (i % 3) * 0.3, 1)), target: 40,
+      // Same rescaled offset as snapshot()'s visibility.previous -- see the
+      // comment there.
+      labels: visibilityLabels, previous: sos.map((v, i) => round(clamp(v - 0.08 - (i % 3) * 0.02, 0, 3), 1)), target: 40,
       series: [{ id: "brand", name: "Your portfolio", values: sos, emphasis: true }],
       byRetailer: byRetailer.map((r) => ({ label: r.name, value: r.visibility })),
       byCategory: byCategory.map((c) => ({ label: c.category, value: c.visibility })),
