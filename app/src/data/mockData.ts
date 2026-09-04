@@ -306,7 +306,7 @@ export const notificationFeed = [
   { id: "n1", severity: "high", title: "Stock alert", text: "Tetra Koi Vibrance Pond Fish Food Sticks out of stock all month at Lowe's", time: "12m ago", product: "r6-1000735640" },
   { id: "n2", severity: "high", title: "Price alert", text: "BLACK+DECKER SmartGrind Coffee Grinder jumped 150% at Walmart while availability dropped to 27%", time: "38m ago", product: "r3-14320955" },
   { id: "n3", severity: "medium", title: "Buy box alert", text: "Dingo Mini Bones has lost the buy box to a third-party reseller for 29 of the last 30 days on Walmart.com", time: "1h ago", product: "r3-8207932" },
-  { id: "n4", severity: "medium", title: "Search alert", text: "Chewy returned zero ranked results for 40% of tracked keywords this period", time: "2h ago", product: "r2-40150" },
+  { id: "n4", severity: "medium", title: "Search alert", text: "PetSmart's own FURminator tools made up 4 of the results for \"Deshedding Brush\" this period, the strongest real keyword showing across every tracked retailer", time: "2h ago", product: "r5-48923" },
   { id: "n5", severity: "low", title: "Content opportunity", text: "111 products scored under 80 on content completeness across the portfolio", time: "5h ago", product: "r6-1165507" },
 ];
 
@@ -1137,7 +1137,7 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       : null,
     generatedAt: "Today 06:40 UTC",
     kpis: [
-      kpi("sos", "Search Visibility", "%", sos, 40, 1, realRangeValueSos(retailer, dateRange ? rangeMatch!.idx : DEFAULT_NARROW_IDX, category)),
+      kpi("sos", "Search Visibility", "%", sos, 20, 1, realRangeValueSos(retailer, dateRange ? rangeMatch!.idx : DEFAULT_NARROW_IDX, category)),
       kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1, realRangeValue(retailer, "stockRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2, realRangeValueAvgPrice(retailer, dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("content", "Content Completeness", "%", contentVals, 95, 0, realRangeValue(retailer, "content", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
@@ -1249,14 +1249,12 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       const inStockR = realStock != null ? round(realStock, 1) : round(clamp(96.5 + b.stock + (rr() - 0.5) * 3, 85, 100), 1);
       const contentR = realContent != null ? Math.round(realContent) : clamp(Math.round(85 + b.content + (rr() - 0.5) * 8), 40, 100);
       const ratingR = realRating != null ? round(realRating, 2) : round(clamp(4.3 + b.rating + (rr() - 0.5) * 0.2, 3.4, 5), 2);
-      /* sosR's normalization benchmark: 2% share of the tracked keywords'
-         results is a strong real result under the new Search Visibility
-         definition (see REAL_SOS_WEEKLY) -- was /40 when sos meant "did we
-         return any result at all" (~90% baseline); rescaled so this term
-         still carries meaningful weight instead of reading ~0 for every
-         retailer. */
+      /* sosR's normalization benchmark: the Search Visibility KPI's own
+         20% target (see the kpi("sos", ...) target above) -- same
+         "divide by the metric's real target" convention this term always
+         used, just updated from the old 40% target to the new 20%. */
       const overall = Math.round(
-        (sosR / 2) * 25 + (inStockR / 100) * 30 + (contentR / 100) * 25 + (ratingR / 5) * 20
+        (sosR / 20) * 25 + (inStockR / 100) * 30 + (contentR / 100) * 25 + (ratingR / 5) * 20
       );
       return {
         id: rt.id, name: rt.name, sos: sosR, sosDelta: round((rr() - 0.5) * 4, 1),
@@ -1273,10 +1271,9 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       const sosC = round(clamp(0.3 + rr() * 1.2 + bias.sos / 2, 0, 3), 1);
       const availC = inCat.length ? avg((p) => p.inStockRate, 1) : round(94 + rr() * 5, 1);
       const contentC = inCat.length ? Math.round(avg((p) => p.contentScore, 0)) : Math.round(74 + rr() * 20);
-      // See snapshot()'s retailerPerformance overall comment -- same /2
-      // rescale for the same reason (sosC's new realistic ceiling is ~2%,
-      // not the old ~58%).
-      const overall = Math.round((sosC / 2) * 30 + (availC / 100) * 35 + (contentC / 100) * 35);
+      // See snapshot()'s retailerPerformance overall comment -- same
+      // divide-by-the-20%-target convention.
+      const overall = Math.round((sosC / 20) * 30 + (availC / 100) * 35 + (contentC / 100) * 35);
       return {
         category: c, skus: inCat.length, sos: sosC, sosDelta: round((rr() - 0.5) * 5, 1),
         availability: availC, content: contentC, overall: clamp(overall, 25, 100),
@@ -1436,10 +1433,10 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     const priceIndex = own.length ? round(avg(own, (p) => p.priceIndex, 3) * 100, 1) : round(98 + rr() * 8, 1);
     const buyBoxPresence = realBuyBox != null ? round(realBuyBox, 1) : (own.length ? Math.round((own.filter((p) => p.buyBox).length / own.length) * 100) : Math.round(60 + rr() * 30));
     const avgPrice = realCurrentAvgPrice(rt.id, period, dateRange, wideMatch?.idx, category) ?? (own.length ? avg(own, (p) => p.price, 2) : 0);
-    // See snapshot()'s retailerPerformance overall comment -- same /2
-    // rescale (visibility's new realistic ceiling is ~2-3%, not ~90%).
+    // See snapshot()'s retailerPerformance overall comment -- same
+    // divide-by-the-20%-target convention.
     const shelfScore = clamp(Math.round(
-      (visibility / 2) * 25 + (availability / 100) * 30 + (content / 100) * 25 + (rating / 5) * 20
+      (visibility / 20) * 25 + (availability / 100) * 30 + (content / 100) * 25 + (rating / 5) * 20
     ), 25, 100);
     return {
       id: rt.id, name: rt.name, skus: own.length, visibility, availability, content, rating, priceIndex, buyBoxPresence, avgPrice, shelfScore,
@@ -1560,7 +1557,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
       : null,
     generatedAt: "Today 06:40 UTC",
     kpis: [
-      kpi("sos", "Search Visibility", "%", sos, 40, 1, realRangeValueSos(retailer, dateRange ? rangeMatch!.idx : DEFAULT_NARROW_IDX, category)),
+      kpi("sos", "Search Visibility", "%", sos, 20, 1, realRangeValueSos(retailer, dateRange ? rangeMatch!.idx : DEFAULT_NARROW_IDX, category)),
       kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1, realRangeValue(retailer, "stockRate", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2, realRangeValueAvgPrice(retailer, dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
       kpi("content", "Content Completeness", "%", contentVals, 95, 0, realRangeValue(retailer, "content", dateRange ? wideMatch!.idx : DEFAULT_WIDE_IDX, category)),
@@ -1569,7 +1566,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     visibility: {
       // Same rescaled offset as snapshot()'s visibility.previous -- see the
       // comment there.
-      labels: visibilityLabels, previous: sos.map((v, i) => round(clamp(v - 0.08 - (i % 3) * 0.02, 0, 3), 1)), target: 40,
+      labels: visibilityLabels, previous: sos.map((v, i) => round(clamp(v - 0.08 - (i % 3) * 0.02, 0, 3), 1)), target: 20,
       series: [{ id: "brand", name: "Your portfolio", values: sos, emphasis: true }],
       byRetailer: byRetailer.map((r) => ({ label: r.name, value: r.visibility })),
       byCategory: byCategory.map((c) => ({ label: c.category, value: c.visibility })),

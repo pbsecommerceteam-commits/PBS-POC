@@ -23,7 +23,7 @@ export default function CompetitorsSummary() {
   const visHi = Math.max(5, Math.ceil(Math.max(...visVals, 1) + 1));
   const chart = lineChart({ id: "vis", title: "Search Visibility Trend", subtitle: "Share of search across the tracked keyword set · Illustrative — no resolvable competitor entity in the raw crawl",
     labels: snap.visibility.labels, lo: 0, hi: visHi, ticks: [0, visHi / 4, visHi / 2, (visHi * 3) / 4, visHi], fmt: (v) => v.toFixed(1) + "%",
-    series: snap.visibility.series, previous: snap.visibility.previous, target: 40, span: "1 / -1" }, hover, onEnter);
+    series: snap.visibility.series, previous: snap.visibility.previous, target: 20, span: "1 / -1" }, hover, onEnter);
 
   return (
     <>
