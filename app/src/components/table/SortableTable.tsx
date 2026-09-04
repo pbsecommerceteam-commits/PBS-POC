@@ -4,7 +4,7 @@ import { useColumnWidths } from "../../hooks/useColumnWidths";
 export interface Column<T> {
   key: string;
   label: string;
-  align?: "left" | "right";
+  align?: "left" | "right" | "center";
   minWidth?: number;
   sortable?: boolean;
   render: (row: T) => ReactNode;
@@ -19,11 +19,16 @@ export interface Column<T> {
  *  Digital Shelf, Performance Intelligence, keywords) — each page supplies its own
  *  column render functions for the bespoke cell visuals (progress bars,
  *  badges, deltas), so only the header-sort and row-click plumbing is
- *  centralized here instead of repeated per page. `resizable` is opt-in
- *  (default off, so every existing table keeps its current auto-sized
- *  layout) -- when on, each column starts at its `minWidth` and the user
- *  can drag a header's right edge to widen/narrow it. */
-export function SortableTable<T>({ columns, rows, sortKey, sortDir, onSort, onRowClick, rowKey, resizable }: {
+ *  centralized here instead of repeated per page. `resizable` and `wrap`
+ *  are both opt-in (default off, so every existing table keeps its
+ *  current auto-sized, single-line-ellipsis layout): `resizable` lets the
+ *  user drag a header's right edge to widen/narrow that column (starting
+ *  at its `minWidth`); `wrap` turns off the default single-line
+ *  ellipsis-truncation for every cell in this table, letting long content
+ *  wrap onto as many lines as it needs instead of cutting off -- rows
+ *  then vary in height with their content, which is the point when a
+ *  table is meant to show everything rather than stay uniform. */
+export function SortableTable<T>({ columns, rows, sortKey, sortDir, onSort, onRowClick, rowKey, resizable, wrap }: {
   columns: Column<T>[];
   rows: T[];
   sortKey?: string;
@@ -32,6 +37,7 @@ export function SortableTable<T>({ columns, rows, sortKey, sortDir, onSort, onRo
   onRowClick?: (row: T) => void;
   rowKey: (row: T) => string;
   resizable?: boolean;
+  wrap?: boolean;
 }) {
   const defaults = useMemo(() => Object.fromEntries(columns.map((c) => [c.key, c.minWidth ?? 140])), [columns]);
   const { widths, startResize } = useColumnWidths(defaults);
@@ -75,7 +81,7 @@ export function SortableTable<T>({ columns, rows, sortKey, sortDir, onSort, onRo
           {rows.map((row) => (
             <tr className={"sl-row" + (onRowClick ? " is-clickable" : "")} key={rowKey(row)} onClick={onRowClick ? () => onRowClick(row) : undefined}>
               {columns.map((c) => (
-                <td key={c.key} style={{ textAlign: c.align }}>{c.render(row)}</td>
+                <td key={c.key} style={wrap ? { textAlign: c.align, whiteSpace: "normal", overflow: "visible", textOverflow: "clip", maxWidth: "none" } : { textAlign: c.align }}>{c.render(row)}</td>
               ))}
             </tr>
           ))}

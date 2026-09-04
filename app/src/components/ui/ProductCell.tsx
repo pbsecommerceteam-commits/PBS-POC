@@ -9,7 +9,7 @@ import { useState } from "react";
  *  local and real remote photo have failed to load. Never falls back to a
  *  placeholder/stock image -- every photo shown is a genuine crawled photo
  *  of that SKU, or it's the monogram. */
-export function ProductCell({ id, name, sku, meta, imageUrl, nameLines = 1, imageSize = 34 }: { id?: string; name: string; sku?: string; meta?: string; imageUrl?: string | null; nameLines?: number; imageSize?: number }) {
+export function ProductCell({ id, name, sku, meta, imageUrl, nameLines = 1, noClamp = false, imageSize = 34 }: { id?: string; name: string; sku?: string; meta?: string; imageUrl?: string | null; nameLines?: number; noClamp?: boolean; imageSize?: number }) {
   const initials = name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("");
   const [stage, setStage] = useState<"local" | "remote" | "initials">(id ? "local" : imageUrl ? "remote" : "initials");
   const src = stage === "local" ? `${import.meta.env.BASE_URL}product-images/${id}.jpg` : stage === "remote" ? imageUrl! : undefined;
@@ -17,8 +17,13 @@ export function ProductCell({ id, name, sku, meta, imageUrl, nameLines = 1, imag
      lines instead of clipping to one -- still bounded (so every row in a
      table stays the same height), but much less likely to actually
      truncate a real product title than the 1-line default used in dense
-     tables. */
-  const nameStyle = nameLines > 1
+     tables. noClamp drops the line limit entirely -- the name wraps onto
+     as many lines as it needs and nothing is ever cut off, at the cost of
+     uniform row height (a table asking for this wants the full text, not
+     a tidy grid). */
+  const nameStyle = noClamp
+    ? { whiteSpace: "normal" as const, overflow: "visible", textOverflow: "clip", lineHeight: 1.35 }
+    : nameLines > 1
     // whiteSpace must be set explicitly here -- it's inherited, and the
     // ancestor table cell forces nowrap (see app.css's row-height-
     // consistency rule), which would otherwise stop this box from ever

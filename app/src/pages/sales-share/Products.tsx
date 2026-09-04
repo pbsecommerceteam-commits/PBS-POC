@@ -44,29 +44,29 @@ const visibilityDelta = (p: Product) => Math.round(p.rankDelta * 3.4 * 10) / 10;
    column picker on this table (every column here is always shown), so
    "all columns" for export purposes is simply this whole list. */
 export const SALES_COLUMNS: Column<Product>[] = [
-  { key: "name", label: "Product", minWidth: 230, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} imageUrl={p.imageUrl} />, csv: (p) => `${p.id.toUpperCase()} - ${p.name}` },
-  { key: "category", label: "Category", sortable: true, render: (p) => p.category, csv: (p) => p.category },
-  { key: "retailerName", label: "Retailer", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.retailerName}</span>, csv: (p) => p.retailerName },
-  { key: "retailerId", label: "Retailer ID", sortable: true, render: (p) => p.retailerId ?? "—", csv: (p) => p.retailerId ?? "" },
-  { key: "brand", label: "Brand", sortable: true, render: (p) => p.brand, csv: (p) => p.brand },
-  { key: "vendorStockNo", label: "Vendor Stock No.", sortable: true, render: (p) => p.vendorStockNo ?? "—", csv: (p) => p.vendorStockNo ?? "" },
-  { key: "currentPrice", label: "Current Price", align: "right", sortable: true, render: (p) => <span>${(p.currentPrice ?? p.price).toFixed(2)}</span>, csv: (p) => (p.currentPrice ?? p.price).toFixed(2) },
-  { key: "listPrice", label: "List Price", align: "right", sortable: true, render: (p) => <span>{p.listPrice != null ? "$" + p.listPrice.toFixed(2) : "—"}</span>, csv: (p) => p.listPrice != null ? p.listPrice.toFixed(2) : "" },
-  { key: "subscriptionPrice", label: "Subscription Price", align: "right", sortable: true, render: (p) => <span>{p.subscriptionPrice != null ? "$" + p.subscriptionPrice.toFixed(2) : "—"}</span>, csv: (p) => p.subscriptionPrice != null ? p.subscriptionPrice.toFixed(2) : "" },
-  { key: "couponValue", label: "Coupon Value", align: "right", sortable: true, render: (p) => p.couponValue ?? "—", csv: (p) => p.couponValue ?? "" },
-  { key: "priceDiff", label: "Price Difference", align: "right", render: (p) => {
+  { key: "name", label: "Product", minWidth: 280, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} imageUrl={p.imageUrl} noClamp />, csv: (p) => `${p.id.toUpperCase()} - ${p.name}` },
+  { key: "category", label: "Category", align: "center", sortable: true, render: (p) => p.category, csv: (p) => p.category },
+  { key: "retailerName", label: "Retailer", align: "center", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.retailerName}</span>, csv: (p) => p.retailerName },
+  { key: "retailerId", label: "Retailer ID", align: "center", sortable: true, render: (p) => p.retailerId ?? "—", csv: (p) => p.retailerId ?? "" },
+  { key: "brand", label: "Brand", align: "center", sortable: true, render: (p) => p.brand, csv: (p) => p.brand },
+  { key: "vendorStockNo", label: "Vendor Stock No.", align: "center", sortable: true, render: (p) => p.vendorStockNo ?? "—", csv: (p) => p.vendorStockNo ?? "" },
+  { key: "currentPrice", label: "Current Price", align: "center", sortable: true, render: (p) => <span>${(p.currentPrice ?? p.price).toFixed(2)}</span>, csv: (p) => (p.currentPrice ?? p.price).toFixed(2) },
+  { key: "listPrice", label: "List Price", align: "center", sortable: true, render: (p) => <span>{p.listPrice != null ? "$" + p.listPrice.toFixed(2) : "—"}</span>, csv: (p) => p.listPrice != null ? p.listPrice.toFixed(2) : "" },
+  { key: "subscriptionPrice", label: "Subscription Price", align: "center", sortable: true, render: (p) => <span>{p.subscriptionPrice != null ? "$" + p.subscriptionPrice.toFixed(2) : "—"}</span>, csv: (p) => p.subscriptionPrice != null ? p.subscriptionPrice.toFixed(2) : "" },
+  { key: "couponValue", label: "Coupon Value", align: "center", sortable: true, render: (p) => p.couponValue ?? "—", csv: (p) => p.couponValue ?? "" },
+  { key: "priceDiff", label: "Price Difference", align: "center", render: (p) => {
     const cur = p.currentPrice ?? p.price;
     if (p.listPrice == null) return <span className="sl-faint">—</span>;
     const diff = cur - p.listPrice;
     return <span style={{ color: diff < 0 ? "var(--status-positive-fg)" : diff > 0 ? "var(--status-negative-fg)" : "inherit" }}>{diff === 0 ? "—" : (diff > 0 ? "+" : "−") + "$" + Math.abs(diff).toFixed(2)}</span>;
   }, csv: (p) => p.listPrice != null ? ((p.currentPrice ?? p.price) - p.listPrice).toFixed(2) : "" },
-  { key: "priceChangePct", label: "Price Change", align: "right", sortable: true, render: (p) => <span style={{ color: deltaColor(p.priceChangePct) }}>{delta(p.priceChangePct, "%")}</span>, csv: (p) => p.priceChangePct },
-  { key: "priceIndex", label: "Price Index", align: "right", sortable: true, render: (p) => <span>{(p.priceIndex * 100).toFixed(0)}</span>, csv: (p) => (p.priceIndex * 100).toFixed(0) },
-  { key: "stockStatusRaw", label: "Stock Status", sortable: true, render: (p) => p.stockStatusRaw ?? "—", csv: (p) => p.stockStatusRaw ?? "" },
-  { key: "buyBox", label: "Buy Box", render: (p) => <Badge tone={p.buyBox ? "positive" : "neutral"}>{p.buyBox ? "Held" : "Lost"}</Badge>, csv: (p) => p.buyBox ? "Held" : "Lost" },
-  { key: "buyBoxSeller", label: "Buy Box Seller", sortable: true, render: (p) => p.buyBoxSeller ?? "—", csv: (p) => p.buyBoxSeller ?? "" },
-  { key: "buyBoxShipper", label: "Buy Box Shipper", sortable: true, render: (p) => p.buyBoxShipper ?? "—", csv: (p) => p.buyBoxShipper ?? "" },
-  { key: "spbUrl", label: "Listing Link", render: (p) => p.spbUrl
+  { key: "priceChangePct", label: "Price Change", align: "center", sortable: true, render: (p) => <span style={{ color: deltaColor(p.priceChangePct) }}>{delta(p.priceChangePct, "%")}</span>, csv: (p) => p.priceChangePct },
+  { key: "priceIndex", label: "Price Index", align: "center", sortable: true, render: (p) => <span>{(p.priceIndex * 100).toFixed(0)}</span>, csv: (p) => (p.priceIndex * 100).toFixed(0) },
+  { key: "stockStatusRaw", label: "Stock Status", align: "center", sortable: true, render: (p) => p.stockStatusRaw ?? "—", csv: (p) => p.stockStatusRaw ?? "" },
+  { key: "buyBox", label: "Buy Box", align: "center", render: (p) => <Badge tone={p.buyBox ? "positive" : "neutral"}>{p.buyBox ? "Held" : "Lost"}</Badge>, csv: (p) => p.buyBox ? "Held" : "Lost" },
+  { key: "buyBoxSeller", label: "Buy Box Seller", align: "center", sortable: true, render: (p) => p.buyBoxSeller ?? "—", csv: (p) => p.buyBoxSeller ?? "" },
+  { key: "buyBoxShipper", label: "Buy Box Shipper", align: "center", sortable: true, render: (p) => p.buyBoxShipper ?? "—", csv: (p) => p.buyBoxShipper ?? "" },
+  { key: "spbUrl", label: "Listing Link", align: "center", render: (p) => p.spbUrl
     ? <a href={p.spbUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>View listing →</a>
     : <span className="sl-faint">—</span>, csv: (p) => p.spbUrl ?? "" },
 ];
@@ -137,7 +137,7 @@ export default function SalesShareProducts() {
             {brands.map((b) => <option key={b} value={b}>{b}</option>)}
           </select>
         </div>
-        <SortableTable columns={SALES_COLUMNS} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} />
+        <SortableTable columns={SALES_COLUMNS} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} resizable wrap />
         {all.length === 0 && (
           <div style={{ padding: "32px 4px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
             <div style={{ fontWeight: 600, fontSize: 15 }}>No products match this view</div>
