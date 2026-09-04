@@ -17,6 +17,9 @@ This script is the auditable record of exactly how the September 2022 crawl
 (Content / Price / Share Of Search) was turned into the catalog and REAL_* tables
 consumed by app/src/data/mockData.ts. Re-run it whenever the source workbook is
 refreshed; the static block it prints is meant to be reviewed, then pasted in.
+
+Depends on `openpyxl` and `ftfy` (``pip install ftfy`` -- used to repair mojibake
+in crawled text fields, see `fix_mojibake` below).
 """
 
 import sys
@@ -26,6 +29,41 @@ from collections import defaultdict, Counter
 from datetime import datetime, timedelta
 
 import openpyxl
+import ftfy
+
+# Crawled text (title/description/bullets/ingredients) sometimes has mojibake
+# baked into the source workbook itself -- e.g. "TetraÂ®" for
+# "Tetra®" -- from a prior UTF-8-saved-as/read-as-Windows-1252 step
+# upstream of this pipeline, not something openpyxl introduces. Repaired at
+# the point every string is emitted (see ts_str below) so it can never
+# reappear as new fields are added. Applied only to the non-ASCII runs
+# themselves (not whole strings) and with quote-curling/line-break/etc.
+# normalization disabled, so genuinely-correct text (real accented brand
+# names, deliberate curly quotes) is left untouched -- verified against the
+# full 117-SKU catalog before this was added.
+_MOJIBAKE_RUN = re.compile(r"[^\x00-\x7f]+")
+_MOJIBAKE_CONFIG = ftfy.TextFixerConfig(
+    unescape_html=False,
+    remove_terminal_escapes=False,
+    fix_encoding=True,
+    restore_byte_a0=True,
+    replace_lossy_sequences=True,
+    decode_inconsistent_utf8=True,
+    fix_c1_controls=True,
+    fix_latin_ligatures=False,
+    fix_character_width=False,
+    uncurl_quotes=False,
+    fix_line_breaks=False,
+    fix_surrogates=True,
+    remove_control_chars=False,
+    normalization=None,
+)
+
+
+def fix_mojibake(text):
+    if not text:
+        return text
+    return _MOJIBAKE_RUN.sub(lambda m: ftfy.fix_text(m.group(0), config=_MOJIBAKE_CONFIG), text)
 
 # ── retailer / category normalization ──────────────────────────────────────
 
@@ -745,7 +783,7 @@ def main():
     def ts_str(v):
         if v is None:
             return "null"
-        return json.dumps(str(v))
+        return json.dumps(fix_mojibake(str(v)))
 
     def ts_num(v, default=0):
         if v is None:
@@ -762,6 +800,9 @@ def main():
 
     def ts_bool(v):
         return "true" if v else "false"
+
+    def ts_str_list(v):
+        return json.dumps([fix_mojibake(s) for s in v])
 
     out.append("export const catalog = [")
     for p in catalog:
@@ -782,8 +823,8 @@ def main():
                 ts_str(p["buyBoxSeller"]), ts_str(p["buyBoxShipper"]),
                 ts_num(p["videoCount"], 0), ts_num(p["questionCount"], 0),
                 ts_bool(p["has360Image"]), ts_bool(p["hasIngredients"]),
-                ts_str(p["descriptionText"]), json.dumps(p["bulletsText"]), ts_str(p["ingredientsText"]),
-                json.dumps(p["variations"]),
+                ts_str(p["descriptionText"]), ts_str_list(p["bulletsText"]), ts_str(p["ingredientsText"]),
+                ts_str_list(p["variations"]),
             )
         )
     out.append("];")
@@ -818,7 +859,7 @@ def main():
 
     out.append("export const REAL_BUYBOX_COMPETITOR: Record<string, { seller: string; daysWon: number }> = {")
     for pid, v in real_buybox_competitor.items():
-        out.append(f'  {json.dumps(pid)}: {{ seller: {json.dumps(v["seller"])}, daysWon: {v["daysWon"]} }},')
+        out.append(f'  {json.dumps(pid)}: {{ seller: {json.dumps(fix_mojibake(v["seller"]))}, daysWon: {v["daysWon"]} }},')
     out.append("};")
     out.append("")
 
