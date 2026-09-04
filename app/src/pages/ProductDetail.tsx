@@ -107,9 +107,9 @@ export default function ProductDetail() {
   ];
 
   const contentChecklistTable = table("Content checklist", "Requirement-level detail behind the content score",
-    [{ label: "Requirement", align: "left" }, { label: "Weight", align: "left" }, { label: "Status", align: "left" }],
+    [{ label: "Requirement", align: "left" }, { label: "Status", align: "left" }],
     detail.contentBreakdown.map((c: any) => ({ cells: [
-      cell(c.name), cell(c.weight, { tone: c.weight === "High" ? "positive" : "neutral" }),
+      cell(c.name),
       cell(c.pass ? "Pass" : "Fix needed", { tone: c.pass ? "positive" : "warning" }),
     ] })));
 

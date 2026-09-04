@@ -1252,12 +1252,13 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
     }),
     // Real -- the same 8 binary checks (CONTENT_CHECK_LABELS) that produce
     // Content Completeness, not the illustrative contentAttributes list
-    // (fabricated names/weights, random coverage/failing counts). Equally
-    // weighted (12.5% each) honestly, since that's what the real rubric is.
+    // (fabricated names/weights, random coverage/failing counts). All 8
+    // are equally weighted (12.5% each), so no weight column is shown --
+    // it would read the same on every row.
     contentCoverage: Object.keys(CONTENT_CHECK_LABELS).map((cid) => {
       const failing = pool.filter((p) => p.contentChecks.includes(cid)).length;
       return {
-        id: cid, name: CONTENT_CHECK_LABELS[cid], weight: "12.5%",
+        id: cid, name: CONTENT_CHECK_LABELS[cid],
         coverage: pool.length ? Math.round(((pool.length - failing) / pool.length) * 100) : 0,
         failing,
       };
@@ -2001,10 +2002,11 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
       // content_completeness() in build_mock_data.py) that produce this
       // product's real Content Completeness %, not an illustrative,
       // randomly-rolled checklist unrelated to the real score shown
-      // elsewhere on this page. Equally weighted (12.5% each), honestly --
-      // no fabricated High/Medium/Low tiering.
+      // elsewhere on this page. All 8 are equally weighted (12.5% each),
+      // so no weight column is shown -- it would read the same on every
+      // row.
       contentBreakdown: Object.keys(CONTENT_CHECK_LABELS).map((cid) => ({
-        name: CONTENT_CHECK_LABELS[cid], weight: "12.5%", pass: !p.contentChecks.includes(cid),
+        name: CONTENT_CHECK_LABELS[cid], pass: !p.contentChecks.includes(cid),
       })),
       // Illustrative -- the raw crawl has an aggregate rating and a total
       // review count (both real, used everywhere else), but no per-star
