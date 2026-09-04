@@ -212,6 +212,16 @@ export default function SalesShareSummary() {
     : null;
   const catProducts = priceTrendCategory ? sh.products.filter((p: Product) => p.category === priceTrendCategory) : [];
 
+  /* The same SKU/category scope now drives every trend chart AND table
+     below it (Average Price by Retailer, Price Tiers, Largest Price Gap,
+     Retailer pricing, Category pricing) -- not just the Average Price
+     Trend chart. scopedProducts is the one filtered pool every one of
+     those sections reads from; when nothing is picked it's exactly
+     sh.products, so the unscoped page is unchanged. */
+  const scopedProducts: Product[] = skuMatch ? [skuMatch] : (priceTrendCategory && catProducts.length ? catProducts : sh.products);
+  const isScoped = !!skuMatch || (!!priceTrendCategory && catProducts.length > 0);
+  const scopeLabel = skuMatch ? skuMatch.name : (priceTrendCategory || null);
+
   let trendLabels = sh.labels, trendValues = pidx.spark, trendMap = avgMapPrice;
   let trendTitle = "Average Price Trend", trendSubtitle = "Real pooled average price across the selected period";
   let trendValueLabel = "Average price", trendMapLabel = "Avg MAP Price";
@@ -255,16 +265,28 @@ export default function SalesShareSummary() {
     toast("Exported " + trendTitle + ".");
   };
 
-  const retailerHi = Math.max(20, Math.ceil((Math.max(...sh.retailers.map((r: any) => r.avgPrice)) + 5) / 5) * 5);
+  /* Real pooled average price per retailer straight from shelfData() when
+     unscoped (same figures as before); recomputed from scopedProducts when
+     a SKU/category scope is active, since that per-retailer pool no longer
+     matches sh.retailers' own portfolio-wide grouping. A single-SKU scope
+     naturally collapses this to the one retailer that SKU is tracked at. */
+  const retailerPriceRows: Array<{ name: string; avgPrice: number }> = isScoped
+    ? Array.from(new Set(scopedProducts.map((p: Product) => p.retailerName))).map((name) => {
+        const prods = scopedProducts.filter((p: Product) => p.retailerName === name);
+        return { name, avgPrice: prods.reduce((a: number, p: Product) => a + p.price, 0) / prods.length };
+      }).sort((a, b) => b.avgPrice - a.avgPrice)
+    : sh.retailers.map((r: any) => ({ name: r.name, avgPrice: r.avgPrice }));
+  const retailerHi = Math.max(20, Math.ceil((Math.max(...retailerPriceRows.map((r) => r.avgPrice)) + 5) / 5) * 5);
   const retailerPriceChart = barChart({
-    id: "price-by-retailer", title: "Average Price by Retailer", subtitle: "Real pooled average price at each monitored retailer",
-    labels: sh.retailers.map((r: any) => r.name), values: sh.retailers.map((r: any) => r.avgPrice),
+    id: "price-by-retailer", title: "Average Price by Retailer",
+    subtitle: "Real pooled average price at each monitored retailer" + (scopeLabel ? " · " + scopeLabel : ""),
+    labels: retailerPriceRows.map((r) => r.name), values: retailerPriceRows.map((r) => r.avgPrice),
     valueName: "Avg price", lo: 0, hi: retailerHi, ticks: [0, retailerHi / 4, retailerHi / 2, (retailerHi * 3) / 4, retailerHi], fmt: (v) => "$" + v.toFixed(2),
     fill: () => "var(--color-accent-700)",
   }, hover, onEnter);
   const exportRetailerPriceChart = () => {
-    const series = [{ name: "Avg Price", values: sh.retailers.map((r: any) => r.avgPrice) }];
-    downloadCsv("shelfline-average-price-by-retailer.csv", seriesToCsv(sh.retailers.map((r: any) => r.name), series, undefined, "Retailer"));
+    const series = [{ name: "Avg Price", values: retailerPriceRows.map((r) => r.avgPrice) }];
+    downloadCsv("shelfline-average-price-by-retailer.csv", seriesToCsv(retailerPriceRows.map((r) => r.name), series, undefined, "Retailer"));
     toast("Exported Average Price by Retailer.");
   };
 
@@ -272,18 +294,44 @@ export default function SalesShareSummary() {
     { key: "listPrice", label: "List price" }, { key: "currentPrice", label: "Current price" }, { key: "subscriptionPrice", label: "Subscription price" },
   ];
   const tiers = tierFields.map((f) => {
-    const withValue = sh.products.filter((p: Product) => p[f.key] != null);
+    const withValue = scopedProducts.filter((p: Product) => p[f.key] != null);
     const avg = withValue.length ? withValue.reduce((a: number, p: Product) => a + (p[f.key] as number), 0) / withValue.length : null;
     return { ...f, avg, tracked: withValue.length };
   });
 
-  const priceGaps = sh.products
+  const priceGaps = scopedProducts
     .map((p: Product) => ({ p, gapPct: p.avgSellingPrice ? ((p.price - p.avgSellingPrice) / p.avgSellingPrice) * 100 : 0 }))
     .sort((a: any, b: any) => Math.abs(b.gapPct) - Math.abs(a.gapPct))
     .slice(0, 5);
 
+  /* Same scoping as retailerPriceRows above -- real per-retailer figures
+     from shelfData() when unscoped, recomputed from scopedProducts (same
+     fields, same real per-product data) when a SKU/category is picked. */
+  const retailerCards = isScoped
+    ? Array.from(new Set(scopedProducts.map((p: Product) => p.retailerName))).map((name) => {
+        const prods = scopedProducts.filter((p: Product) => p.retailerName === name);
+        return {
+          id: prods[0].retailer, name, skus: prods.length,
+          avgPrice: prods.reduce((a: number, p: Product) => a + p.price, 0) / prods.length,
+          priceIndex: (prods.reduce((a: number, p: Product) => a + p.priceIndex, 0) / prods.length) * 100,
+          buyBoxPresence: Math.round((prods.filter((p: Product) => p.buyBox).length / prods.length) * 100),
+        };
+      }).sort((a, b) => b.avgPrice - a.avgPrice)
+    : sh.retailers;
+
+  const categoryRows = isScoped
+    ? Array.from(new Set(scopedProducts.map((p: Product) => p.category))).map((cat) => {
+        const prods = scopedProducts.filter((p: Product) => p.category === cat);
+        return {
+          category: cat, skus: prods.length,
+          avgPrice: prods.reduce((a: number, p: Product) => a + p.price, 0) / prods.length,
+          priceIndex: (prods.reduce((a: number, p: Product) => a + p.priceIndex, 0) / prods.length) * 100,
+        };
+      })
+    : sh.categories;
+
   const catSortFn = (k: string) => setCatSort((s) => ({ key: k, dir: s.key === k && s.dir === "desc" ? "asc" : "desc" }));
-  const sortedCategories = sh.categories.slice().sort((a: any, b: any) => {
+  const sortedCategories = categoryRows.slice().sort((a: any, b: any) => {
     const dir = catSort.dir === "asc" ? 1 : -1;
     return (catSort.key === "category" ? a.category.localeCompare(b.category) : a[catSort.key] - b[catSort.key]) * dir;
   });
@@ -327,7 +375,7 @@ export default function SalesShareSummary() {
       {drill && <DrilldownModal t={drill} onClose={() => setDrill(null)} />}
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <span className="sl-muted" style={{ fontSize: 12.5 }}>Average Price Trend scope:</span>
+        <span className="sl-muted" style={{ fontSize: 12.5 }}>Scope every trend &amp; table below to:</span>
         <input
           className="input" list="price-trend-sku-options" placeholder="Search a SKU or product…"
           value={priceTrendSku} onChange={(e) => { setPriceTrendSku(e.target.value); if (e.target.value) setPriceTrendCategory(""); }}
@@ -356,13 +404,13 @@ export default function SalesShareSummary() {
 
       <Card padding="20px 22px">
         <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Price Tiers</h3>
-        <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 16 }}>Real Price-tab fields — a product with no value for a tier never posted that price</div>
+        <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 16 }}>Real Price-tab fields — a product with no value for a tier never posted that price{scopeLabel ? " · " + scopeLabel : ""}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 16 }}>
           {tiers.map((t) => (
             <div key={t.key}>
               <div className="sl-muted" style={{ fontSize: 12.5 }}>{t.label}</div>
               <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 24, marginTop: 4 }}>{t.avg != null ? "$" + t.avg.toFixed(2) : "—"}</div>
-              <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 4 }}>{t.tracked} of {sh.products.length} SKUs</div>
+              <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 4 }}>{t.tracked} of {scopedProducts.length} SKUs</div>
             </div>
           ))}
         </div>
@@ -370,7 +418,7 @@ export default function SalesShareSummary() {
 
       <Card padding="20px 22px">
         <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Largest Price Gap vs. Own Average</h3>
-        <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 14 }}>Current price vs. this item's own real average selling price this period</div>
+        <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 14 }}>Current price vs. this item's own real average selling price this period{scopeLabel ? " · " + scopeLabel : ""}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {priceGaps.map(({ p, gapPct }: any) => (
             <button key={p.id} className="sl-palette__row" onClick={() => navigate("/product/" + p.id)} style={{ justifyContent: "space-between", gap: 12, fontSize: 12.5, paddingBottom: 8, borderBottom: "1px solid var(--border-subtle)" }}>
@@ -384,10 +432,10 @@ export default function SalesShareSummary() {
       <section>
         <div style={{ marginBottom: 14 }}>
           <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Retailer pricing</h2>
-          <div className="sl-muted" style={{ fontSize: 13, marginTop: 2 }}>Select a retailer to scope the page to that account</div>
+          <div className="sl-muted" style={{ fontSize: 13, marginTop: 2 }}>Select a retailer to scope the page to that account{scopeLabel ? " · " + scopeLabel : ""}</div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))", gap: "var(--app-gap)" }}>
-          {sh.retailers.map((r: any) => {
+          {retailerCards.map((r: any) => {
             const active = retailer === r.id;
             return (
               <Card key={r.id} interactive selected={active} padding="16px 18px" onClick={() => { if (!active) { setRetailer(r.id); toast("Scoped to " + r.name + "."); } }}>
@@ -408,7 +456,7 @@ export default function SalesShareSummary() {
 
       <Card padding="20px 22px 10px">
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
-          <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Category pricing</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Sort any column; select a category to scope the page</div></div>
+          <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Category pricing</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Sort any column; select a category to scope the page{scopeLabel ? " · " + scopeLabel : ""}</div></div>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table className="sl-table">
