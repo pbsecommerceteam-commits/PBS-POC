@@ -27,8 +27,17 @@ export interface Product {
   category: string;
   retailer: string;
   retailerName: string;
-  searchRank: number;
-  rankDelta: number;
+  /** Real, deterministic: count (0-10) of the 10 tracked generic keywords
+   *  this SKU genuinely appeared under in the raw Share Of Search crawl
+   *  (any position, any real week) -- see REAL_KEYWORD_MATCH in
+   *  mockData.ts. 0 for the vast majority of SKUs, which is an honest
+   *  "not found", not a fabricated position. */
+  keywordCoverage: number;
+  /** Real: week-over-week change in keywordCoverage across the real crawl
+   *  weeks. Always 0 in this dataset -- every matched SKU appeared under
+   *  the same keyword all 4 real weeks, so there was genuinely no
+   *  movement to report. */
+  keywordCoverageDelta: number;
   price: number;
   avgSellingPrice: number;
   priceIndex: number;

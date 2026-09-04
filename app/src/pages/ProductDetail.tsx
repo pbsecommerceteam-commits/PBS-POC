@@ -66,7 +66,7 @@ export default function ProductDetail() {
   const initials = p.name.split(" ").filter(Boolean).slice(0, 2).map((w: string) => w[0]).join("");
 
   const kpis = [
-    { id: "rank", label: "Search Rank", unit: "", value: p.searchRank, target: 5, delta: t.rank[0] - p.searchRank, spark: t.rank },
+    { id: "coverage", label: "Keyword Coverage", unit: "", value: p.keywordCoverage, target: 10, delta: t.coverage[0] - p.keywordCoverage, spark: t.coverage },
     { id: "instock", label: "Stock Availability 1P + 3P", unit: "%", value: p.inStockRate, target: 98, delta: Number((p.inStockRate - t.stock[0]).toFixed(1)), spark: t.stock },
     { id: "rating", label: "Average Rating", unit: "", value: p.rating, target: 4.5, delta: Number((p.rating - t.rating[0]).toFixed(2)), spark: t.rating },
     { id: "content", label: "Content Completeness", unit: "%", value: p.contentScore, target: 95, delta: 0, spark: t.stock.map((_v: number, i: number) => Math.round(p.contentScore - 4 + (i / labels.length) * 4)) },
@@ -80,8 +80,8 @@ export default function ProductDetail() {
   const realWindow = labels.length ? `${labels[0]}–${labels[labels.length - 1]}` : "Sep 8–29";
   const realNote = isReal ? ` · Real crawl data (${realWindow})` : " · Illustrative — crawl covers one month only";
 
-  const rankChart = lineChart({ id: "d-rank", title: "Search Rank Trend", subtitle: "Position on the primary category term (lower is better) · Illustrative — no reliable per-SKU crawled rank",
-    labels, lo: 1, hi: 30, ticks: [1, 10, 20, 30], fmt: (v) => "#" + Math.round(v), invert: true, hideLegend: true, series: [{ name: "Rank", values: t.rank }] }, hover, onEnter);
+  const rankChart = lineChart({ id: "d-rank", title: "Keyword Coverage Trend", subtitle: "Of the 10 tracked keywords, how many genuinely surfaced this SKU · Real crawl data (Sep 8–29)",
+    labels, lo: 0, hi: 10, ticks: [0, 2, 4, 6, 8, 10], fmt: (v) => Math.round(v) + "/10", hideLegend: true, series: [{ name: "Keyword Coverage", values: t.coverage }] }, hover, onEnter);
   const priceChart = lineChart({ id: "d-price", title: "Price Trend", subtitle: "Shelf price over the period" + realNote,
     labels, lo: lo * 0.94, hi: hi * 1.06, ticks: [lo * 0.96, (lo + hi) / 2, hi * 1.04], fmt: (v) => "$" + v.toFixed(2), hideLegend: true,
     series: [{ name: "Price", values: t.price }],
@@ -97,7 +97,7 @@ export default function ProductDetail() {
     series: [{ name: "Review count", values: t.reviews }] }, hover, onEnter);
 
   const facts = [
-    { label: "Search visibility", value: p.searchVisibility + "%", sub: "Rank #" + p.searchRank + " on the primary term" },
+    { label: "Search visibility", value: p.searchVisibility + "%", sub: "Illustrative — see Keyword Coverage for real data" },
     { label: "Stock Availability 1P + 3P", value: p.inStockRate.toFixed(1) + "%", sub: p.stockStatus },
     { label: "Average price", value: "$" + p.avgSellingPrice.toFixed(2), sub: "$" + p.price.toFixed(2) + " current price" },
     { label: "Content completeness", value: p.contentScore + "%", sub: "of content checks passed" },

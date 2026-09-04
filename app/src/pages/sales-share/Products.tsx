@@ -21,11 +21,15 @@ const TABS: Array<{ id: PerfTab; label: string; sortKey: string; dir: "asc" | "d
   { id: "declined", label: "Most declined", sortKey: "rankDelta", dir: "asc" },
 ];
 
-const SORTERS = { ...productSorters, rankDelta: (a: Product, b: Product) => a.rankDelta - b.rankDelta };
+const SORTERS = { ...productSorters, rankDelta: (a: Product, b: Product) => a.keywordCoverageDelta - b.keywordCoverageDelta };
 
-/* Search Visibility is derived from rank (see mockData withShelfMetrics), so a
-   rank movement of N positions is a visibility movement of N * 3.4 pts. */
-const visibilityDelta = (p: Product) => Math.round(p.rankDelta * 3.4 * 10) / 10;
+/* Real -- keywordCoverageDelta (see mockData productFor/REAL_KEYWORD_MATCH)
+   is always 0 in this dataset: every SKU that appeared under a tracked
+   keyword appeared under the same one all 4 real crawl weeks, so there was
+   genuinely no movement to report this period. The "Most improved/declined"
+   tabs and Biggest improvements/deteriorations panels below are already
+   built to show an honest empty state rather than fabricate movement. */
+const visibilityDelta = (p: Product) => p.keywordCoverageDelta;
 
 /* Every one of the 14 real Price-tab columns (everything but Crawl date)
    is represented somewhere below -- Product/Retailer/List Price/Current
@@ -85,8 +89,8 @@ export default function SalesShareProducts() {
     return sd.products.filter((p: Product) =>
       (!categoryFilter || p.category === categoryFilter) &&
       (!brand || p.brand === brand) &&
-      (perfTab !== "improved" || p.rankDelta > 0) &&
-      (perfTab !== "declined" || p.rankDelta < 0) &&
+      (perfTab !== "improved" || p.keywordCoverageDelta > 0) &&
+      (perfTab !== "declined" || p.keywordCoverageDelta < 0) &&
       (!q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)),
     );
   }, [sd, categoryFilter, brand, perfTab, search]);
@@ -150,22 +154,22 @@ export default function SalesShareProducts() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,340px),1fr))", gap: "var(--app-gap)" }}>
         <Card padding="20px 22px 8px">
-          <div style={{ marginBottom: 10 }}><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Biggest improvements</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Products with the largest search visibility gain versus last period</div></div>
+          <div style={{ marginBottom: 10 }}><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Biggest improvements</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Products with the largest real keyword coverage gain versus last period</div></div>
           {improvements.length === 0 && <div className="sl-muted" style={{ fontSize: 12.5, padding: "8px 0" }}>No product improved this period.</div>}
           {improvements.map((m: Product) => (
             <button key={m.id} className="sl-palette__row" onClick={() => navigate("/product/" + m.id)} style={{ justifyContent: "space-between", borderTop: "1px solid var(--border-subtle)" }}>
               <span style={{ minWidth: 0, textAlign: "left" }}><span style={{ display: "block", fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span><span className="sl-muted" style={{ fontSize: 11.5 }}>{m.retailerName}</span></span>
-              <span style={{ textAlign: "right", whiteSpace: "nowrap" }}><span style={{ display: "block", fontWeight: 600, fontSize: 14, color: "var(--status-positive-fg)" }}>{delta(visibilityDelta(m), " pts")}</span><span className="sl-muted" style={{ fontSize: 11.5 }}>Search visibility</span></span>
+              <span style={{ textAlign: "right", whiteSpace: "nowrap" }}><span style={{ display: "block", fontWeight: 600, fontSize: 14, color: "var(--status-positive-fg)" }}>{delta(visibilityDelta(m), " kw")}</span><span className="sl-muted" style={{ fontSize: 11.5 }}>Keyword coverage</span></span>
             </button>
           ))}
         </Card>
         <Card padding="20px 22px 8px">
-          <div style={{ marginBottom: 10 }}><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Biggest deteriorations</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Products with the largest search visibility loss versus last period</div></div>
+          <div style={{ marginBottom: 10 }}><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Biggest deteriorations</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Products with the largest real keyword coverage loss versus last period</div></div>
           {deteriorations.length === 0 && <div className="sl-muted" style={{ fontSize: 12.5, padding: "8px 0" }}>No product declined this period.</div>}
           {deteriorations.map((m: Product) => (
             <button key={m.id} className="sl-palette__row" onClick={() => navigate("/product/" + m.id)} style={{ justifyContent: "space-between", borderTop: "1px solid var(--border-subtle)" }}>
               <span style={{ minWidth: 0, textAlign: "left" }}><span style={{ display: "block", fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span><span className="sl-muted" style={{ fontSize: 11.5 }}>{m.retailerName}</span></span>
-              <span style={{ textAlign: "right", whiteSpace: "nowrap" }}><span style={{ display: "block", fontWeight: 600, fontSize: 14, color: "var(--status-negative-fg)" }}>{delta(visibilityDelta(m), " pts")}</span><span className="sl-muted" style={{ fontSize: 11.5 }}>Search visibility</span></span>
+              <span style={{ textAlign: "right", whiteSpace: "nowrap" }}><span style={{ display: "block", fontWeight: 600, fontSize: 14, color: "var(--status-negative-fg)" }}>{delta(visibilityDelta(m), " kw")}</span><span className="sl-muted" style={{ fontSize: 11.5 }}>Keyword coverage</span></span>
             </button>
           ))}
         </Card>

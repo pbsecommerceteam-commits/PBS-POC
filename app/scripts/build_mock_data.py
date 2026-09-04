@@ -702,14 +702,20 @@ def main():
     # per-week percentages (see REAL_ROLLUP_WEEKLY's stockRate comment for
     # why -- a week with few results shouldn't count as heavily as one with
     # many).
-    retailer_ids_by_code = defaultdict(set)
+    retailer_id_to_pid = defaultdict(dict)  # site_code -> { retailerId: catalog pid }
     for p in catalog:
         if p["retailerId"]:
-            retailer_ids_by_code[p["retailer"]].add(str(p["retailerId"]))
+            retailer_id_to_pid[p["retailer"]][str(p["retailerId"])] = p["id"]
 
     SOS_URL_SLOTS = 65
     sos_matched_by_site_week = defaultdict(lambda: defaultdict(int))
     sos_total_by_site_week = defaultdict(lambda: defaultdict(int))
+    # Which of the 10 tracked keywords each of our own SKUs genuinely
+    # appeared under (any position, any real week) -- the per-product
+    # sibling of REAL_SOS_WEEKLY's retailer-level aggregate. Feeds
+    # "Keyword Coverage" (see productFor in mockData.ts): count of matched
+    # keywords out of 10, not an illustrative rank position.
+    real_keyword_match = defaultdict(set)  # pid -> {keyword, ...}
     keywords_seen = set()
     for r in sos_rows:
         code = site_code(r.get("site"))
@@ -718,8 +724,9 @@ def main():
         wk = date_key(r.get("Crawl_date"))
         if wk not in SOS_WEEKS:
             continue
-        keywords_seen.add(r.get("keyword"))
-        tracked_ids = retailer_ids_by_code.get(code, set())
+        kw = r.get("keyword")
+        keywords_seen.add(kw)
+        id_map = retailer_id_to_pid.get(code, {})
         matched = 0
         total = 0
         for n in range(1, SOS_URL_SLOTS + 1):
@@ -728,8 +735,11 @@ def main():
                 continue
             total += 1
             u_str = str(u)
-            if any(rid in u_str for rid in tracked_ids):
-                matched += 1
+            for rid, pid in id_map.items():
+                if rid in u_str:
+                    matched += 1
+                    real_keyword_match[pid].add(kw)
+                    break
         sos_matched_by_site_week[code][wk] += matched
         sos_total_by_site_week[code][wk] += total
 
@@ -903,6 +913,12 @@ def main():
     out.append("}> = {")
     for k, v in real_sos_weekly.items():
         out.append(f'  {json.dumps(k)}: {{ sos: {json.dumps(v["sos"])}, sosSum: {json.dumps(v["sosSum"])}, sosWeight: {json.dumps(v["sosWeight"])} }},')
+    out.append("};")
+    out.append("")
+
+    out.append("export const REAL_KEYWORD_MATCH: Record<string, string[]> = {")
+    for pid, kws in real_keyword_match.items():
+        out.append(f'  {json.dumps(pid)}: {json.dumps(sorted(kws))},')
     out.append("};")
     out.append("")
 
