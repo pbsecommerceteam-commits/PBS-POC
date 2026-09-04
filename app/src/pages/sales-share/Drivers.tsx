@@ -208,8 +208,8 @@ export default function SalesShareDrivers() {
           </div>
           <div>
             <div className="sl-muted" style={{ fontSize: 12.5 }}>MAP Compliance</div>
-            <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 24, marginTop: 4, color: mapCompliancePct != null && mapCompliancePct < 90 ? "var(--status-negative-fg)" : "inherit" }}>{mapCompliancePct != null ? mapCompliancePct.toFixed(1) + "%" : "—"}</div>
-            <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 4 }}>Of SKUs tracked under MAP</div>
+            <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 24, marginTop: 4, color: mapCompliancePct == null ? "inherit" : mapCompliancePct < 90 ? "var(--status-negative-fg)" : "var(--status-positive-fg)" }}>{mapCompliancePct != null ? mapCompliancePct.toFixed(1) + "%" : "—"}</div>
+            <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 4 }}>Not below MAP, of the {withMap.length} SKUs tracked</div>
           </div>
         </div>
         {belowMap.length > 0 && (
