@@ -19,9 +19,28 @@ export default function SalesShareSummary() {
   const [catSort, setCatSort] = useState({ key: "overall", dir: "desc" as "asc" | "desc" });
 
   const pidx = sh.kpis.find((k: any) => k.id === "pidx");
+  const buybox = sh.kpis.find((k: any) => k.id === "buybox");
   const priceIncreased = sh.products.filter((p: Product) => p.priceChangePct > 0).length;
   const priceDropped = sh.products.filter((p: Product) => p.priceChangePct < 0).length;
   const { skusTracked, skusLost, topSeller } = sh.buyBoxLoss;
+
+  /* Discount % = (List Price - Effective Price) / List Price -- "Effective
+     Price" is the currently displayed/paid price (Current Price, falling
+     back to the snapshot `price` the same way every other pricing feature
+     does), not a coupon-adjusted price -- coupons get their own real
+     analysis on the Drivers tab, so this stays list-vs-current only.
+     Averaged only over SKUs that actually posted a list price (a SKU with
+     none has nothing to discount from). */
+  const withList = sh.products.filter((p: Product) => p.listPrice != null && p.listPrice > 0);
+  const avgDiscountPct = withList.length
+    ? withList.reduce((a: number, p: Product) => a + ((p.listPrice! - (p.currentPrice ?? p.price)) / p.listPrice!) * 100, 0) / withList.length
+    : 0;
+  /* "On promotion" = genuinely marked down from list (current < list) or
+     carrying a real crawled coupon -- either is a real, currently-active
+     promotional mechanism, not a fabricated status. */
+  const onPromotion = sh.products.filter((p: Product) =>
+    (p.listPrice != null && (p.currentPrice ?? p.price) < p.listPrice) || p.couponValue != null,
+  ).length;
 
   const priceHi = Math.max(40, Math.ceil((pidx.value + 10) / 10) * 10);
   const priceTrend = lineChart({
@@ -81,6 +100,17 @@ export default function SalesShareSummary() {
           <div className="sl-muted" style={{ fontSize: 12.5 }}>Buy Box Lost (1P)</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: skusLost > 0 ? "var(--status-negative-fg)" : "inherit" }}>{skusLost}<span style={{ fontSize: 16, fontWeight: 500 }}> / {skusTracked}</span></div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>{topSeller ? "Top 3P seller: " + topSeller : "No 3P buy-box loss in scope"}</div>
+        </Card>
+        <KpiCard k={kpiCard(buybox, spark)} />
+        <Card padding="18px 20px">
+          <div className="sl-muted" style={{ fontSize: 12.5 }}>Average Price Discount</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: avgDiscountPct > 0 ? "var(--status-positive-fg)" : "inherit" }}>{avgDiscountPct.toFixed(1)}%</div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>(List − Current) ÷ List, {withList.length} of {sh.products.length} SKUs</div>
+        </Card>
+        <Card padding="18px 20px">
+          <div className="sl-muted" style={{ fontSize: 12.5 }}>SKUs on Promotion</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{onPromotion}<span style={{ fontSize: 16, fontWeight: 500 }}> / {sh.products.length}</span></div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Marked down from list, or carrying a coupon</div>
         </Card>
       </div>
 
