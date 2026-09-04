@@ -97,7 +97,7 @@ export default function ProductDetail() {
     series: [{ name: "Review count", values: t.reviews }] }, hover, onEnter);
 
   const facts = [
-    { label: "Search visibility", value: p.searchVisibility + "%", sub: "Illustrative — see Keyword Coverage for real data" },
+    { label: "Keyword coverage", value: Math.round((p.keywordCoverage / 10) * 100) + "%", sub: p.keywordCoverage + " of 10 tracked keywords" },
     { label: "Stock Availability 1P + 3P", value: p.inStockRate.toFixed(1) + "%", sub: p.stockStatus },
     { label: "Average price", value: "$" + p.avgSellingPrice.toFixed(2), sub: "$" + p.price.toFixed(2) + " current price" },
     { label: "Content completeness", value: p.contentScore + "%", sub: "of content checks passed" },

@@ -80,7 +80,6 @@ export interface Product {
   variations: string[];
   buyBox: boolean;
   opportunity: OpportunityLevel;
-  searchVisibility: number;
   shelfScore: number;
   units: number;
   sales: number;

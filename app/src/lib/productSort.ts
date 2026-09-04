@@ -11,7 +11,6 @@ export const productSorters: Record<string, (a: Product, b: Product) => number> 
   category: (a, b) => a.category.localeCompare(b.category),
   retailerName: (a, b) => a.retailerName.localeCompare(b.retailerName),
   keywordCoverage: (a, b) => a.keywordCoverage - b.keywordCoverage,
-  searchVisibility: (a, b) => a.searchVisibility - b.searchVisibility,
   price: (a, b) => a.price - b.price,
   priceIndex: (a, b) => a.priceIndex - b.priceIndex,
   currentPrice: (a, b) => (a.currentPrice ?? a.price) - (b.currentPrice ?? b.price),

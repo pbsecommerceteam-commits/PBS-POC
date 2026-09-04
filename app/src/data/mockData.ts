@@ -818,18 +818,13 @@ function productFor(p: (typeof catalog)[number], key: string) {
 
 /* Shelf metrics are derived from the row itself so every surface — overview,
    shelf, product detail, CSV — reports the same number for the same SKU.
-   searchVisibility stays illustrative (see its own note on Product Detail)
-   -- there's no real per-SKU search-rank/position data to derive it from,
-   only the real keywordCoverage count/keyword text (0-10, mostly 0), which
-   is far too coarse to drive a smooth 6-96 visibility score on its own.
-   Seeded independently per product/session rather than from a rank
-   position, since keywordCoverage replaced the old illustrative rank this
-   used to derive from. */
-function withShelfMetrics(q: any, key: string) {
-  const rr = rowRng(key, "searchVisibility", q.id);
-  q.searchVisibility = Math.round(6 + rr() * 90);
+   Shelf Score's visibility term is real keywordCoverage (0-10, see
+   productFor/REAL_KEYWORD_MATCH) scaled to a 0-100 share, not the old
+   illustrative per-product search-rank-derived estimate -- no separate
+   "search visibility" figure is computed here any more. */
+function withShelfMetrics(q: any) {
   q.shelfScore = clamp(Math.round(
-    q.searchVisibility * 0.25 + q.inStockRate * 0.3 + q.contentScore * 0.25 +
+    (q.keywordCoverage * 10) * 0.25 + q.inStockRate * 0.3 + q.contentScore * 0.25 +
     (q.rating / 5) * 100 * 0.2 - Math.max(0, q.priceIndex - 1.05) * 40
   ), 20, 100);
   return q;
@@ -854,10 +849,12 @@ function scoreOpportunity(p: any) {
    reports one sales number everywhere it appears. */
 function withSalesMetrics(q: any, key: string) {
   const rr = rowRng(key, "sales", q.id);
-  // Units/sales stay illustrative (no real units-sold data in this crawl);
-  // demand now scales off searchVisibility instead of the old illustrative
-  // rank position, which no longer exists (see withShelfMetrics).
-  const demand = q.searchVisibility / 96;
+  // Units/sales stay illustrative (no real units-sold data in this crawl),
+  // but demand now scales off real keywordCoverage instead of an
+  // illustrative visibility estimate -- most SKUs have 0 coverage, so
+  // q.reviews (also real) is what actually differentiates demand for the
+  // vast majority of products here.
+  const demand = q.keywordCoverage / 10;
   q.units = Math.round(4200 + demand * 34000 * (0.55 + rr() * 0.9) + q.reviews * 1.8);
   q.sales = Math.round(q.units * q.price);
   q.salesGrowth = round((rr() - 0.42) * 26, 1);
@@ -870,7 +867,7 @@ function poolFor(retailer: string, key: string, category?: string) {
   return catalog.filter((p) => (retailer === "all" || p.retailer === retailer) && (!category || p.category === category)).map((p) => {
     const q = productFor(p, key);
     q.opportunity = scoreOpportunity(q);
-    return withSalesMetrics(withShelfMetrics(q, key), key);
+    return withSalesMetrics(withShelfMetrics(q), key);
   });
 }
 
@@ -1477,7 +1474,7 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
   const byRetailer = retailers.slice(1).map((rt) => {
     const rr = rowRng(key, "shelfRetailer", rt.id);
     const b = RETAILER_BIAS[rt.id];
-    const own = catalog.filter((p) => p.retailer === rt.id && (!category || p.category === category)).map((p) => withShelfMetrics(productFor(p, key), key));
+    const own = catalog.filter((p) => p.retailer === rt.id && (!category || p.category === category)).map((p) => withShelfMetrics(productFor(p, key)));
     const realVisibility = realCurrentValueSos(rt.id, period, dateRange, rangeMatch?.idx, category);
     const visibility = realVisibility != null ? round(realVisibility, 1) : round(clamp(0.3 + b.sos + (rr() - 0.5) * 0.4, 0, 3), 1);
     const realAvailability = realCurrentValue(rt.id, "stockRate", period, dateRange, wideMatch?.idx, category);
@@ -1509,7 +1506,9 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
   const byCategory = categories.map((c) => {
     const rr = rowRng(key, "shelfCategory", c);
     const inCat = pool.filter((p) => p.category === c);
-    const visibility = inCat.length ? avg(inCat, (p) => p.searchVisibility, 1) : round(20 + rr() * 30, 1);
+    // Real -- average keywordCoverage (0-10) across the category, expressed
+    // as a % (same 0-100 scale convention as availability/content below).
+    const visibility = inCat.length ? round(avg(inCat, (p) => p.keywordCoverage, 2) * 10, 1) : round(2 + rr() * 3, 1);
     const availability = inCat.length ? avg(inCat, (p) => p.inStockRate, 1) : round(93 + rr() * 6, 1);
     const content = inCat.length ? Math.round(avg(inCat, (p) => p.contentScore, 0)) : Math.round(70 + rr() * 25);
     const priceIndex = inCat.length ? round(avg(inCat, (p) => p.priceIndex, 3) * 100, 1) : round(96 + rr() * 10, 1);
@@ -1733,7 +1732,7 @@ function salesData(retailer: string, period: string, dateRange?: DateRange | nul
   const byRetailer = retailers.slice(1).map((rt) => {
     const rr = rowRng(key, "salesRetailer", rt.id);
     const own = catalog.filter((p) => p.retailer === rt.id)
-      .map((p) => withSalesMetrics(withShelfMetrics(productFor(p, key), key), key));
+      .map((p) => withSalesMetrics(withShelfMetrics(productFor(p, key)), key));
     const rSales = sum(own, (p) => p.sales) || Math.round(total / 4);
     const rPrev = sum(own, (p) => p.prevSales) || 1;
     return {
@@ -1912,7 +1911,7 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
        (direct 0-4 indexing, no +1 offset needed). */
     const rangeMatch = dateRange ? matchRangeWeeks(dateRange, REAL_WEEK_DATES) : null;
     const key = retailer + "|" + period + (dateRange ? "|" + dateRange.start + ".." + dateRange.end : "");
-    const p: any = withSalesMetrics(withShelfMetrics(productFor(base, key), key), key);
+    const p: any = withSalesMetrics(withShelfMetrics(productFor(base, key)), key);
     p.opportunity = scoreOpportunity(p);
     const labels = rangeMatch ? rangeMatch.idx.map((i) => REAL_WEEK_LABELS[i]) : labelsFor(period);
     const n = labels.length;
@@ -1920,7 +1919,7 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
     const sw = swing[period] || 1;
     const r = rng(seed + 99);
     const catPool = catalog.filter((x) => x.category === base.category)
-      .map((x) => withSalesMetrics(withShelfMetrics(productFor(x, key), key), key));
+      .map((x) => withSalesMetrics(withShelfMetrics(productFor(x, key)), key));
     const catTotal = catPool.reduce((a, x) => a + x.sales, 0);
     const catPrev = catPool.reduce((a, x) => a + x.prevSales, 0) || 1;
     const catGrowth = round(((catTotal - catPrev) / catPrev) * 100, 1);
@@ -1981,8 +1980,7 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
         const matchId = CROSS_RETAILER_MATCH[id]?.[rt.id];
         const match = matchId ? (catalog as any[]).find((x) => x.id === matchId) : null;
         if (match) {
-          const matchKey = rt.id + "|" + period;
-          const mp = withShelfMetrics(productFor(match, matchKey), matchKey);
+          const mp = withShelfMetrics(productFor(match, rt.id + "|" + period));
           return {
             retailer: rt.name, rank: mp.keywordCoverage, price: mp.price, inStock: mp.inStockRate,
             rating: mp.rating, content: mp.contentScore, listed: true, isSelf: false, matched: true,
@@ -2030,14 +2028,14 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
 }
 
 export function toCsv(rows: any[]) {
-  const cols = ["SKU", "Product", "Brand", "Category", "Retailer", "Keyword Coverage (of 10)", "Keyword Coverage Delta", "Search Visibility %", "Price", "Price Index", "Stock Status", "In Stock %", "Rating", "Reviews", "Content Completeness", "Shelf Score", "Opportunity"];
+  const cols = ["SKU", "Product", "Brand", "Category", "Retailer", "Keyword Coverage (of 10)", "Keyword Coverage Delta", "Price", "Price Index", "Stock Status", "In Stock %", "Rating", "Reviews", "Content Completeness", "Shelf Score", "Opportunity"];
   const cell = (v: any) => {
     const s = String(v == null ? "" : v);
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
   const lines = [cols.join(",")].concat(rows.map((p) => [
     p.id.toUpperCase(), p.name, p.brand, p.category, p.retailerName, p.keywordCoverage, p.keywordCoverageDelta,
-    p.searchVisibility, p.price.toFixed(2), (p.priceIndex * 100).toFixed(0), p.stockStatus, p.inStockRate,
+    p.price.toFixed(2), (p.priceIndex * 100).toFixed(0), p.stockStatus, p.inStockRate,
     p.rating.toFixed(2), p.reviews, p.contentScore, p.shelfScore, p.opportunity,
   ].map(cell).join(",")));
   return lines.join("\n");
