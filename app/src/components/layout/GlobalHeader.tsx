@@ -23,8 +23,9 @@ const SKU_OPTIONS = [
 ];
 
 export function GlobalHeader() {
-  const { retailer, category, dateRange, sku, setRetailer, setCategory, setDateRange, setSku, retailers, categories } = useFilters();
+  const { retailer, category, brand, dateRange, sku, setRetailer, setCategory, setBrand, setDateRange, setSku, retailers, categories, brands } = useFilters();
   const categoryOptions = [{ id: "", name: "All categories" }, ...categories.map((c) => ({ id: c, name: c }))];
+  const brandOptions = [{ id: "", name: "All brands" }, ...brands.map((b) => ({ id: b, name: b }))];
   const { notifDismissed, notifications, markAllRead } = useUi();
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -77,6 +78,7 @@ export function GlobalHeader() {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <FilterSelect label="Retailer" value={retailer} onChange={setRetailer} options={retailers} width={168} />
         <FilterSelect label="Category" value={category} onChange={setCategory} options={categoryOptions} width={178} />
+        <FilterSelect label="Brand" value={brand} onChange={setBrand} options={brandOptions} width={168} searchable searchPlaceholder="Search brands…" />
         <FilterSelect label="SKU" value={sku} onChange={onSkuChange} options={SKU_OPTIONS} width={190} searchable searchPlaceholder="Product name or retailer ID…" />
         <DateRangePicker value={dateRange} onChange={setDateRange} />
       </div>
