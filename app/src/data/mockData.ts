@@ -1271,12 +1271,13 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       const sosC = round(clamp(0.3 + rr() * 1.2 + bias.sos / 2, 0, 3), 1);
       const availC = inCat.length ? avg((p) => p.inStockRate, 1) : round(94 + rr() * 5, 1);
       const contentC = inCat.length ? Math.round(avg((p) => p.contentScore, 0)) : Math.round(74 + rr() * 20);
-      // See snapshot()'s retailerPerformance overall comment -- same
-      // divide-by-the-20%-target convention.
-      const overall = Math.round((sosC / 20) * 30 + (availC / 100) * 35 + (contentC / 100) * 35);
+      const ratingC = inCat.length ? avg((p) => p.rating, 2) : round(clamp(4.3 + rr() * 0.4, 3.4, 5), 2);
+      // Same formula/weights/clamp as snapshot()'s retailerPerformance
+      // overall -- see the comment there.
+      const overall = Math.round((sosC / 20) * 25 + (availC / 100) * 30 + (contentC / 100) * 25 + (ratingC / 5) * 20);
       return {
         category: c, skus: inCat.length, sos: sosC, sosDelta: round((rr() - 0.5) * 5, 1),
-        availability: availC, content: contentC, overall: clamp(overall, 25, 100),
+        availability: availC, content: contentC, rating: ratingC, overall: clamp(overall, 30, 100),
       };
     }),
     insights: [] as any[],
