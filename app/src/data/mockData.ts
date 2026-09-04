@@ -1880,6 +1880,7 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
           return {
             retailer: rt.name, rank: p.searchRank, price: p.price, inStock: p.inStockRate,
             rating: p.rating, content: p.contentScore, listed: true, isSelf: true, matched: true,
+            retailerId: p.retailerId || null, itemUrl: p.spbUrl,
           };
         }
         const matchId = CROSS_RETAILER_MATCH[id]?.[rt.id];
@@ -1889,11 +1890,12 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
           return {
             retailer: rt.name, rank: mp.searchRank, price: mp.price, inStock: mp.inStockRate,
             rating: mp.rating, content: mp.contentScore, listed: true, isSelf: false, matched: true,
+            retailerId: mp.retailerId || null, itemUrl: mp.spbUrl,
           };
         }
         return {
           retailer: rt.name, rank: null, price: null, inStock: null, rating: null, content: null,
-          listed: false, isSelf: false, matched: false,
+          listed: false, isSelf: false, matched: false, retailerId: null, itemUrl: null,
         };
       }),
       contentBreakdown: contentAttributes.map((a) => {
