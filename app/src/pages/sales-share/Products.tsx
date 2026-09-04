@@ -27,21 +27,33 @@ const SORTERS = { ...productSorters, rankDelta: (a: Product, b: Product) => a.ra
    rank movement of N positions is a visibility movement of N * 3.4 pts. */
 const visibilityDelta = (p: Product) => Math.round(p.rankDelta * 3.4 * 10) / 10;
 
-/* Pricing-only columns -- no search rank, rating or opportunity here (see
-   Content Intelligence's Products table for those). "Competitor Price" is
-   deliberately not a column: REAL_BUYBOX_COMPETITOR only carries who won
-   the box and for how long, never a competitor's price, so Buy Box is the
-   honest substitute. Hoisted to module scope (not a `const` inside the
-   component) so sales-share/Layout.tsx can reuse the exact same columns --
-   with the exact same `csv` extractors -- for its default export, with no
-   second column list to keep in sync. There's no column picker on this
-   table (every column here is always shown), so "all columns" for export
-   purposes is simply this whole list. */
+/* Every one of the 14 real Price-tab columns (everything but Crawl date)
+   is represented somewhere below -- Product/Retailer/List Price/Current
+   Price were already here (Product name/Retailer site/List everyday
+   price/Current price); Category, Retailer ID, Vendor Stock No.,
+   Subscription Price, Coupon Value, Stock Status, Buy Box Seller, Buy Box
+   Shipper and Listing Link are the other 9. Price Difference/Price
+   Change/Price Index/Buy Box (Held-Lost) stay too -- real derived
+   metrics, not raw fields, and worth keeping alongside them. "Competitor
+   Price" is deliberately still not a column: REAL_BUYBOX_COMPETITOR only
+   carries who won the box and for how long, never a competitor's price,
+   so Buy Box is the honest substitute. Hoisted to module scope (not a
+   `const` inside the component) so sales-share/Layout.tsx can reuse the
+   exact same columns -- with the exact same `csv` extractors -- for its
+   default export, with no second column list to keep in sync. There's no
+   column picker on this table (every column here is always shown), so
+   "all columns" for export purposes is simply this whole list. */
 export const SALES_COLUMNS: Column<Product>[] = [
   { key: "name", label: "Product", minWidth: 230, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} imageUrl={p.imageUrl} />, csv: (p) => `${p.id.toUpperCase()} - ${p.name}` },
+  { key: "category", label: "Category", sortable: true, render: (p) => p.category, csv: (p) => p.category },
   { key: "retailerName", label: "Retailer", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.retailerName}</span>, csv: (p) => p.retailerName },
+  { key: "retailerId", label: "Retailer ID", sortable: true, render: (p) => p.retailerId ?? "—", csv: (p) => p.retailerId ?? "" },
+  { key: "brand", label: "Brand", sortable: true, render: (p) => p.brand, csv: (p) => p.brand },
+  { key: "vendorStockNo", label: "Vendor Stock No.", sortable: true, render: (p) => p.vendorStockNo ?? "—", csv: (p) => p.vendorStockNo ?? "" },
   { key: "currentPrice", label: "Current Price", align: "right", sortable: true, render: (p) => <span>${(p.currentPrice ?? p.price).toFixed(2)}</span>, csv: (p) => (p.currentPrice ?? p.price).toFixed(2) },
   { key: "listPrice", label: "List Price", align: "right", sortable: true, render: (p) => <span>{p.listPrice != null ? "$" + p.listPrice.toFixed(2) : "—"}</span>, csv: (p) => p.listPrice != null ? p.listPrice.toFixed(2) : "" },
+  { key: "subscriptionPrice", label: "Subscription Price", align: "right", sortable: true, render: (p) => <span>{p.subscriptionPrice != null ? "$" + p.subscriptionPrice.toFixed(2) : "—"}</span>, csv: (p) => p.subscriptionPrice != null ? p.subscriptionPrice.toFixed(2) : "" },
+  { key: "couponValue", label: "Coupon Value", align: "right", sortable: true, render: (p) => p.couponValue ?? "—", csv: (p) => p.couponValue ?? "" },
   { key: "priceDiff", label: "Price Difference", align: "right", render: (p) => {
     const cur = p.currentPrice ?? p.price;
     if (p.listPrice == null) return <span className="sl-faint">—</span>;
@@ -50,7 +62,13 @@ export const SALES_COLUMNS: Column<Product>[] = [
   }, csv: (p) => p.listPrice != null ? ((p.currentPrice ?? p.price) - p.listPrice).toFixed(2) : "" },
   { key: "priceChangePct", label: "Price Change", align: "right", sortable: true, render: (p) => <span style={{ color: deltaColor(p.priceChangePct) }}>{delta(p.priceChangePct, "%")}</span>, csv: (p) => p.priceChangePct },
   { key: "priceIndex", label: "Price Index", align: "right", sortable: true, render: (p) => <span>{(p.priceIndex * 100).toFixed(0)}</span>, csv: (p) => (p.priceIndex * 100).toFixed(0) },
+  { key: "stockStatusRaw", label: "Stock Status", sortable: true, render: (p) => p.stockStatusRaw ?? "—", csv: (p) => p.stockStatusRaw ?? "" },
   { key: "buyBox", label: "Buy Box", render: (p) => <Badge tone={p.buyBox ? "positive" : "neutral"}>{p.buyBox ? "Held" : "Lost"}</Badge>, csv: (p) => p.buyBox ? "Held" : "Lost" },
+  { key: "buyBoxSeller", label: "Buy Box Seller", sortable: true, render: (p) => p.buyBoxSeller ?? "—", csv: (p) => p.buyBoxSeller ?? "" },
+  { key: "buyBoxShipper", label: "Buy Box Shipper", sortable: true, render: (p) => p.buyBoxShipper ?? "—", csv: (p) => p.buyBoxShipper ?? "" },
+  { key: "spbUrl", label: "Listing Link", render: (p) => p.spbUrl
+    ? <a href={p.spbUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>View listing →</a>
+    : <span className="sl-faint">—</span>, csv: (p) => p.spbUrl ?? "" },
 ];
 
 export default function SalesShareProducts() {

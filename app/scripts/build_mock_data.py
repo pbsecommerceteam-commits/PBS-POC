@@ -368,6 +368,17 @@ def main():
         list_price = latest_price_row.get("List everyday price") if latest_price_row else None
         current_price = latest_price_row.get("Current price") if latest_price_row else None
         subscription_price = latest_price_row.get("Subscription price") if latest_price_row else None
+        # Three more raw Price-tab fields from that same latest row, rounding
+        # out all 14 real Price-tab columns (excluding Crawl date) somewhere
+        # in the model -- "Spb url" is a genuine direct link to the crawled
+        # listing page; "Stock status" is the literal crawled availability
+        # sentence (e.g. "Only 1 left in stock - order soon."), distinct from
+        # the derived 3-bucket stockStatus every other feature reads; "Coupon
+        # value" is the retailer's own posted discount, dollar amount and
+        # percentage together (e.g. "4.22 (53%)"), exactly as crawled.
+        spb_url = latest_price_row.get("Spb url") if latest_price_row else None
+        stock_status_raw = latest_price_row.get("Stock status") if latest_price_row else None
+        coupon_value = latest_price_row.get("Coupon value") if latest_price_row else None
 
         # Raw Content-tab fields (same "latest" row content_completeness()
         # already reads its checks from), surfaced individually so a UI can
@@ -454,6 +465,9 @@ def main():
             "listPrice": round(list_price, 2) if list_price is not None else None,
             "currentPrice": round(current_price, 2) if current_price is not None else None,
             "subscriptionPrice": round(subscription_price, 2) if subscription_price is not None else None,
+            "spbUrl": spb_url,
+            "stockStatusRaw": stock_status_raw,
+            "couponValue": coupon_value,
             # Ids of the 8 real content checks (see content_completeness)
             # this product currently FAILS -- empty list means all 8 pass.
             "contentChecks": content_checks_failed,
@@ -752,7 +766,7 @@ def main():
     out.append("export const catalog = [")
     for p in catalog:
         out.append(
-            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, contentChecks: %s, titleLength: %s, imageUrl: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, vendorStockNo: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, hasIngredients: %s, descriptionText: %s, bulletsText: %s, ingredientsText: %s, variations: %s },"
+            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, spbUrl: %s, stockStatusRaw: %s, couponValue: %s, contentChecks: %s, titleLength: %s, imageUrl: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, vendorStockNo: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, hasIngredients: %s, descriptionText: %s, bulletsText: %s, ingredientsText: %s, variations: %s },"
             % (
                 ts_str(p["id"]), ts_str(p["name"]), ts_str(p["brand"]), ts_str(p["category"]), ts_str(p["retailer"]),
                 ts_num(p["rank"], 1), ts_num(p["price"], 0), ts_num(p["avgSellingPrice"], p["price"] or 0),
@@ -760,6 +774,7 @@ def main():
                 ts_num(p["content"], 0), ts_num(p["stockBias"], 1.0), ts_num(p["buyBoxRate"], 1.0),
                 ts_num(p["priceChangePct"], 0.0), ts_str(p["priceGroup"]),
                 ts_num_or_null(p["listPrice"]), ts_num_or_null(p["currentPrice"]), ts_num_or_null(p["subscriptionPrice"]),
+                ts_str(p["spbUrl"]), ts_str(p["stockStatusRaw"]), ts_str(p["couponValue"]),
                 json.dumps(p["contentChecks"]),
                 ts_num(p["titleLength"], 0), ts_str(p["imageUrl"]), ts_num(p["imageCount"], 0), ts_num(p["bulletCount"], 0),
                 ts_num(p["descriptionLength"], 0), ts_bool(p["enhancedContent"]),

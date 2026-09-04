@@ -36,6 +36,12 @@ export interface Product {
   listPrice: number | null;
   currentPrice: number | null;
   subscriptionPrice: number | null;
+  /** Direct link to the crawled retailer listing page (Price tab's "Spb url"). */
+  spbUrl: string | null;
+  /** The literal crawled availability sentence (Price tab's "Stock status", e.g. "Only 1 left in stock - order soon."), distinct from the derived 3-bucket stockStatus below. */
+  stockStatusRaw: string | null;
+  /** The retailer's own posted discount, exactly as crawled (Price tab's "Coupon value", e.g. "4.22 (53%)"). */
+  couponValue: string | null;
   stockStatus: StockStatus;
   inStockRate: number;
   rating: number;
