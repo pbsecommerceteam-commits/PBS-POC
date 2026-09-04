@@ -6,14 +6,16 @@ import { ChartCard } from "../../components/charts/ChartCard";
 import { DrilldownModal } from "../../components/ui/DrilldownModal";
 import { useChartHover } from "../../hooks/useChartHover";
 import { lineChart, barChart, spark } from "../../lib/charts";
-import { kpiCard, cell, table, type TableConfig } from "../../lib/format";
+import { kpiCard, cell, table, seriesToCsv, downloadCsv, type TableConfig } from "../../lib/format";
 import { REAL_PRODUCT_WEEKLY } from "../../data/mockData";
+import { useUi } from "../../context/UiContext";
 import type { ContentContext } from "./Layout";
 
 export default function ContentSummary() {
   const { snap } = useOutletContext<ContentContext>();
   const { hover, onEnter, onLeave } = useChartHover();
   const navigate = useNavigate();
+  const { toast } = useUi();
   const [drill, setDrill] = useState<TableConfig | null>(null);
   const goToProduct = (id: string) => { setDrill(null); navigate("/product/" + id); };
 
@@ -72,6 +74,14 @@ export default function ContentSummary() {
     labels: snap.contentDistribution.map((b: any) => b.bucket), valueName: "SKUs", values: snap.contentDistribution.map((b: any) => b.count),
     lo: 0, hi: Math.max(4, Math.max(...snap.contentDistribution.map((b: any) => b.count)) + 1), ticks: [0, 2, 4, 6, 8], fmt: (v) => String(Math.round(v)) }, hover, onEnter);
   const maxIssue = Math.max(1, ...snap.contentIssues.map((i: any) => i.count));
+  const exportTrend = () => {
+    downloadCsv("shelfline-content-completeness-trend.csv", seriesToCsv(snap.labels, [{ name: "Content Completeness %", values: snap.contentTrend.values }]));
+    toast("Exported Content Completeness Trend.");
+  };
+  const exportDist = () => {
+    downloadCsv("shelfline-completeness-distribution.csv", seriesToCsv(snap.contentDistribution.map((b: any) => b.bucket), [{ name: "SKUs", values: snap.contentDistribution.map((b: any) => b.count) }], undefined, "Band"));
+    toast("Exported Completeness Distribution.");
+  };
 
   return (
     <>
@@ -100,8 +110,8 @@ export default function ContentSummary() {
         </Card>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
-        <ChartCard c={trend} onLeave={onLeave} />
-        <ChartCard c={dist} onLeave={onLeave} />
+        <ChartCard c={trend} onLeave={onLeave} onExportCsv={exportTrend} />
+        <ChartCard c={dist} onLeave={onLeave} onExportCsv={exportDist} />
       </div>
       <Card padding="20px 22px">
         <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Products With Issues</h3>

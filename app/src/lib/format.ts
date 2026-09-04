@@ -26,12 +26,12 @@ export function columnsToCsv<T>(rows: T[], columns: Column<T>[]): string {
  *  x-axis labels the chart itself renders, one column per series (and an
  *  optional flat reference column, e.g. a target/MAP price line), so the
  *  export always matches exactly what's on screen. */
-export function seriesToCsv(labels: string[], series: Array<{ name: string; values: number[] }>, extra?: { name: string; value: number }): string {
+export function seriesToCsv(labels: string[], series: Array<{ name: string; values: number[] }>, extra?: { name: string; value: number }, xLabel = "Date"): string {
   const cell = (v: unknown) => {
     const s = String(v == null ? "" : v);
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
-  const header = ["Date", ...series.map((s) => s.name), ...(extra ? [extra.name] : [])].map(cell).join(",");
+  const header = [xLabel, ...series.map((s) => s.name), ...(extra ? [extra.name] : [])].map(cell).join(",");
   const rows = labels.map((l, i) => [l, ...series.map((s) => s.values[i]), ...(extra ? [extra.value] : [])].map(cell).join(","));
   return [header, ...rows].join("\n");
 }

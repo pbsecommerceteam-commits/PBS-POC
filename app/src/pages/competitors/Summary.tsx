@@ -6,14 +6,16 @@ import { ChartCard } from "../../components/charts/ChartCard";
 import { DrilldownModal } from "../../components/ui/DrilldownModal";
 import { useChartHover } from "../../hooks/useChartHover";
 import { lineChart, spark } from "../../lib/charts";
-import { kpiCard, cell, table, type TableConfig } from "../../lib/format";
+import { kpiCard, cell, table, seriesToCsv, downloadCsv, type TableConfig } from "../../lib/format";
 import { REAL_BUYBOX_COMPETITOR } from "../../data/mockData";
+import { useUi } from "../../context/UiContext";
 import type { CompetitorsContext } from "./Layout";
 
 export default function CompetitorsSummary() {
   const { snap } = useOutletContext<CompetitorsContext>();
   const { hover, onEnter, onLeave } = useChartHover();
   const navigate = useNavigate();
+  const { toast } = useUi();
   const [drill, setDrill] = useState<TableConfig | null>(null);
 
   const sos = snap.kpis.find((k: any) => k.id === "sos");
@@ -42,6 +44,11 @@ export default function CompetitorsSummary() {
   const chart = lineChart({ id: "vis", title: "Search Visibility Trend", subtitle: "Share of search across the tracked keyword set · Illustrative — no resolvable competitor entity in the raw crawl",
     labels: snap.visibility.labels, lo: 0, hi: visHi, ticks: [0, visHi / 4, visHi / 2, (visHi * 3) / 4, visHi], fmt: (v) => v.toFixed(1) + "%",
     series: snap.visibility.series, previous: snap.visibility.previous, target: 20, span: "1 / -1" }, hover, onEnter);
+  const exportChart = () => {
+    const series = snap.visibility.series.map((s: any) => ({ name: s.name, values: s.values }));
+    downloadCsv("shelfline-search-visibility-trend.csv", seriesToCsv(snap.visibility.labels, series));
+    toast("Exported Search Visibility Trend.");
+  };
 
   return (
     <>
@@ -55,7 +62,7 @@ export default function CompetitorsSummary() {
         </Card>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
-        <ChartCard c={chart} onLeave={onLeave} />
+        <ChartCard c={chart} onLeave={onLeave} onExportCsv={exportChart} />
       </div>
 
       {drill && <DrilldownModal t={drill} onClose={() => setDrill(null)} />}

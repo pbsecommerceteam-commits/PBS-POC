@@ -225,7 +225,7 @@ export default function SalesShareSummary() {
   }, hover, onEnter);
   const exportRetailerPriceChart = () => {
     const series = [{ name: "Avg Price", values: sh.retailers.map((r: any) => r.avgPrice) }];
-    downloadCsv("shelfline-average-price-by-retailer.csv", seriesToCsv(sh.retailers.map((r: any) => r.name), series));
+    downloadCsv("shelfline-average-price-by-retailer.csv", seriesToCsv(sh.retailers.map((r: any) => r.name), series, undefined, "Retailer"));
     toast("Exported Average Price by Retailer.");
   };
 

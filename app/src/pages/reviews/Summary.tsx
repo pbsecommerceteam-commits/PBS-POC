@@ -2,13 +2,15 @@ import { useOutletContext } from "react-router-dom";
 import { KpiCard } from "../../components/ui/KpiCard";
 import { ChartCard } from "../../components/charts/ChartCard";
 import { useChartHover } from "../../hooks/useChartHover";
+import { useUi } from "../../context/UiContext";
 import { lineChart, spark } from "../../lib/charts";
-import { kpiCard } from "../../lib/format";
+import { kpiCard, seriesToCsv, downloadCsv } from "../../lib/format";
 import type { ReviewsContext } from "./Layout";
 
 export default function ReviewsSummary() {
   const { snap } = useOutletContext<ReviewsContext>();
   const { hover, onEnter, onLeave } = useChartHover();
+  const { toast } = useUi();
 
   const rating = snap.kpis.find((k: any) => k.id === "rating");
   const reviews = snap.kpis.find((k: any) => k.id === "reviews");
@@ -21,6 +23,14 @@ export default function ReviewsSummary() {
     ticks: [Math.min(...reviews.spark), (Math.min(...reviews.spark) + Math.max(...reviews.spark)) / 2, Math.max(...reviews.spark)],
     fmt: (v) => Math.round(v).toLocaleString(), hideLegend: true,
     series: [{ name: "Review count", values: reviews.spark }] }, hover, onEnter);
+  const exportTrend = () => {
+    downloadCsv("shelfline-rating-trend.csv", seriesToCsv(snap.labels, [{ name: "Average Rating", values: snap.ratingTrend.values }]));
+    toast("Exported Rating Trend.");
+  };
+  const exportVolumeTrend = () => {
+    downloadCsv("shelfline-review-volume-trend.csv", seriesToCsv(snap.labels, [{ name: "Review Count", values: reviews.spark }]));
+    toast("Exported Review Volume Trend.");
+  };
 
   return (
     <>
@@ -29,8 +39,8 @@ export default function ReviewsSummary() {
         <KpiCard k={kpiCard(reviews, spark)} />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
-        <ChartCard c={trend} onLeave={onLeave} />
-        <ChartCard c={volumeTrend} onLeave={onLeave} />
+        <ChartCard c={trend} onLeave={onLeave} onExportCsv={exportTrend} />
+        <ChartCard c={volumeTrend} onLeave={onLeave} onExportCsv={exportVolumeTrend} />
       </div>
     </>
   );
