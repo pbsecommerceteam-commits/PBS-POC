@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Card } from "../ui/Card";
+import { InfoTip } from "../ui/InfoTip";
 import type { TableConfig } from "../../lib/format";
 import { useColumnWidths } from "../../hooks/useColumnWidths";
 
@@ -18,7 +19,7 @@ export function DataTable({ t, resizable }: { t: TableConfig; resizable?: boolea
 
   return (
     <Card padding="20px 22px 8px">
-      <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{t.title}</h4>
+      <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>{t.title}{t.info && <InfoTip text={t.info} />}</h4>
       <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 14 }}>{t.subtitle}</div>
       <div style={{ overflowX: "auto" }}>
         <table className="sl-table" style={resizable ? { tableLayout: "fixed" } : undefined}>

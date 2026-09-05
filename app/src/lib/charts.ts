@@ -80,9 +80,26 @@ function buildHover(
   };
 }
 
+/** "What is this chart" hover text, keyed by chart id -- one place to
+ *  maintain instead of every lineChart/barChart call site. Every claim
+ *  reflects this app's real data derivation (see mockData.ts). */
+export const CHART_INFO: Record<string, string> = {
+  "d-price": "Real shelf price, one point per real crawl day this month (Sep 1-29). The dashed line is this SKU's real MAP price, when tracked.",
+  "d-stock": "Real in-stock rate (1P + 3P) at this retailer, from the raw crawl's daily stock-status field.",
+  "d-rating": "Real average star rating over the period. The 5/4/3/2/1-star footer breakdown below is illustrative -- the crawl has a real total rating and review count, but no real per-star split to derive it from.",
+  "d-reviews": "Real total tracked review count over the period, from the crawl's review-count field.",
+  "price-trend": "Real pooled average selling price across the current scope (portfolio, or one SKU/category when scoped below). The dashed line is the real average MAP price for SKUs that track one.",
+  "price-by-retailer": "Real pooled average selling price at each monitored retailer, for the current scope.",
+  rtrend: "Real weighted average rating across tracked SKUs for the period.",
+  rvoltrend: "Real total tracked review count across tracked SKUs for the period.",
+  ctrend: "Real Content Completeness average across tracked SKUs -- the same 9-check rubric used everywhere else, tracked week by week.",
+  cdist: "Real count of tracked SKUs falling into each Content Completeness band.",
+};
+
 export interface ChartConfig {
   title: string;
   subtitle?: string;
+  info?: string;
   span: string;
   badge: string;
   modes: Array<{ label: string; cls: string; go: () => void }>;
@@ -157,7 +174,7 @@ export function lineChart(o: LineChartOptions, hover: HoverState | null, onHover
   const hv = buildHover(hover, o.id, o.labels, x, step, tipRows, fmt, (idx) => onHoverEnter(o.id, idx));
   const stride = labelStride(n);
   return {
-    title: o.title, subtitle: o.subtitle, span: o.span || "auto", badge: o.badge || "",
+    title: o.title, subtitle: o.subtitle, info: CHART_INFO[o.id], span: o.span || "auto", badge: o.badge || "",
     modes: o.modes || [],
     series, bars: [], legend: o.hideLegend ? [] : series,
     points: o.series[0].values.map((v, i) => ({
@@ -206,7 +223,7 @@ export function barChart(o: BarChartOptions, hover: HoverState | null, onHoverEn
   const hv = buildHover(hover, o.id, o.labels, centre, step, tipRows, fmt, (idx) => onHoverEnter(o.id, idx));
   const stride = labelStride(n);
   return {
-    title: o.title, subtitle: o.subtitle, span: o.span || "auto", badge: o.badge || "",
+    title: o.title, subtitle: o.subtitle, info: CHART_INFO[o.id], span: o.span || "auto", badge: o.badge || "",
     modes: o.modes || [],
     series: [], legend: [], points: [],
     bars: o.values.map((v, i) => {

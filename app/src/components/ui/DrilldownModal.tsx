@@ -1,4 +1,5 @@
 import { Fragment, useState } from "react";
+import { InfoTip } from "./InfoTip";
 import type { Cell, TableConfig } from "../../lib/format";
 
 export interface DrillRow {
@@ -31,7 +32,7 @@ export function DrilldownModal({ t, onClose }: { t: DrillTableConfig; onClose: (
       <div className="sl-modal sl-modal--wide sl-pop-in" onClick={(e) => e.stopPropagation()}>
         <div className="sl-modal__header">
           <div>
-            <div className="sl-modal__title">{t.title}</div>
+            <div className="sl-modal__title" style={{ display: "flex", alignItems: "center", gap: 6 }}>{t.title}{t.info && <InfoTip text={t.info} />}</div>
             <div className="sl-modal__subtitle">{t.subtitle}</div>
           </div>
           <button className="sl-modal__close" onClick={onClose} aria-label="Close">

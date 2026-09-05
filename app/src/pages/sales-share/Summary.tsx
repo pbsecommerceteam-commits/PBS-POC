@@ -3,6 +3,7 @@ import { useNavigate, useOutletContext } from "react-router-dom";
 import { KpiCard } from "../../components/ui/KpiCard";
 import { ChartCard } from "../../components/charts/ChartCard";
 import { Card } from "../../components/ui/Card";
+import { InfoTip } from "../../components/ui/InfoTip";
 import { Badge, stockTone } from "../../components/ui/Badge";
 import { ProductCell } from "../../components/ui/ProductCell";
 import { DrilldownModal, type DrillTableConfig } from "../../components/ui/DrilldownModal";
@@ -347,32 +348,32 @@ export default function SalesShareSummary() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))", gap: "var(--app-gap)" }}>
         <KpiCard k={kpiCard(pidx, spark)} />
         <Card padding="18px 20px" interactive onClick={() => setDrill(priceIncreasedTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5 }}>Price Increased</div>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Price Increased<InfoTip text="Real whole-month price increase (first vs. last observed price this Sep) -- not a single-day comparison." /></div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{priceIncreased}</div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real whole-month change · click to view</div>
         </Card>
         <Card padding="18px 20px" interactive onClick={() => setDrill(priceDroppedTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5 }}>Price Dropped</div>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Price Dropped<InfoTip text="Real whole-month price decrease (first vs. last observed price this Sep) -- not a single-day comparison." /></div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{priceDropped}</div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real whole-month change · click to view</div>
         </Card>
         <Card padding="18px 20px" interactive onClick={() => setDrill(buyBoxLostTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5 }}>Buy Box Lost (1P)</div>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Buy Box Lost (1P)<InfoTip text="Real count of SKUs where a 3rd-party seller won the buy box at any point this period, from the crawl's daily buy-box-holder field." /></div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: skusLost > 0 ? "var(--status-negative-fg)" : "inherit" }}>{skusLost}<span style={{ fontSize: 16, fontWeight: 500 }}> / {skusTracked}</span></div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>{topSeller ? "Top 3P seller: " + topSeller : "No 3P buy-box loss in scope"}</div>
         </Card>
         <Card padding="18px 20px" interactive onClick={() => setDrill(discountTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5 }}>Average Price Discount</div>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Average Price Discount<InfoTip text="Real (List Price − Current Price) ÷ List Price, averaged only over SKUs that posted a real list price." /></div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: avgDiscountPct > 0 ? "var(--status-positive-fg)" : "inherit" }}>{avgDiscountPct.toFixed(1)}%</div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>(List − Current) ÷ List, {withList.length} of {sh.products.length} SKUs</div>
         </Card>
         <Card padding="18px 20px" interactive onClick={() => setDrill(promotionTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5 }}>SKUs on Promotion</div>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>SKUs on Promotion<InfoTip text="Real count of SKUs currently priced below their own list price, or carrying a real crawled coupon." /></div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{onPromotion}<span style={{ fontSize: 16, fontWeight: 500 }}> / {sh.products.length}</span></div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Marked down from list, or carrying a coupon</div>
         </Card>
         <Card padding="18px 20px" interactive onClick={() => setDrill(belowMapTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5 }}>Below MAP</div>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Below MAP<InfoTip text="Real count of SKUs priced under their real MAP (Minimum Advertised Price), from the separate MAP reference file. A SKU with no MAP row isn't counted either way." /></div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: belowMap.length > 0 ? "var(--status-negative-fg)" : "inherit" }}>{belowMap.length}<span style={{ fontSize: 16, fontWeight: 500 }}> / {withMap.length}</span></div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Priced under MAP, of SKUs tracked</div>
         </Card>
@@ -428,7 +429,7 @@ export default function SalesShareSummary() {
       </div>
 
       <Card padding="20px 22px">
-        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Price Tiers</h3>
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>Price Tiers<InfoTip text="Real average List/Current/Subscription price from the Price-tab crawl, each averaged only over SKUs that actually posted that field." /></h3>
         <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 16 }}>Real Price-tab fields — a product with no value for a tier never posted that price{scopeLabel ? " · " + scopeLabel : ""}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 16 }}>
           {tiers.map((t) => (
@@ -442,7 +443,7 @@ export default function SalesShareSummary() {
       </Card>
 
       <Card padding="20px 22px">
-        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Largest Price Gap vs. Own Average</h3>
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>Largest Price Gap vs. Own Average<InfoTip text="Two real comparisons per SKU: current price vs. its own average selling price this period, and vs. its real start-of-period price (a genuine two-point change, not smoothed by an average)." /></h3>
         <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 14 }}>Current price vs. this item's own real average selling price, and vs. its real start-of-period price{scopeLabel ? " · " + scopeLabel : ""}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {priceGaps.map(({ p, gapPct, startPrice, startGapPct }: any) => (

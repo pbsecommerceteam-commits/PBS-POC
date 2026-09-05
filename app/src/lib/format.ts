@@ -81,10 +81,13 @@ export interface TableConfig {
   subtitle: string;
   cols: Array<{ label: string; align?: "left" | "right" | "center"; minWidth?: number }>;
   rows: Array<{ cells: Cell[] }>;
+  /** Optional "what is this" hover hint rendered next to the title (see
+   *  InfoTip) -- not every table needs one, so callers opt in per-table. */
+  info?: string;
 }
 
-export function table(title: string, subtitle: string, cols: TableConfig["cols"], rows: TableConfig["rows"]): TableConfig {
-  return { title, subtitle, cols, rows };
+export function table(title: string, subtitle: string, cols: TableConfig["cols"], rows: TableConfig["rows"], info?: string): TableConfig {
+  return { title, subtitle, cols, rows, info };
 }
 
 export function pct(v: number, d?: number) {
@@ -115,6 +118,28 @@ export function signedPct(v: number) {
   return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) + "%";
 }
 
+/** "What does this actually mean" hover text, keyed by KPI id -- one place
+ *  to maintain instead of every KpiCard call site across every page, since
+ *  the same id (e.g. "content", "pidx", "buybox") is reused identically
+ *  everywhere it appears. Every claim here reflects this app's real data
+ *  derivation (see mockData.ts/build_mock_data.py), not a generic label. */
+export const KPI_INFO: Record<string, string> = {
+  sos: "Real Share of Search across your tracked keywords -- a genuinely small % (real crawl finding), not the old ~90% scale. Backend-only, not shown on any page.",
+  instock: "Real % of tracked days each SKU was in stock, pooled across the current filter scope.",
+  pidx: "Real average selling price, pooled from raw daily crawl prices across the period (or the exact scoped value under a custom date range).",
+  content: "Real Content Completeness -- average of a 9-check binary rubric (title, images, videos, bullets, description, rating, enhanced content) evaluated against each product's latest crawled listing.",
+  buybox: "Real % of tracked days your own listing (not a 3rd-party seller) held the buy box.",
+  rating: "Real average star rating across tracked SKUs, weighted by product.",
+  oos: "Count of tracked SKUs currently out of stock in this scope.",
+  avgcoverage: "Real average Keyword Coverage (of 10 tracked keywords) across tracked SKUs -- kept for backend use, not shown on any page.",
+  reviews: "Real total review count across tracked SKUs, summed from each product's crawled review total.",
+  sales: "Illustrative estimated sales -- no real transaction/units-sold data exists in this crawl; not shown on any page.",
+  growth: "Illustrative sales growth -- derived from the illustrative sales estimate above, not real transaction data; not shown on any page.",
+  share: "Illustrative market share -- no real competitor sales data exists to compute an actual share against; not shown on any page.",
+  catgrowth: "Illustrative category growth benchmark; not shown on any page.",
+  issues: "Count of tracked SKUs currently scoring under 80% on Content Completeness.",
+};
+
 export interface KpiVM {
   label: string;
   unit: string;
@@ -131,6 +156,9 @@ export interface KpiVM {
    *  card's hover tooltip -- label is the point's date (empty if the
    *  caller had none), value is formatted the same way as valueText. */
   sparkPoints: Array<{ x: number; y: number; label: string; value: string }>;
+  /** "What is this" hover hint for KpiCard's InfoTip, looked up from
+   *  KPI_INFO by id -- undefined (no icon shown) for any id not in the map. */
+  info?: string;
 }
 
 /** Turns a raw KPI metric (value/delta/target/spark) into everything the
@@ -183,5 +211,6 @@ export function kpiCard(k: { id: string; label: string; unit: string; value: num
       : k.id === "catgrowth" ? "Portfolio " + k.target.toFixed(1) + "%"
       : "Target " + k.target + k.unit,
     sparkD: sp.d, sparkArea: sp.area, sparkW: sp.W, sparkPoints,
+    info: KPI_INFO[k.id],
   };
 }

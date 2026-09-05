@@ -1,5 +1,6 @@
 import { Card } from "../ui/Card";
 import { Badge } from "../ui/Badge";
+import { InfoTip } from "../ui/InfoTip";
 import type { ChartConfig } from "../../lib/charts";
 
 /** Renders either a line or a bar chart from one config shape — the config
@@ -12,7 +13,7 @@ export function ChartCard({ c, onLeave, onExportCsv }: { c: ChartConfig; onLeave
     <Card padding="20px 22px 16px" style={{ position: "relative", gridColumn: c.span }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
         <div>
-          <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{c.title}</h4>
+          <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>{c.title}{c.info && <InfoTip text={c.info} />}</h4>
           {c.subtitle && <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{c.subtitle}</div>}
         </div>
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>

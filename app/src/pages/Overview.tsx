@@ -6,6 +6,7 @@ import { InsightCard } from "../components/ui/InsightCard";
 import { SortableTable, type Column } from "../components/table/SortableTable";
 import { Pagination } from "../components/table/Pagination";
 import { Card } from "../components/ui/Card";
+import { InfoTip } from "../components/ui/InfoTip";
 import { Badge, stockTone, opportunityTone } from "../components/ui/Badge";
 import { Tabs } from "../components/ui/Tabs";
 import { ProductCell } from "../components/ui/ProductCell";
@@ -128,7 +129,7 @@ export default function Overview() {
 
       <section>
         <div style={{ marginBottom: 14 }}>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Key insights</h2>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>Key insights<InfoTip text="Auto-generated from this period's real numbers (buy box loss, availability, content gaps) -- never authored copy." /></h2>
           <div className="sl-muted" style={{ fontSize: 13, marginTop: 2 }}>Signals detected across your monitored digital shelf</div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: "var(--app-gap)" }}>
@@ -145,7 +146,7 @@ export default function Overview() {
       <Card padding="20px 22px 10px">
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Retailer performance</h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>Retailer performance<InfoTip text="Real in-stock rate, content score and rating per retailer, pooled from your tracked SKUs there. Overall score = 30% in-stock + 25% content + 20% rating + 25% keyword coverage (not shown, backend-only)." /></h3>
             <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Select a retailer to scope the whole workspace to it</div>
           </div>
         </div>
@@ -175,7 +176,7 @@ export default function Overview() {
       <Card padding="20px 22px">
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Category performance</h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>Category performance<InfoTip text="Real availability, content score and rating per category, pooled from your tracked SKUs in it. Same Overall score weighting as Retailer performance above." /></h3>
             <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Select a category to filter the product table below</div>
           </div>
           {categoryFilter && <button className="btn btn-ghost" onClick={() => setCategoryFilter("")} style={{ fontSize: 12.5 }}>Clear "{categoryFilter}"</button>}
@@ -204,7 +205,7 @@ export default function Overview() {
       <Card padding="20px 22px 14px">
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Product performance</h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>Product performance<InfoTip text="Every real tracked SKU in the current filter scope -- price, stock, rating and content are each pulled straight from the crawl, per product." /></h3>
             <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>
               {sku ? "Pinned to one SKU via the header filter" : `${total} of ${snap.products.length} tracked SKUs${categoryFilter ? ` · ${categoryFilter}` : ""}${brand ? ` · ${brand}` : ""}`}
             </div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Card } from "./Card";
+import { InfoTip } from "./InfoTip";
 import type { KpiVM } from "../../lib/format";
 
 /** The metric card used everywhere a KPI appears. The value dominates, the
@@ -16,7 +17,7 @@ export function KpiCard({ k }: { k: KpiVM }) {
 
   return (
     <Card padding="18px 20px" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <div className="sl-muted" style={{ fontSize: 12.5 }}>{k.label}</div>
+      <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>{k.label}{k.info && <InfoTip text={k.info} />}</div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 4 }}>
         <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, color: "var(--text-display)", letterSpacing: "-.01em" }}>{k.valueText}</span>
         {k.unit && <span className="sl-muted" style={{ fontSize: 14 }}>{k.unit}</span>}

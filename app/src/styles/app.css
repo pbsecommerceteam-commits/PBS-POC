@@ -297,6 +297,26 @@ select option { color: var(--text-primary); background-color: var(--surface-card
 .sl-icon-btn__dot { position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--color-accent); }
 .sl-profile { display: flex; align-items: center; gap: 9px; padding-left: 14px; border-left: 1px solid var(--border-subtle); }
 
+/* ---- Info hint icon (KPI/chart/table "what is this" tooltip) ---- */
+.sl-info-tip {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; flex: none; color: var(--text-faint); cursor: help;
+  vertical-align: middle; border-radius: 50%; outline: none;
+}
+.sl-info-tip:hover, .sl-info-tip:focus-visible { color: var(--text-secondary); }
+.sl-info-tip__bubble {
+  position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%);
+  background: var(--surface-elevated); border: 1px solid var(--border-standard);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-2);
+  padding: 8px 10px; font-size: 11.5px; line-height: 1.45; font-weight: 400;
+  color: var(--text-primary); white-space: normal; width: max-content; max-width: 240px;
+  opacity: 0; visibility: hidden; transition: opacity var(--duration-fast) var(--ease);
+  pointer-events: none; z-index: 25; text-align: left;
+}
+.sl-info-tip:hover .sl-info-tip__bubble, .sl-info-tip:focus-visible .sl-info-tip__bubble {
+  opacity: 1; visibility: visible;
+}
+
 /* ---- Modal dialog ---- */
 .sl-modal {
   width: min(520px, 100%); display: flex; flex-direction: column;
