@@ -102,12 +102,7 @@ export default function ContentSummary() {
         <Card padding="18px 20px" interactive onClick={() => setDrill(variationsTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5 }}>Products With Variations</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{withVariations}<span style={{ fontSize: 16, fontWeight: 500 }}> / {snap.products.length}</span></div>
-          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Real pack-size/color/style listings</div>
-        </Card>
-        <Card padding="18px 20px" interactive onClick={() => setDrill(variationsTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5 }}>Total Variations Tracked</div>
-          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{totalVariations}</div>
-          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Across {withVariations} SKU{withVariations === 1 ? "" : "s"} with variations</div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Real pack-size/color/style listings, {totalVariations} tracked in total</div>
         </Card>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
