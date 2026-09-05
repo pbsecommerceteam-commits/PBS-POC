@@ -10,7 +10,7 @@ import { useUi } from "../../context/UiContext";
 import { useSortedPage } from "../../hooks/useSortedPage";
 import { columnsToCsv } from "../../lib/format";
 import { productSorters } from "../../lib/productSort";
-import { CONTENT_CHECK_LABELS } from "../../data/mockData";
+import { CONTENT_ISSUE_LABELS } from "../../data/mockData";
 import { passFail, CHECK_COLUMNS } from "./contentChecks";
 import type { Product } from "../../models/types";
 import type { ContentContext } from "./Layout";
@@ -180,7 +180,7 @@ export default function ContentProducts() {
     { id: "opportunity", title: "Opportunity", selected: opportunity, onChange: setOpportunity, options: ["High", "Medium", "Low"].filter((id) => visible(oppCounts, opportunity, id)).map((id) => ({ id, label: id, count: oppCounts[id] || 0 })) },
     { id: "category", title: "Category", selected: category, onChange: setCategory, options: Object.keys(catCounts).sort().filter((id) => visible(catCounts, category, id)).map((id) => ({ id, label: id, count: catCounts[id] || 0 })) },
     { id: "brand", title: "Brand", selected: brand, onChange: setBrand, options: Object.keys(brandCounts).sort().filter((id) => visible(brandCounts, brand, id)).map((id) => ({ id, label: id, count: brandCounts[id] || 0 })) },
-    { id: "issue", title: "Content fields", selected: issue, onChange: setIssue, options: Object.keys(CONTENT_CHECK_LABELS).filter((id) => visible(issueCounts, issue, id)).map((id) => ({ id, label: CONTENT_CHECK_LABELS[id], count: issueCounts[id] || 0 })) },
+    { id: "issue", title: "Content fields", selected: issue, onChange: setIssue, options: Object.keys(CONTENT_ISSUE_LABELS).filter((id) => visible(issueCounts, issue, id)).map((id) => ({ id, label: CONTENT_ISSUE_LABELS[id], count: issueCounts[id] || 0 })) },
   ];
 
   const all: Product[] = products.filter((p) => (Object.keys(matches) as FacetKey[]).every((k) => matches[k](p)));

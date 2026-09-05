@@ -285,6 +285,25 @@ export const CONTENT_CHECK_LABELS: Record<string, string> = {
   enhanced: "Has enhanced content",
 };
 
+/* Same 9 checks as CONTENT_CHECK_LABELS, worded as the failure instead of
+   the pass condition -- for the two UI surfaces that pair a check's label
+   with a FAILURE count rather than a Pass/Fix-needed status or a coverage
+   %: Content Intelligence Summary's "Products With Issues" and the
+   Products page's "Content fields" facet filter. Pairing "Has enhanced
+   content" with a count of products failing it reads backwards; "No
+   enhanced content" doesn't. */
+export const CONTENT_ISSUE_LABELS: Record<string, string> = {
+  title: "Title over 75 characters",
+  images: "Fewer than 7 images",
+  video: "No videos",
+  bulletCount: "Fewer than 5 bullet points",
+  bulletCaps: "Bullets not capitalized",
+  bulletLength: "Bullets outside 150–200 characters",
+  description: "Description outside 200–2,000 characters",
+  rating: "Rating below 4.00",
+  enhanced: "No enhanced content",
+};
+
 export const reviewThemes = [
   { id: "t1", theme: "Flavour and taste", sentiment: "Positive" },
   { id: "t2", theme: "Value for money", sentiment: "Mixed" },
@@ -1482,8 +1501,8 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
        binary checks it currently fails; this tallies how many products
        fail each one, for a Profitero-style "Products With Issues"
        breakdown. */
-    contentIssues: Object.keys(CONTENT_CHECK_LABELS).map((id) => ({
-      id, label: CONTENT_CHECK_LABELS[id],
+    contentIssues: Object.keys(CONTENT_ISSUE_LABELS).map((id) => ({
+      id, label: CONTENT_ISSUE_LABELS[id],
       count: pool.filter((p) => (p as any).contentChecks?.includes(id)).length,
     })).sort((a, b) => b.count - a.count),
     /* Real week-over-week (Sep 1 vs Sep 29) content score movement, from
