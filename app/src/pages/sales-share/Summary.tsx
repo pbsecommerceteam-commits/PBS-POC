@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { KpiCard } from "../../components/ui/KpiCard";
 import { ChartCard } from "../../components/charts/ChartCard";
 import { Card } from "../../components/ui/Card";
+import { Badge, stockTone } from "../../components/ui/Badge";
+import { ProductCell } from "../../components/ui/ProductCell";
 import { DrilldownModal, type DrillTableConfig } from "../../components/ui/DrilldownModal";
 import { useFilters } from "../../context/FiltersContext";
 import { useUi } from "../../context/UiContext";
@@ -59,6 +61,26 @@ export default function SalesShareSummary() {
   const goToProduct = (id: string) => { setDrill(null); navigate("/product/" + id); };
   const [priceTrendSku, setPriceTrendSku] = useState("");
   const [priceTrendCategory, setPriceTrendCategory] = useState("");
+
+  /* Clickable suggestion dropdown for the SKU scope box below, same pattern
+     as Overview's Product performance search -- the native <input list>/
+     <datalist> combo this replaced rendered as a plain, inconsistently-
+     styled browser autocomplete with no visible "these are your matches"
+     feedback. Selecting a suggestion sets `priceTrendSku` to that exact
+     product name, which the existing skuMatch lookup below already finds
+     via a plain substring match -- no change to the scoping logic itself. */
+  const [skuSearchOpen, setSkuSearchOpen] = useState(false);
+  const skuBoxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (skuBoxRef.current && !skuBoxRef.current.contains(e.target as Node)) setSkuSearchOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSkuSearchOpen(false); };
+    document.addEventListener("click", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("click", onClick); document.removeEventListener("keydown", onKey); };
+  }, []);
 
   const pidx = sh.kpis.find((k: any) => k.id === "pidx");
   const priceIncreasedProducts = sh.products.filter((p: Product) => p.priceChangePct > 0).sort((a: Product, b: Product) => b.priceChangePct - a.priceChangePct);
@@ -211,6 +233,10 @@ export default function SalesShareSummary() {
     ? sh.products.find((p: Product) => (p.id + " " + p.name).toLowerCase().includes(priceTrendSku.trim().toLowerCase()))
     : null;
   const catProducts = priceTrendCategory ? sh.products.filter((p: Product) => p.category === priceTrendCategory) : [];
+
+  const skuHits: Product[] = priceTrendSku.trim()
+    ? sh.products.filter((p: Product) => (p.name + " " + p.id + " " + p.brand).toLowerCase().includes(priceTrendSku.trim().toLowerCase())).slice(0, 6)
+    : [];
 
   /* The same SKU/category scope now drives every trend chart AND table
      below it (Average Price by Retailer, Price Tiers, Largest Price Gap,
@@ -376,14 +402,33 @@ export default function SalesShareSummary() {
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span className="sl-muted" style={{ fontSize: 12.5 }}>Scope every trend &amp; table below to:</span>
-        <input
-          className="input" list="price-trend-sku-options" placeholder="Search a SKU or product…"
-          value={priceTrendSku} onChange={(e) => { setPriceTrendSku(e.target.value); if (e.target.value) setPriceTrendCategory(""); }}
-          style={{ minHeight: 32, fontSize: 12.5, width: 240 }}
-        />
-        <datalist id="price-trend-sku-options">
-          {sh.products.map((p: Product) => <option key={p.id} value={p.name}>{p.id.toUpperCase()}</option>)}
-        </datalist>
+        <div ref={skuBoxRef} style={{ position: "relative" }}>
+          <input
+            className="input" placeholder="Search a SKU or product…"
+            value={priceTrendSku}
+            onChange={(e) => { setPriceTrendSku(e.target.value); if (e.target.value) setPriceTrendCategory(""); setSkuSearchOpen(true); }}
+            onFocus={() => { if (priceTrendSku.trim()) setSkuSearchOpen(true); }}
+            style={{ minHeight: 32, fontSize: 12.5, width: 240 }}
+          />
+          {skuSearchOpen && priceTrendSku.trim() && (
+            <div className="sl-panel sl-pop-in" style={{ position: "absolute", top: 36, left: 0, width: 320, maxHeight: 360, overflowY: "auto", zIndex: 30, padding: "6px 0" }}>
+              {skuHits.length === 0 ? (
+                <div className="sl-muted" style={{ fontSize: 12.5, padding: "10px 12px" }}>No matches for "{priceTrendSku.trim()}".</div>
+              ) : skuHits.map((p) => (
+                <button
+                  key={p.id} type="button" className="sl-palette__row"
+                  onClick={() => { setPriceTrendSku(p.name); setPriceTrendCategory(""); setSkuSearchOpen(false); }}
+                  style={{ width: "100%", justifyContent: "space-between", gap: 10 }}
+                >
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.retailerName} imageUrl={p.imageUrl} imageSize={28} />
+                  </span>
+                  <Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <select
           className="input" value={priceTrendCategory}
           onChange={(e) => { setPriceTrendCategory(e.target.value); if (e.target.value) setPriceTrendSku(""); }}
