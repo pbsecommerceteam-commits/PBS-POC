@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageShell } from "../components/layout/PageShell";
 import { KpiCard } from "../components/ui/KpiCard";
@@ -60,6 +60,31 @@ export default function Overview() {
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
     all, productSorters, "shelfScore", 8, [sku, stockFilter, categoryFilter, brand, searchTerm].join("|"),
   );
+
+  /* A dropdown of clickable matches, same idea as the header's SKU search --
+     lets you jump straight to one exact product instead of scanning the
+     (also live-filtered) table below. Searches the full globally-scoped
+     snap.products, not the locally tab-filtered `all`, so a stock/category
+     tab narrower than the match can't hide a product you typed the exact
+     name of. */
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) setSearchOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSearchOpen(false); };
+    document.addEventListener("click", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("click", onClick); document.removeEventListener("keydown", onKey); };
+  }, []);
+
+  const searchHits: Product[] = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!snap || !q) return [];
+    return snap.products.filter((p: Product) => (p.name + " " + p.id + " " + p.brand).toLowerCase().includes(q)).slice(0, 6);
+  }, [snap, searchTerm]);
 
   if (!snap) return <PageShell title="Overview" subtitle="Monitor digital shelf health across your retailers, products and categories."><div /></PageShell>;
 
@@ -188,10 +213,32 @@ export default function Overview() {
             <button className="btn btn-ghost" onClick={() => setSku("")} style={{ fontSize: 12.5 }}>Show all products</button>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <input
-                className="input" type="text" placeholder="Search products, SKUs, brands…" value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)} style={{ minWidth: 200, height: 32, fontSize: 12.5 }}
-              />
+              <div ref={searchBoxRef} style={{ position: "relative" }}>
+                <input
+                  className="input" type="text" placeholder="Search products, SKUs, brands…" value={searchTerm}
+                  onChange={(e) => { setSearchTerm(e.target.value); setSearchOpen(true); }}
+                  onFocus={() => { if (searchTerm.trim()) setSearchOpen(true); }}
+                  style={{ minWidth: 200, height: 32, fontSize: 12.5 }}
+                />
+                {searchOpen && searchTerm.trim() && (
+                  <div className="sl-panel sl-pop-in" style={{ position: "absolute", top: 36, left: 0, width: 320, maxHeight: 360, overflowY: "auto", zIndex: 30, padding: "6px 0" }}>
+                    {searchHits.length === 0 ? (
+                      <div className="sl-muted" style={{ fontSize: 12.5, padding: "10px 12px" }}>No matches for "{searchTerm.trim()}".</div>
+                    ) : searchHits.map((p) => (
+                      <button
+                        key={p.id} type="button" className="sl-palette__row"
+                        onClick={() => { setSearchOpen(false); navigate("/product/" + p.id); }}
+                        style={{ width: "100%", justifyContent: "space-between", gap: 10 }}
+                      >
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.retailerName} imageUrl={p.imageUrl} imageSize={28} />
+                        </span>
+                        <Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <Tabs options={CATEGORY_TABS} value={categoryFilter} onChange={setCategoryFilter} size="sm" />
               <Tabs options={STOCK_TABS} value={stockFilter} onChange={setStockFilter} size="sm" />
               {(stockFilter !== "All" || categoryFilter || brand || searchTerm) && <button className="btn btn-ghost" onClick={() => { setStockFilter("All"); setCategoryFilter(""); setBrand(""); setSearchTerm(""); toast("Filters cleared."); }} style={{ fontSize: 12.5 }}>Clear filters</button>}
