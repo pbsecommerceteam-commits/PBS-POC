@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from "react";
 import { useColumnWidths } from "../../hooks/useColumnWidths";
+import { InfoTip } from "../ui/InfoTip";
 
 export interface Column<T> {
   key: string;
@@ -13,6 +14,10 @@ export interface Column<T> {
    *  this alongside it. Columns without one (e.g. a pure visual/no export
    *  need) are simply left out of an export by the page that builds it. */
   csv?: (row: T) => string | number | null | undefined;
+  /** "What is this column" hover hint -- only worth setting on columns
+   *  whose derivation isn't obvious from the label alone (e.g. a composite
+   *  score or a real-vs-illustrative distinction), not every column. */
+  info?: string;
 }
 
 /** Shared sort/click wiring for every product-shaped table (Overview,
@@ -62,6 +67,7 @@ export function SortableTable<T>({ columns, rows, sortKey, sortDir, onSort, onRo
                   onClick={c.sortable && onSort ? () => onSort(c.key) : undefined}
                 >
                   {c.label}
+                  {c.info && <span onClick={(e) => e.stopPropagation()} style={{ display: "inline-flex", marginLeft: 5, verticalAlign: "middle" }}><InfoTip text={c.info} /></span>}
                   {sorted && <span className="sl-sort-caret">{sortDir === "asc" ? "▲" : "▼"}</span>}
                   {resizable && (
                     <span

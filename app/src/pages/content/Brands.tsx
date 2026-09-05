@@ -53,6 +53,7 @@ export default function ContentBrands() {
         }),
       ] };
     }),
+    "Content Score is this brand's real average across its SKUs (same as everywhere else in the app); every other column is a real per-check pass count and rate.",
   );
 
   return <DataTable t={brandTable} resizable />;

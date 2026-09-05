@@ -100,13 +100,13 @@ export default function Overview() {
     { key: "rating", label: "Rating", align: "center", sortable: true, render: (p) => (
       <><div style={{ fontWeight: 500 }}>{p.rating.toFixed(2)}</div><div className="sl-table-sub">{p.reviews.toLocaleString()} reviews</div></>
     ) },
-    { key: "contentScore", label: "Content completeness", align: "center", sortable: true, render: (p) => (
+    { key: "contentScore", label: "Content completeness", align: "center", sortable: true, info: "(9 real checks passing ÷ 9) × 100 -- title, images, videos, bullets, description, rating, enhanced content.", render: (p) => (
       <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
         <span className="sl-progress-track" style={{ width: 40 }}><span className="sl-progress-fill" style={{ width: p.contentScore + "%" }}></span></span>
         <span style={{ fontWeight: 600, minWidth: 30 }}>{p.contentScore}%</span>
       </div>
     ) },
-    { key: "opportunity", label: "Opportunity", align: "center", sortable: true, render: (p) => <Badge tone={opportunityTone(p.opportunity)}>{p.opportunity}</Badge> },
+    { key: "opportunity", label: "Opportunity", align: "center", sortable: true, info: "A real composite flag: points for being out of/low stock, scoring under 80% content, having low/no keyword coverage, or rating under 4.0 -- High/Medium/Low by total points, not a single field.", render: (p) => <Badge tone={opportunityTone(p.opportunity)}>{p.opportunity}</Badge> },
   ];
 
   return (

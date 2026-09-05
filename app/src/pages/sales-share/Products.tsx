@@ -48,7 +48,8 @@ export const SALES_COLUMNS: Column<Product>[] = [
     if (p.mapPrice == null) return <span className="sl-faint">Not tracked</span>;
     const under = (p.currentPrice ?? p.price) < p.mapPrice;
     return <Badge tone={under ? "critical" : "positive"}>{under ? "Under MAP" : "Compliant"}</Badge>;
-  }, csv: (p) => p.mapPrice == null ? "Not tracked" : (p.currentPrice ?? p.price) < p.mapPrice ? "Under MAP" : "Compliant" },
+  }, csv: (p) => p.mapPrice == null ? "Not tracked" : (p.currentPrice ?? p.price) < p.mapPrice ? "Under MAP" : "Compliant",
+    info: "MAP Price is a real brand-policy value from a separate reference file, not something the crawl observes -- 'Not tracked' means this SKU has no MAP row on file, not that it's compliant." },
   { key: "couponValue", label: "Coupon Value", align: "center", sortable: true, render: (p) => p.couponValue ?? "—", csv: (p) => p.couponValue ?? "" },
   { key: "priceDiff", label: "Price Difference", align: "center", render: (p) => {
     const cur = p.currentPrice ?? p.price;
@@ -56,15 +57,15 @@ export const SALES_COLUMNS: Column<Product>[] = [
     const diff = cur - p.listPrice;
     return <span style={{ color: diff < 0 ? "var(--status-positive-fg)" : diff > 0 ? "var(--status-negative-fg)" : "inherit" }}>{diff === 0 ? "—" : (diff > 0 ? "+" : "−") + "$" + Math.abs(diff).toFixed(2)}</span>;
   }, csv: (p) => p.listPrice != null ? ((p.currentPrice ?? p.price) - p.listPrice).toFixed(2) : "" },
-  { key: "priceChangePct", label: "Price Change", align: "center", sortable: true, render: (p) => <span style={{ color: deltaColor(p.priceChangePct) }}>{delta(p.priceChangePct, "%")}</span>, csv: (p) => p.priceChangePct },
-  { key: "priceIndex", label: "Price Index", align: "center", sortable: true, render: (p) => <span>{(p.priceIndex * 100).toFixed(0)}</span>, csv: (p) => (p.priceIndex * 100).toFixed(0) },
+  { key: "priceChangePct", label: "Price Change", align: "center", sortable: true, render: (p) => <span style={{ color: deltaColor(p.priceChangePct) }}>{delta(p.priceChangePct, "%")}</span>, csv: (p) => p.priceChangePct, info: "Real whole-month change: first vs. last real observed price this September -- not a single-day comparison." },
+  { key: "priceIndex", label: "Price Index", align: "center", sortable: true, render: (p) => <span>{(p.priceIndex * 100).toFixed(0)}</span>, csv: (p) => (p.priceIndex * 100).toFixed(0), info: "This SKU's current price ÷ its own average selling price this period, ×100. Above 100 = priced above its own norm right now; below 100 = a markdown." },
   { key: "stockStatusRaw", label: "Stock Status", align: "center", sortable: true, render: (p) => p.stockStatusRaw ?? "—", csv: (p) => p.stockStatusRaw ?? "" },
   { key: "buyBoxRate", label: "Buy Box", align: "center", sortable: true, render: (p) => (
     <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
       <span className="sl-progress-track" style={{ width: 40 }}><span className="sl-progress-fill" style={{ width: p.buyBoxRate + "%" }}></span></span>
       <span style={{ fontWeight: 600, minWidth: 40 }}>{p.buyBoxRate}%</span>
     </div>
-  ), csv: (p) => p.buyBoxRate },
+  ), csv: (p) => p.buyBoxRate, info: "Real % of tracked days this SKU's own listing (not a 3rd-party seller) held the buy box." },
   { key: "buyBoxSeller", label: "Buy Box Seller", align: "center", sortable: true, render: (p) => p.buyBoxSeller ?? "—", csv: (p) => p.buyBoxSeller ?? "" },
   { key: "buyBoxShipper", label: "Buy Box Shipper", align: "center", sortable: true, render: (p) => p.buyBoxShipper ?? "—", csv: (p) => p.buyBoxShipper ?? "" },
   { key: "spbUrl", label: "Listing Link", align: "center", render: (p) => p.spbUrl

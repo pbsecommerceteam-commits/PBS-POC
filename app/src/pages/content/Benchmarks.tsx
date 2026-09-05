@@ -32,7 +32,8 @@ export default function ContentBenchmarks() {
       cell(a.name),
       cell(a.coverage + "%", { align: "right", strong: true }),
       cell(String(a.failing), { align: "right", color: a.coverage < 50 ? "var(--status-negative-fg)" : "inherit", onClick: a.failing > 0 ? () => setDrill(issueTable(a.id, a.name)) : undefined }),
-    ] })));
+    ] })),
+    "Real per-check pass rate across the current pool -- the same 9-check rubric behind every Content Score on the app, just shown per-requirement instead of averaged.");
 
   return (
     <>

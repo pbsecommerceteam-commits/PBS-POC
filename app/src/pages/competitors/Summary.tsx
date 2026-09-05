@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
+import { InfoTip } from "../../components/ui/InfoTip";
 import { DrilldownModal, type DrillTableConfig } from "../../components/ui/DrilldownModal";
 import { cell } from "../../lib/format";
 import { REAL_BUYBOX_COMPETITOR, REAL_BUYBOX_TIMELINE } from "../../data/mockData";
@@ -45,13 +46,14 @@ export default function CompetitorsSummary() {
       cell(daysWon + " of 30", { align: "center" }),
       cell(p.buyBoxRate + "%", { align: "center", color: p.buyBoxRate < 50 ? "var(--status-negative-fg)" : "inherit" }),
     ], detail: buyBoxDateDetail(p.id, p.retailerName) })),
+    info: "Real named 3rd-party sellers who won the buy box on real tracked days, from the crawl's daily buy-box-holder field -- the one real competitive signal in this data (see Competitor column).",
   };
 
   return (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,238px),1fr))", gap: "var(--app-gap)" }}>
         <Card padding="18px 20px" interactive onClick={() => setDrill(buyBoxLostTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5 }}>SKUs with 3P Buy Box Loss</div>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>SKUs with 3P Buy Box Loss<InfoTip text="Real count of SKUs where a named 3rd-party seller won the buy box at any point this period, from the crawl's daily buy-box-holder field." /></div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: skusLost > 0 ? "var(--status-negative-fg)" : "inherit" }}>{skusLost}<span style={{ fontSize: 16, fontWeight: 500 }}> / {skusTracked}</span></div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>{topSeller ? "Real — top 3P seller: " + topSeller : "Real — no 3P buy-box loss in scope"}</div>
         </Card>

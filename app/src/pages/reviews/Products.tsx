@@ -28,7 +28,7 @@ export const REVIEWS_COLUMNS: Column<Product>[] = [
   { key: "reviews", label: "Reviews", align: "center", sortable: true, render: (p) => p.reviews.toLocaleString(), csv: (p) => p.reviews },
   { key: "price", label: "Price", align: "center", sortable: true, render: (p) => "$" + p.price.toFixed(2), csv: (p) => p.price.toFixed(2) },
   { key: "stockStatus", label: "Stock", align: "center", sortable: true, render: (p) => <Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge>, csv: (p) => p.stockStatus },
-  { key: "opportunity", label: "Opportunity", align: "center", sortable: true, render: (p) => <Badge tone={opportunityTone(p.opportunity)}>{p.opportunity}</Badge>, csv: (p) => p.opportunity },
+  { key: "opportunity", label: "Opportunity", align: "center", sortable: true, render: (p) => <Badge tone={opportunityTone(p.opportunity)}>{p.opportunity}</Badge>, csv: (p) => p.opportunity, info: "A real composite flag: points for being out of/low stock, scoring under 80% content, having low/no keyword coverage, or rating under 4.0 -- High/Medium/Low by total points." },
 ];
 
 export default function ReviewsProducts() {

@@ -61,7 +61,7 @@ export const CONTENT_COLUMNS: Column<Product>[] = [
   { key: "has360Image", label: "360° Image", minWidth: 110, sortable: true, render: (p) => <span className={p.has360Image ? undefined : "sl-muted"}>{yesNo(p.has360Image)}</span>, csv: (p) => yesNo(p.has360Image) },
   { key: "enhancedContent", label: "Enhanced Content", minWidth: 140, sortable: true, render: (p) => <span className={p.enhancedContent ? undefined : "sl-muted"}>{yesNo(p.enhancedContent)}</span>, csv: (p) => yesNo(p.enhancedContent) },
   { key: "questionCount", label: "Questions", align: "right", minWidth: 100, sortable: true, render: (p) => p.questionCount, csv: (p) => p.questionCount },
-  { key: "completeness", label: "Content Completeness", align: "right", minWidth: 150, sortable: true, render: (p) => <span style={{ fontWeight: 600, color: (9 - p.contentChecks.length) / 9 * 100 < 80 ? "var(--status-critical-fg)" : "inherit" }}>{Math.round(((9 - p.contentChecks.length) / 9) * 100)}%</span>, csv: (p) => Math.round(((9 - p.contentChecks.length) / 9) * 100) },
+  { key: "completeness", label: "Content Completeness", align: "right", minWidth: 150, sortable: true, render: (p) => <span style={{ fontWeight: 600, color: (9 - p.contentChecks.length) / 9 * 100 < 80 ? "var(--status-critical-fg)" : "inherit" }}>{Math.round(((9 - p.contentChecks.length) / 9) * 100)}%</span>, csv: (p) => Math.round(((9 - p.contentChecks.length) / 9) * 100), info: "(9 checks passing ÷ 9) × 100 -- the same 9-check rubric behind every Content Score in the app, evaluated against this SKU's latest crawled listing." },
   ...CHECK_COLUMNS.map((c): Column<Product> => ({
     key: c.key, label: c.label, align: "right", minWidth: 100, sortable: true,
     render: (p) => <ScorePill pass={passFail(p, c.id)} />,

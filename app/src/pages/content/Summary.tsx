@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
+import { InfoTip } from "../../components/ui/InfoTip";
 import { KpiCard } from "../../components/ui/KpiCard";
 import { ChartCard } from "../../components/charts/ChartCard";
 import { DrilldownModal } from "../../components/ui/DrilldownModal";
@@ -89,18 +90,18 @@ export default function ContentSummary() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,200px),1fr))", gap: "var(--app-gap)" }}>
         <KpiCard k={kpiCard(content, spark)} />
         <Card padding="18px 20px" interactive onClick={() => setDrill(improvedTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5 }}>Score Improved</div>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Score Improved<InfoTip text="Real per-SKU Content Score movement, first vs. last real weekly checkpoint (Sep 1 to Sep 29) -- not a fabricated delta." /></div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: "var(--status-positive-fg)" }}>{improved}</div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real Sep 1 → Sep 29 · click to view</div>
         </Card>
         <Card padding="18px 20px" interactive onClick={() => setDrill(declinedTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5 }}>Score Declined</div>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Score Declined<InfoTip text="Real per-SKU Content Score movement, first vs. last real weekly checkpoint (Sep 1 to Sep 29) -- not a fabricated delta." /></div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: "var(--status-negative-fg)" }}>{declined}</div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real Sep 1 → Sep 29 · click to view</div>
         </Card>
         <KpiCard k={kpiCard(issues, spark)} />
         <Card padding="18px 20px" interactive onClick={() => setDrill(variationsTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5 }}>Products With Variations</div>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Products With Variations<InfoTip text="Real count of SKUs with at least one variant option (size/color/style) from the crawl's 22 Variant label/value pairs. Most SKUs have none." /></div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{withVariations}<span style={{ fontSize: 16, fontWeight: 500 }}> / {snap.products.length}</span></div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Real pack-size/color/style listings, {totalVariations} tracked in total</div>
         </Card>
@@ -110,7 +111,7 @@ export default function ContentSummary() {
         <ChartCard c={dist} onLeave={onLeave} onExportCsv={exportDist} />
       </div>
       <Card padding="20px 22px">
-        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Products With Issues</h3>
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>Products With Issues<InfoTip text="Real per-check failure counts from the same 9-check rubric behind Content Score -- each SKU's contentChecks array lists exactly which checks it currently fails." /></h3>
         <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 16 }}>Real per-check failure counts across {snap.products.length} tracked SKUs · click a check to see its SKUs</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {snap.contentIssues.map((i: any) => (

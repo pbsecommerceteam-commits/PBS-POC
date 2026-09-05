@@ -1,5 +1,6 @@
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
+import { InfoTip } from "../../components/ui/InfoTip";
 import { useUi } from "../../context/UiContext";
 import type { Product } from "../../models/types";
 import type { SalesShareContext } from "./Layout";
@@ -107,7 +108,7 @@ export default function SalesShareDrivers() {
     <>
       <Card padding="20px 22px">
         <div style={{ marginBottom: 16 }}>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Discount &amp; Savings Overview</h3>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>Discount &amp; Savings Overview<InfoTip text="Real Price-tab fields: discount = (List − Current) ÷ List. Each average only counts SKUs that actually posted that field, never a fabricated fallback." /></h3>
           <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Real Price-tab fields — no repeats of the KPIs already shown on Summary</div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,160px),1fr))", gap: 16 }}>
@@ -136,7 +137,7 @@ export default function SalesShareDrivers() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,380px),1fr))", gap: "var(--app-gap)" }}>
         <Card padding="20px 22px">
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Subscription Price Analysis</h3>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>Subscription Price Analysis<InfoTip text="Real Price-tab 'Subscription price' field vs. each SKU's own current price -- only SKUs that actually offer a subscription option are counted." /></h3>
           <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 16 }}>Real Price-tab "Subscription price" vs. each SKU's own current price</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 16 }}>
             <div>
@@ -157,7 +158,7 @@ export default function SalesShareDrivers() {
           </div>
         </Card>
         <Card padding="20px 22px">
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Coupon Price Impact</h3>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>Coupon Price Impact<InfoTip text="Real crawled coupon value, exactly as posted -- some retailers post a dollar figure + %, others only a bare %. Dollar averages only count SKUs that posted a real dollar amount." /></h3>
           <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 16 }}>Real Price-tab "Coupon value" -- exactly as posted by each retailer</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 16 }}>
             <div>
@@ -194,7 +195,7 @@ export default function SalesShareDrivers() {
 
       <Card padding="20px 22px">
         <div style={{ marginBottom: 16 }}>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>MAP Compliance</h3>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>MAP Compliance<InfoTip text="Real MAP (Minimum Advertised Price) from the separate reference file the user supplies -- a brand policy value, not something the crawl observes. A SKU with no MAP row is untracked, not compliant or a violation." /></h3>
           <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Real MAP (Minimum Advertised Price) reference data -- a SKU with no MAP row is not tracked, not counted as compliant or a violation</div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,160px),1fr))", gap: 16 }}>
