@@ -50,11 +50,10 @@ function priceDateDetail(pid: string) {
 }
 
 export default function SalesShareSummary() {
-  const { sh, categoryFilter, setCategoryFilter } = useOutletContext<SalesShareContext>();
+  const { sh } = useOutletContext<SalesShareContext>();
   const { toast } = useUi();
   const navigate = useNavigate();
   const { hover, onEnter, onLeave } = useChartHover();
-  const [catSort, setCatSort] = useState({ key: "overall", dir: "desc" as "asc" | "desc" });
   const [drill, setDrill] = useState<DrillTableConfig | null>(null);
   const goToProduct = (id: string) => { setDrill(null); navigate("/product/" + id); };
   const [priceTrendSku, setPriceTrendSku] = useState("");
@@ -343,23 +342,6 @@ export default function SalesShareSummary() {
     .sort((a, b) => Math.abs(b.gapPct) - Math.abs(a.gapPct))
     .slice(0, 5);
 
-  const categoryRows = isScoped
-    ? Array.from(new Set(scopedProducts.map((p: Product) => p.category))).map((cat) => {
-        const prods = scopedProducts.filter((p: Product) => p.category === cat);
-        return {
-          category: cat, skus: prods.length,
-          avgPrice: prods.reduce((a: number, p: Product) => a + p.price, 0) / prods.length,
-          priceIndex: (prods.reduce((a: number, p: Product) => a + p.priceIndex, 0) / prods.length) * 100,
-        };
-      })
-    : sh.categories;
-
-  const catSortFn = (k: string) => setCatSort((s) => ({ key: k, dir: s.key === k && s.dir === "desc" ? "asc" : "desc" }));
-  const sortedCategories = categoryRows.slice().sort((a: any, b: any) => {
-    const dir = catSort.dir === "asc" ? 1 : -1;
-    return (catSort.key === "category" ? a.category.localeCompare(b.category) : a[catSort.key] - b[catSort.key]) * dir;
-  });
-
   return (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))", gap: "var(--app-gap)" }}>
@@ -479,33 +461,6 @@ export default function SalesShareSummary() {
         </div>
       </Card>
 
-      <Card padding="20px 22px 10px">
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
-          <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Category pricing</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Sort any column; select a category to scope the page{scopeLabel ? " · " + scopeLabel : ""}</div></div>
-        </div>
-        <div style={{ overflowX: "auto" }}>
-          <table className="sl-table">
-            <thead><tr>
-              {[["category", "Category", "left", 170], ["avgPrice", "Avg price", "right"], ["priceIndex", "Price index", "right"], ["skus", "SKUs", "right"]].map(([k, label, align, mw]) => (
-                <th key={k as string} className={"is-sortable" + (catSort.key === k ? " is-sorted" : "")} style={{ textAlign: align as any, minWidth: mw as number }} onClick={() => catSortFn(k as string)}>{label}{catSort.key === k && <span className="sl-sort-caret">{catSort.dir === "asc" ? "▲" : "▼"}</span>}</th>
-              ))}
-            </tr></thead>
-            <tbody>
-              {sortedCategories.map((c: any) => {
-                const selected = categoryFilter === c.category;
-                return (
-                  <tr className={"sl-row is-clickable" + (selected ? " is-selected" : "")} key={c.category} onClick={() => { setCategoryFilter(selected ? "" : c.category); toast(selected ? "Category filter cleared." : c.category + " — Pricing Intelligence."); }}>
-                    <td><div className="sl-table-name">{c.category}</div></td>
-                    <td style={{ textAlign: "right" }}>${c.avgPrice.toFixed(2)}</td>
-                    <td style={{ textAlign: "right" }}>{c.priceIndex.toFixed(1)}</td>
-                    <td style={{ textAlign: "right" }}>{c.skus}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Card>
     </>
   );
 }

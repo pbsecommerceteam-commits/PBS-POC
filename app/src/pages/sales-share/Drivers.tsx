@@ -82,7 +82,9 @@ export default function SalesShareDrivers() {
     return { p, eff, gapDollar, gapPct: (gapDollar / p.mapPrice!) * 100 };
   });
   const belowMap = mapGaps.filter((d) => d.gapDollar > 0).sort((a, b) => b.gapPct - a.gapPct);
-  const mapCompliancePct = withMap.length ? ((withMap.length - belowMap.length) / withMap.length) * 100 : null;
+  const belowMapPct = withMap.length ? (belowMap.length / withMap.length) * 100 : null;
+  const compliantCount = withMap.length - belowMap.length;
+  const mapCompliancePct = withMap.length ? (compliantCount / withMap.length) * 100 : null;
 
   /* Category-level average list/current price -- distinct from Summary's
      per-product "Largest Price Gap" list (this is a category-level
@@ -203,13 +205,13 @@ export default function SalesShareDrivers() {
           </div>
           <div>
             <div className="sl-muted" style={{ fontSize: 12.5 }}>Below MAP</div>
-            <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 24, marginTop: 4, color: belowMap.length > 0 ? "var(--status-negative-fg)" : "inherit" }}>{belowMap.length}</div>
-            <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 4 }}>Priced under their real MAP</div>
+            <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 24, marginTop: 4, color: belowMap.length > 0 ? "var(--status-negative-fg)" : "inherit" }}>{belowMap.length}<span style={{ fontSize: 14, fontWeight: 500 }}> / {withMap.length}</span></div>
+            <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 4 }}>Priced under their real MAP{belowMapPct != null ? " · " + belowMapPct.toFixed(1) + "%" : ""}</div>
           </div>
           <div>
             <div className="sl-muted" style={{ fontSize: 12.5 }}>MAP Compliance</div>
             <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 24, marginTop: 4, color: mapCompliancePct != null && mapCompliancePct < 90 ? "var(--status-negative-fg)" : "inherit" }}>{mapCompliancePct != null ? mapCompliancePct.toFixed(1) + "%" : "—"}</div>
-            <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 4 }}>Priced at or above MAP, of SKUs tracked</div>
+            <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 4 }}>{compliantCount} / {withMap.length} SKUs priced at or above MAP</div>
           </div>
         </div>
         {belowMap.length > 0 && (
