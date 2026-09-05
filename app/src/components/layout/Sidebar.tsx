@@ -15,6 +15,7 @@ const ANALYTICS_ITEMS: NavItem[] = [
 const WORKSPACE_ITEMS: NavItem[] = [
   { to: "/alerts", label: "Alerts", icon: <g><path d="M18 15V10a6 6 0 10-12 0v5l-1.5 3h15z"></path><path d="M10 21h4"></path></g> },
   { to: "/reports", label: "Reports", icon: <g><path d="M5 3h9l5 5v13H5z"></path><path d="M9 17v-4"></path><path d="M12.5 17v-6"></path><path d="M16 17v-2"></path></g> },
+  { to: "/import", label: "Data Import", icon: <g><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M4 21h16"></path></g> },
   { to: "/settings", label: "Settings", icon: <g><path d="M4 7h9"></path><path d="M17 7h3"></path><path d="M4 17h5"></path><path d="M13 17h7"></path><circle cx="15" cy="7" r="2"></circle><circle cx="11" cy="17" r="2"></circle></g> },
 ];
 

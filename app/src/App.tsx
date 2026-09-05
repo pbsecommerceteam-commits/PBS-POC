@@ -24,6 +24,7 @@ import CompetitorsSummary from "./pages/competitors/Summary";
 import Alerts from "./pages/Alerts";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import ImportData from "./pages/ImportData";
 import ProductDetail from "./pages/ProductDetail";
 
 export default function App() {
@@ -62,6 +63,7 @@ export default function App() {
 
               <Route path="alerts" element={<Alerts />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="import" element={<ImportData />} />
               <Route path="settings" element={<Settings />} />
               <Route path="product/:id" element={<ProductDetail />} />
               <Route path="*" element={<Navigate to="/overview" replace />} />
