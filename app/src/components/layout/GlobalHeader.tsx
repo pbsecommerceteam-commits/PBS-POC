@@ -75,7 +75,7 @@ export function GlobalHeader() {
 
   return (
     <header ref={rootRef} className="sl-header">
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
         <FilterSelect label="Retailer" value={retailer} onChange={setRetailer} options={retailers} width={168} />
         <FilterSelect label="Category" value={category} onChange={setCategory} options={categoryOptions} width={178} />
         <FilterSelect label="Brand" value={brand} onChange={setBrand} options={brandOptions} width={168} searchable searchPlaceholder="Search brands…" />
@@ -83,12 +83,11 @@ export function GlobalHeader() {
         <DateRangePicker value={dateRange} onChange={setDateRange} />
       </div>
 
-      <div style={{ flex: 1 }} />
-
+      <div className="sl-header__actions" style={{ display: "flex", alignItems: "center", gap: 14, marginLeft: "auto", flexShrink: 0 }}>
       <button className="sl-search-trigger" onClick={() => setSearchOpen(true)}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4.2-4.2"></path></svg>
-        <span className="sl-muted" style={{ fontSize: 13 }}>Search products, SKUs, categories</span>
-        <kbd className="sl-kbd" style={{ marginLeft: "auto" }}>Ctrl K</kbd>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4.2-4.2"></path></svg>
+        <span className="sl-muted sl-search-trigger__label" style={{ fontSize: 13 }}>Search products, SKUs, categories</span>
+        <kbd className="sl-kbd" style={{ marginLeft: "auto", flexShrink: 0 }}>Ctrl K</kbd>
       </button>
 
       <div style={{ position: "relative" }}>
@@ -146,6 +145,7 @@ export function GlobalHeader() {
             </button>
           </div>
         )}
+      </div>
       </div>
 
       <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
