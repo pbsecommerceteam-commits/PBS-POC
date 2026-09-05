@@ -66,7 +66,6 @@ export default function ProductDetail() {
   const initials = p.name.split(" ").filter(Boolean).slice(0, 2).map((w: string) => w[0]).join("");
 
   const kpis = [
-    { id: "coverage", label: "Keyword Coverage", unit: "", value: p.keywordCoverage, target: 10, delta: t.coverage[0] - p.keywordCoverage, spark: t.coverage, labels },
     { id: "instock", label: "Stock Availability 1P + 3P", unit: "%", value: p.inStockRate, target: 98, delta: Number((p.inStockRate - t.stock[0]).toFixed(1)), spark: t.stock, labels },
     { id: "rating", label: "Average Rating", unit: "", value: p.rating, target: 4.5, delta: Number((p.rating - t.rating[0]).toFixed(2)), spark: t.rating, labels },
     { id: "content", label: "Content Completeness", unit: "%", value: p.contentScore, target: 95, delta: 0, spark: t.stock.map((_v: number, i: number) => Math.round(p.contentScore - 4 + (i / labels.length) * 4)), labels },
@@ -80,8 +79,6 @@ export default function ProductDetail() {
   const realWindow = labels.length ? `${labels[0]}–${labels[labels.length - 1]}` : "Sep 8–29";
   const realNote = isReal ? ` · Real crawl data (${realWindow})` : " · Illustrative — crawl covers one month only";
 
-  const rankChart = lineChart({ id: "d-rank", title: "Keyword Coverage Trend", subtitle: "Of the 10 tracked keywords, how many genuinely surfaced this SKU · Real crawl data (Sep 8–29)",
-    labels, lo: 0, hi: 10, ticks: [0, 2, 4, 6, 8, 10], fmt: (v) => Math.round(v) + "/10", hideLegend: true, series: [{ name: "Keyword Coverage", values: t.coverage }] }, hover, onEnter);
   /* Real MAP (Minimum Advertised Price), from the separate reference
      workbook the user supplies -- has no weekly series of its own (a
      static brand policy value, not something the crawl observes day to
@@ -113,7 +110,6 @@ export default function ProductDetail() {
   };
 
   const facts = [
-    { label: "Keyword coverage", value: Math.round((p.keywordCoverage / 10) * 100) + "%", sub: p.keywordCoverage + " of 10 tracked keywords" },
     { label: "Stock Availability 1P + 3P", value: p.inStockRate.toFixed(1) + "%", sub: p.stockStatus },
     { label: "Average price", value: "$" + p.avgSellingPrice.toFixed(2), sub: "$" + p.price.toFixed(2) + " current price" },
     { label: "Content completeness", value: p.contentScore + "%", sub: "of content checks passed" },
@@ -183,7 +179,6 @@ export default function ProductDetail() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
-        <ChartCard c={rankChart} onLeave={onLeave} onExportCsv={() => exportChart("shelfline-" + p.id + "-keyword-coverage-trend.csv", "Keyword Coverage Trend", [{ name: "Keyword Coverage", values: t.coverage }])} />
         <ChartCard c={priceChart} onLeave={onLeave} onExportCsv={() => exportChart("shelfline-" + p.id + "-price-trend.csv", "Price Trend", [{ name: "Price", values: t.price }], p.mapPrice != null ? { name: "MAP Price", value: p.mapPrice } : undefined)} />
         <ChartCard c={stockChart} onLeave={onLeave} onExportCsv={() => exportChart("shelfline-" + p.id + "-stock-availability-trend.csv", "Stock Availability Trend", [{ name: "In Stock %", values: t.stock }])} />
         <ChartCard c={ratingChart} onLeave={onLeave} onExportCsv={() => exportChart("shelfline-" + p.id + "-rating-trend.csv", "Rating Trend", [{ name: "Rating", values: t.rating }])} />

@@ -4,7 +4,6 @@ import { Card } from "../../components/ui/Card";
 import { OpportunityCard } from "../../components/ui/OpportunityCard";
 import { SortableTable, type Column } from "../../components/table/SortableTable";
 import { Pagination } from "../../components/table/Pagination";
-import { Tabs } from "../../components/ui/Tabs";
 import { Badge, opportunityTone } from "../../components/ui/Badge";
 import { ProductCell } from "../../components/ui/ProductCell";
 import { useUi } from "../../context/UiContext";
@@ -13,23 +12,6 @@ import { columnsToCsv, deltaColor, delta } from "../../lib/format";
 import { productSorters } from "../../lib/productSort";
 import type { Product } from "../../models/types";
 import type { SalesShareContext } from "./Layout";
-
-type PerfTab = "top" | "improved" | "declined";
-const TABS: Array<{ id: PerfTab; label: string; sortKey: string; dir: "asc" | "desc" }> = [
-  { id: "top", label: "Top performers", sortKey: "shelfScore", dir: "desc" },
-  { id: "improved", label: "Most improved", sortKey: "rankDelta", dir: "desc" },
-  { id: "declined", label: "Most declined", sortKey: "rankDelta", dir: "asc" },
-];
-
-const SORTERS = { ...productSorters, rankDelta: (a: Product, b: Product) => a.keywordCoverageDelta - b.keywordCoverageDelta };
-
-/* Real -- keywordCoverageDelta (see mockData productFor/REAL_KEYWORD_MATCH)
-   is always 0 in this dataset: every SKU that appeared under a tracked
-   keyword appeared under the same one all 4 real crawl weeks, so there was
-   genuinely no movement to report this period. The "Most improved/declined"
-   tabs and Biggest improvements/deteriorations panels below are already
-   built to show an honest empty state rather than fabricate movement. */
-const visibilityDelta = (p: Product) => p.keywordCoverageDelta;
 
 /* Every one of the 14 real Price-tab columns (everything but Crawl date)
    is represented somewhere below -- Product/Retailer/List Price/Current
@@ -94,7 +76,6 @@ export default function SalesShareProducts() {
   const { sd, sh, categoryFilter, setCategoryFilter, registerExport } = useOutletContext<SalesShareContext>();
   const { toast } = useUi();
   const navigate = useNavigate();
-  const [perfTab, setPerfTab] = useState<PerfTab>("top");
   const [brand, setBrand] = useState("");
   const [search, setSearch] = useState("");
   const brands = useMemo(() => Array.from(new Set(sd.products.map((p: Product) => p.brand))).sort() as string[], [sd]);
@@ -104,19 +85,13 @@ export default function SalesShareProducts() {
     return sd.products.filter((p: Product) =>
       (!categoryFilter || p.category === categoryFilter) &&
       (!brand || p.brand === brand) &&
-      (perfTab !== "improved" || p.keywordCoverageDelta > 0) &&
-      (perfTab !== "declined" || p.keywordCoverageDelta < 0) &&
       (!q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)),
     );
-  }, [sd, categoryFilter, brand, perfTab, search]);
+  }, [sd, categoryFilter, brand, search]);
 
-  const { slice, sortKey, sortDir, onSort, setSort, page, totalPages, setPage, total } = useSortedPage(
-    all, SORTERS, "shelfScore", 8, [categoryFilter, brand, perfTab, search].join("|"),
+  const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
+    all, productSorters, "shelfScore", 8, [categoryFilter, brand, search].join("|"),
   );
-
-  const movers = sd.products.slice().sort((a: Product, b: Product) => visibilityDelta(b) - visibilityDelta(a));
-  const improvements = movers.filter((p: Product) => visibilityDelta(p) > 0).slice(0, 4);
-  const deteriorations = movers.filter((p: Product) => visibilityDelta(p) < 0).slice(-4).reverse();
 
   /* Hands the shared header's Export button to THIS page's current
      filtered rows while Products is mounted (see
@@ -146,11 +121,10 @@ export default function SalesShareProducts() {
       <Card padding="20px 22px 14px">
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
           <div><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Products</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{total} of {sd.products.length} tracked SKUs · {categoryFilter || "all categories"}</div></div>
-          {(categoryFilter || brand || search || perfTab !== "top") && <button className="btn btn-ghost" onClick={() => { setCategoryFilter(""); setBrand(""); setSearch(""); setPerfTab("top"); toast("Filters cleared."); }} style={{ fontSize: 12.5 }}>Clear filters</button>}
+          {(categoryFilter || brand || search) && <button className="btn btn-ghost" onClick={() => { setCategoryFilter(""); setBrand(""); setSearch(""); toast("Filters cleared."); }} style={{ fontSize: 12.5 }}>Clear filters</button>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
           <input className="input" placeholder="Search product, SKU, ASIN…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minHeight: 32, fontSize: 12.5, flex: "1 1 240px", minWidth: 200 }} />
-          <Tabs options={TABS} value={perfTab} onChange={(id) => { const tb = TABS.find((x) => x.id === id)!; setPerfTab(id); setSort(tb.sortKey, tb.dir); }} />
           <select className="input" value={brand} onChange={(e) => setBrand(e.target.value)} style={{ minHeight: 32, fontSize: 12.5, width: 160, flex: "none" }}>
             <option value="">All brands</option>
             {brands.map((b) => <option key={b} value={b}>{b}</option>)}
@@ -160,35 +134,12 @@ export default function SalesShareProducts() {
         {all.length === 0 && (
           <div style={{ padding: "32px 4px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
             <div style={{ fontWeight: 600, fontSize: 15 }}>No products match this view</div>
-            <div className="sl-muted" style={{ fontSize: 13 }}>Try another tab, category or search term.</div>
-            <button className="btn btn-secondary" onClick={() => { setCategoryFilter(""); setBrand(""); setSearch(""); setPerfTab("top"); }}>Reset filters</button>
+            <div className="sl-muted" style={{ fontSize: 13 }}>Try another category, brand or search term.</div>
+            <button className="btn btn-secondary" onClick={() => { setCategoryFilter(""); setBrand(""); setSearch(""); }}>Reset filters</button>
           </div>
         )}
         <Pagination page={page} totalPages={totalPages} total={total} pageSize={8} onPage={setPage} />
       </Card>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,340px),1fr))", gap: "var(--app-gap)" }}>
-        <Card padding="20px 22px 8px">
-          <div style={{ marginBottom: 10 }}><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Biggest improvements</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Products with the largest real keyword coverage gain versus last period</div></div>
-          {improvements.length === 0 && <div className="sl-muted" style={{ fontSize: 12.5, padding: "8px 0" }}>No product improved this period.</div>}
-          {improvements.map((m: Product) => (
-            <button key={m.id} className="sl-palette__row" onClick={() => navigate("/product/" + m.id)} style={{ justifyContent: "space-between", borderTop: "1px solid var(--border-subtle)" }}>
-              <span style={{ minWidth: 0, textAlign: "left" }}><span style={{ display: "block", fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span><span className="sl-muted" style={{ fontSize: 11.5 }}>{m.retailerName}</span></span>
-              <span style={{ textAlign: "right", whiteSpace: "nowrap" }}><span style={{ display: "block", fontWeight: 600, fontSize: 14, color: "var(--status-positive-fg)" }}>{delta(visibilityDelta(m), " kw")}</span><span className="sl-muted" style={{ fontSize: 11.5 }}>Keyword coverage</span></span>
-            </button>
-          ))}
-        </Card>
-        <Card padding="20px 22px 8px">
-          <div style={{ marginBottom: 10 }}><h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Biggest deteriorations</h3><div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Products with the largest real keyword coverage loss versus last period</div></div>
-          {deteriorations.length === 0 && <div className="sl-muted" style={{ fontSize: 12.5, padding: "8px 0" }}>No product declined this period.</div>}
-          {deteriorations.map((m: Product) => (
-            <button key={m.id} className="sl-palette__row" onClick={() => navigate("/product/" + m.id)} style={{ justifyContent: "space-between", borderTop: "1px solid var(--border-subtle)" }}>
-              <span style={{ minWidth: 0, textAlign: "left" }}><span style={{ display: "block", fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span><span className="sl-muted" style={{ fontSize: 11.5 }}>{m.retailerName}</span></span>
-              <span style={{ textAlign: "right", whiteSpace: "nowrap" }}><span style={{ display: "block", fontWeight: 600, fontSize: 14, color: "var(--status-negative-fg)" }}>{delta(visibilityDelta(m), " kw")}</span><span className="sl-muted" style={{ fontSize: 11.5 }}>Keyword coverage</span></span>
-            </button>
-          ))}
-        </Card>
-      </div>
 
       <section>
         <div style={{ marginBottom: 14 }}><h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Opportunities</h2><div className="sl-muted" style={{ fontSize: 13, marginTop: 2 }}>Ranked by potential impact — each one opens the affected products on Content Intelligence</div></div>

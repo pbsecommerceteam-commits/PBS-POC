@@ -23,7 +23,6 @@ import ReviewsProducts from "./pages/reviews/Products";
 import CompetitorsLayout from "./pages/competitors/Layout";
 import CompetitorsSummary from "./pages/competitors/Summary";
 import CompetitorList from "./pages/competitors/CompetitorList";
-import CompetitorsKeywords from "./pages/competitors/Keywords";
 import Alerts from "./pages/Alerts";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
@@ -63,7 +62,6 @@ export default function App() {
               <Route path="competitors" element={<CompetitorsLayout />}>
                 <Route index element={<CompetitorsSummary />} />
                 <Route path="list" element={<CompetitorList />} />
-                <Route path="keywords" element={<CompetitorsKeywords />} />
               </Route>
 
               <Route path="alerts" element={<Alerts />} />

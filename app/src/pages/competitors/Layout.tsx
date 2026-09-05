@@ -16,7 +16,6 @@ export default function CompetitorsLayout() {
       tabs={<PageTabs items={[
         { label: "Summary", to: "/competitors", end: true },
         { label: "Competitors", to: "/competitors/list" },
-        { label: "Keywords", to: "/competitors/keywords" },
       ]} />}
     >
       {!snap || !sh ? <div /> : <Outlet context={{ snap, sh } satisfies CompetitorsContext} />}

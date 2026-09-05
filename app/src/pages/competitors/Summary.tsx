@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
-import { KpiCard } from "../../components/ui/KpiCard";
 import { DrilldownModal, type DrillTableConfig } from "../../components/ui/DrilldownModal";
-import { spark } from "../../lib/charts";
-import { kpiCard, cell } from "../../lib/format";
+import { cell } from "../../lib/format";
 import { REAL_BUYBOX_COMPETITOR, REAL_BUYBOX_TIMELINE } from "../../data/mockData";
 import type { CompetitorsContext } from "./Layout";
 
@@ -22,17 +20,15 @@ function buyBoxDateDetail(pid: string, retailerName: string) {
   return { cols: ["Date", "Held By"], rows: timeline.map((e: any) => [fmtDate(e.date), e.holder === "You" ? retailerName : e.holder]) };
 }
 
-/* Search Visibility (the "sos"/"gap" KPIs and the Search Visibility Trend
-   chart this page used to show) is retired from the frontend -- kept
-   computed in mockData.ts for any future/backend use, but no longer
-   rendered or read here. Avg Keyword Coverage (real) takes the first
-   tile's place instead of a KPI-shaped gap. */
+/* Search Visibility and Keyword Coverage (the "sos"/"gap"/"avgcoverage"
+   KPIs and the Search Visibility Trend chart this page used to show) are
+   retired from the frontend -- kept computed in mockData.ts for any
+   future/backend use, but no longer rendered or read here. */
 export default function CompetitorsSummary() {
   const { snap } = useOutletContext<CompetitorsContext>();
   const navigate = useNavigate();
   const [drill, setDrill] = useState<DrillTableConfig | null>(null);
 
-  const avgCoverage = snap.kpis.find((k: any) => k.id === "avgcoverage");
   const { skusTracked, skusLost, topSeller } = snap.buyBoxLoss;
   const buyBoxLostProducts = snap.products
     .filter((p: any) => REAL_BUYBOX_COMPETITOR[p.id])
@@ -54,7 +50,6 @@ export default function CompetitorsSummary() {
   return (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,238px),1fr))", gap: "var(--app-gap)" }}>
-        <KpiCard k={kpiCard(avgCoverage, spark)} />
         <Card padding="18px 20px" interactive onClick={() => setDrill(buyBoxLostTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5 }}>SKUs with 3P Buy Box Loss</div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: skusLost > 0 ? "var(--status-negative-fg)" : "inherit" }}>{skusLost}<span style={{ fontSize: 16, fontWeight: 500 }}> / {skusTracked}</span></div>

@@ -1565,8 +1565,6 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
 /* Analytics layer: insights are derived from the snapshot, never authored as
    copy in the UI. Each carries the action the user should take next. */
 function deriveInsights(s: any) {
-  const coverageKpi = s.kpis.find((k: any) => k.id === "avgcoverage");
-  const topCat = s.categoryPerformance.slice().sort((a: any, b: any) => b.coverage - a.coverage)[0];
   const lowAvail = s.products.filter((p: any) => p.inStockRate < 95);
   const weakContent = s.products.filter((p: any) => p.contentScore < 80);
   const ownIndex = s.products.length
@@ -1579,12 +1577,14 @@ function deriveInsights(s: any) {
 
   const list: any[] = [];
   list.push({
-    id: "i-coverage",
-    kind: coverageKpi.value > 0 ? "positive" : "warning",
-    title: coverageKpi.value > 0 ? "Keyword coverage tracked" : "Low keyword coverage",
-    body: "SKUs surfaced under an average of " + coverageKpi.value.toFixed(1) + " of 10 tracked keywords this period, led by " +
-      topCat.category + " at " + (topCat.coverage / 10).toFixed(1) + " of 10.",
-    action: "View details", target: "sales",
+    id: "i-buybox",
+    kind: s.buyBoxLoss.skusLost > 0 ? "warning" : "positive",
+    title: s.buyBoxLoss.skusLost > 0 ? "Buy box loss detected" : "Buy box fully held",
+    body: s.buyBoxLoss.skusLost > 0
+      ? s.buyBoxLoss.skusLost + " of " + s.buyBoxLoss.skusTracked + " tracked SKUs lost the buy box to a 3rd-party seller this period" +
+        (s.buyBoxLoss.topSeller ? ", most often to " + s.buyBoxLoss.topSeller + "." : ".")
+      : "Every tracked SKU held the buy box across the full period.",
+    action: "View details", target: "competitors",
   });
   list.push({
     id: "i-avail",
@@ -1811,19 +1811,10 @@ function shelfData(retailer: string, period: string, dateRange?: DateRange | nul
     };
   });
 
-  // Real -- keywordCoverage === 0 means this SKU never appeared under any
-  // of the 10 real tracked keywords this period (see REAL_KEYWORD_MATCH),
-  // not an illustrative "outside the top 10" position.
-  const lowCoverage = pool.filter((p) => p.keywordCoverage === 0);
   const lowAvail = pool.filter((p) => p.inStockRate < 90);
   const highPrice = pool.filter((p) => p.priceIndex > 1.1);
   const weakContent = pool.filter((p) => p.contentScore < 80);
   const opportunities = [
-    { id: "o-rank", focus: "rank", title: "Improve Keyword Coverage",
-      problem: lowCoverage.length + " products never appear under any of the 10 tracked keywords this period.",
-      impact: lowCoverage.length > 6 ? "High" : "Medium", count: lowCoverage.length,
-      why: "A generic category search won't surface these SKUs at all, so that search demand goes to whichever listings do show up.",
-      action: "Review title/bullet keyword alignment on the affected SKUs, then re-crawl next period." },
     { id: "o-avail", focus: "avail", title: "Recover Availability",
       problem: lowAvail.length + " products fell below the 90% availability threshold in this period.",
       impact: lowAvail.length > 2 ? "High" : "Medium", count: lowAvail.length,

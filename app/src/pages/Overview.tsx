@@ -58,7 +58,7 @@ export default function Overview() {
   }, [snap, sku, stockFilter, categoryFilter, brand, searchTerm]);
 
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
-    all, productSorters, "keywordCoverage", 8, [sku, stockFilter, categoryFilter, brand, searchTerm].join("|"),
+    all, productSorters, "shelfScore", 8, [sku, stockFilter, categoryFilter, brand, searchTerm].join("|"),
   );
 
   if (!snap) return <PageShell title="Overview" subtitle="Monitor digital shelf health across your retailers, products and categories."><div /></PageShell>;
@@ -67,12 +67,6 @@ export default function Overview() {
 
   const columns: Column<Product>[] = [
     { key: "name", label: "Product", minWidth: 280, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.category} imageUrl={p.imageUrl} noClamp /> },
-    { key: "keywordCoverage", label: "Keyword Coverage", align: "center", sortable: true, render: (p) => (
-      <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-        <span className="sl-progress-track" style={{ width: 40 }}><span className="sl-progress-fill" style={{ width: (p.keywordCoverage * 10) + "%" }}></span></span>
-        <span style={{ fontWeight: 600, minWidth: 52 }}>{p.keywordCoverage} of 10</span>
-      </div>
-    ) },
     { key: "price", label: "Price", align: "center", sortable: true, render: (p) => "$" + p.price.toFixed(2) },
     { key: "stockStatus", label: "Stock", align: "center", sortable: true, render: (p) => (
       <><Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge><div className="sl-table-sub">{p.inStockRate.toFixed(1)}% of days</div></>
@@ -104,7 +98,7 @@ export default function Overview() {
       exportDisabled={all.length === 0}
     >
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,238px),1fr))", gap: "var(--app-gap)" }}>
-        {["avgcoverage", "instock", "pidx", "content", "rating", "buybox"].map((id) => <KpiCard key={id} k={kpiCard(kpi(id), spark)} />)}
+        {["instock", "pidx", "content", "rating", "buybox"].map((id) => <KpiCard key={id} k={kpiCard(kpi(id), spark)} />)}
       </div>
 
       <section>
@@ -132,12 +126,11 @@ export default function Overview() {
         </div>
         <div style={{ overflowX: "auto" }}>
           <table className="sl-table">
-            <thead><tr><th>Retailer</th><th style={{ textAlign: "right" }}>Keyword coverage</th><th style={{ textAlign: "right" }}>In stock</th><th style={{ textAlign: "right" }}>Content</th><th style={{ textAlign: "right" }}>Rating</th><th style={{ textAlign: "right", minWidth: 140 }}>Overall score</th></tr></thead>
+            <thead><tr><th>Retailer</th><th style={{ textAlign: "right" }}>In stock</th><th style={{ textAlign: "right" }}>Content</th><th style={{ textAlign: "right" }}>Rating</th><th style={{ textAlign: "right", minWidth: 140 }}>Overall score</th></tr></thead>
             <tbody>
               {snap.retailerPerformance.map((r: any) => (
                 <tr className="sl-row is-clickable" key={r.id} onClick={() => { setRetailer(r.id); toast("Scoped to " + r.name + "."); }}>
                   <td><div className="sl-table-name">{r.name}</div><div className="sl-table-sub">{r.skus} tracked SKUs</div></td>
-                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}><span style={{ fontWeight: 600 }}>{pct(r.coverage)}</span></td>
                   <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{pct(r.inStock)} <span style={{ fontSize: 11.5, marginLeft: 6, color: deltaColor(r.inStockDelta) }}>{delta(r.inStockDelta)}</span></td>
                   <td style={{ textAlign: "right" }}>{r.content}%</td>
                   <td style={{ textAlign: "right" }}>{r.rating.toFixed(2)}</td>
@@ -174,7 +167,6 @@ export default function Overview() {
                 </div>
                 <div className="sl-progress-track" style={{ margin: "10px 0" }}><span className="sl-progress-fill" style={{ width: c.overall + "%" }}></span></div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 11.5 }} className="sl-muted">
-                  <span>Coverage {pct(c.coverage)}</span>
                   <span>Avail. {pct(c.availability)}</span>
                   <span>Content {c.content}%</span>
                 </div>
