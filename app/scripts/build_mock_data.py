@@ -287,17 +287,19 @@ def main():
         return v
 
     def content_completeness(row):
-        # 8 equally-weighted (12.5% each) pass/fail checks -- score is simply
-        # (number passing / 8) * 100. Every check reads directly from a raw
+        # 9 equally-weighted (~11.1% each) pass/fail checks -- score is simply
+        # (number passing / 9) * 100. Every check reads directly from a raw
         # crawled field (including per-bullet text/length, e.g. "Bullet 3",
-        # "Bullet 3 length", and Rating -- fields the previous continuous
-        # 0-100-per-component rubric never used).
+        # "Bullet 3 length", Rating, and No of videos).
         title = row.get("Title") or ""
         title_len = row.get("Title no of chars") or 0
         check_title = bool(title) and title_len <= 75
 
         n_images = row.get("No of images") or 0
-        check_images = n_images >= 5
+        check_images = n_images >= 7
+
+        n_videos = row.get("No of videos") or 0
+        check_video = n_videos >= 1
 
         n_bullets = row.get("No of bullets") or 0
         check_bullet_count = n_bullets >= 5
@@ -321,7 +323,7 @@ def main():
         check_enhanced = enhanced
 
         checks = {
-            "title": check_title, "images": check_images, "bulletCount": check_bullet_count,
+            "title": check_title, "images": check_images, "video": check_video, "bulletCount": check_bullet_count,
             "bulletCaps": check_bullet_caps, "bulletLength": check_bullet_length,
             "description": check_description, "rating": check_rating, "enhanced": check_enhanced,
         }

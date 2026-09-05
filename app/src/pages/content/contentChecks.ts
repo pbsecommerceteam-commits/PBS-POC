@@ -6,17 +6,18 @@ import type { Product } from "../../models/types";
    already real, computed data with no new ETL field needed. Each check is
    a binary pass/fail (there's no partial-credit rubric underneath), so
    its "score" is exactly 100 or 0 -- matching how Content Score itself is
-   built (sum of 8 such 0/100 checks / 8), just not yet averaged across
+   built (sum of 9 such 0/100 checks / 9), just not yet averaged across
    checks. Shared by Products.tsx (per-SKU score columns) and Brands.tsx
    (per-brand pass-rate rollup) so the two never define the checks
    differently. */
 export const passFail = (p: Product, id: string) => !p.contentChecks.includes(id);
 
 /* One entry per individual rubric check behind Content Score/Content
-   Completeness. "Enhanced" is deliberately not included: it's already
-   its own Yes/No column on the product table (enhancedContent) with
-   identical pass/fail semantics -- the check IS the raw flag, no
-   threshold logic. */
+   Completeness. "Enhanced" and "Video" are deliberately not included: each
+   already has its own column on the product table (enhancedContent,
+   videoCount) with identical pass/fail semantics underneath -- the check
+   IS the raw flag/count, no separate threshold logic worth a second
+   column. */
 export const CHECK_COLUMNS: { key: string; id: string; label: string }[] = [
   { key: "titleScore", id: "title", label: "Title Score" },
   { key: "imagesScore", id: "images", label: "Images Score" },
