@@ -6,7 +6,6 @@ import { Card } from "../../components/ui/Card";
 import { Badge, stockTone } from "../../components/ui/Badge";
 import { ProductCell } from "../../components/ui/ProductCell";
 import { DrilldownModal, type DrillTableConfig } from "../../components/ui/DrilldownModal";
-import { useFilters } from "../../context/FiltersContext";
 import { useUi } from "../../context/UiContext";
 import { useChartHover } from "../../hooks/useChartHover";
 import { lineChart, barChart, spark } from "../../lib/charts";
@@ -52,7 +51,6 @@ function priceDateDetail(pid: string) {
 
 export default function SalesShareSummary() {
   const { sh, categoryFilter, setCategoryFilter } = useOutletContext<SalesShareContext>();
-  const { setRetailer, retailer } = useFilters();
   const { toast } = useUi();
   const navigate = useNavigate();
   const { hover, onEnter, onLeave } = useChartHover();
@@ -325,25 +323,25 @@ export default function SalesShareSummary() {
     return { ...f, avg, tracked: withValue.length };
   });
 
+  /* Two distinct "vs what" comparisons, not one -- gapPct is current price
+     vs. this item's own average selling price across the whole period
+     (smooths out day-to-day noise); startGapPct is current price vs. the
+     real single start-of-period price implied by priceChangePct (see
+     impliedPreviousPrice above, the same reconstruction the Price
+     Increased/Dropped tables already use) -- a genuine two-point
+     comparison, not an average. Ranked by the average gap since that's
+     this card's stated purpose; the start-of-period figure rides along
+     underneath for whichever products that ranking surfaces. */
   const priceGaps = scopedProducts
-    .map((p: Product) => ({ p, gapPct: p.avgSellingPrice ? ((p.price - p.avgSellingPrice) / p.avgSellingPrice) * 100 : 0 }))
-    .sort((a: any, b: any) => Math.abs(b.gapPct) - Math.abs(a.gapPct))
+    .map((p: Product) => {
+      const startPrice = impliedPreviousPrice(p);
+      return {
+        p, gapPct: p.avgSellingPrice ? ((p.price - p.avgSellingPrice) / p.avgSellingPrice) * 100 : 0,
+        startPrice, startGapPct: startPrice != null ? p.priceChangePct : null,
+      };
+    })
+    .sort((a, b) => Math.abs(b.gapPct) - Math.abs(a.gapPct))
     .slice(0, 5);
-
-  /* Same scoping as retailerPriceRows above -- real per-retailer figures
-     from shelfData() when unscoped, recomputed from scopedProducts (same
-     fields, same real per-product data) when a SKU/category is picked. */
-  const retailerCards = isScoped
-    ? Array.from(new Set(scopedProducts.map((p: Product) => p.retailerName))).map((name) => {
-        const prods = scopedProducts.filter((p: Product) => p.retailerName === name);
-        return {
-          id: prods[0].retailer, name, skus: prods.length,
-          avgPrice: prods.reduce((a: number, p: Product) => a + p.price, 0) / prods.length,
-          priceIndex: (prods.reduce((a: number, p: Product) => a + p.priceIndex, 0) / prods.length) * 100,
-          buyBoxPresence: Math.round((prods.filter((p: Product) => p.buyBox).length / prods.length) * 100),
-        };
-      }).sort((a, b) => b.avgPrice - a.avgPrice)
-    : sh.retailers;
 
   const categoryRows = isScoped
     ? Array.from(new Set(scopedProducts.map((p: Product) => p.category))).map((cat) => {
@@ -463,41 +461,23 @@ export default function SalesShareSummary() {
 
       <Card padding="20px 22px">
         <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Largest Price Gap vs. Own Average</h3>
-        <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 14 }}>Current price vs. this item's own real average selling price this period{scopeLabel ? " · " + scopeLabel : ""}</div>
+        <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 14 }}>Current price vs. this item's own real average selling price, and vs. its real start-of-period price{scopeLabel ? " · " + scopeLabel : ""}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {priceGaps.map(({ p, gapPct }: any) => (
-            <button key={p.id} className="sl-palette__row" onClick={() => navigate("/product/" + p.id)} style={{ justifyContent: "space-between", gap: 12, fontSize: 12.5, paddingBottom: 8, borderBottom: "1px solid var(--border-subtle)" }}>
-              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "left" }}>{p.name}</span>
-              <span style={{ flex: "none", whiteSpace: "nowrap" }}>${p.price.toFixed(2)} vs ${p.avgSellingPrice.toFixed(2)} <span style={{ fontWeight: 600, color: deltaColor(gapPct, true), marginLeft: 6 }}>{delta(gapPct, "%")}</span></span>
+          {priceGaps.map(({ p, gapPct, startPrice, startGapPct }: any) => (
+            <button key={p.id} className="sl-palette__row" onClick={() => navigate("/product/" + p.id)} style={{ flexDirection: "column", alignItems: "stretch", gap: 4, fontSize: 12.5, paddingBottom: 8, borderBottom: "1px solid var(--border-subtle)" }}>
+              <span style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "left" }}>{p.name}</span>
+                <span style={{ flex: "none", whiteSpace: "nowrap" }}>${p.price.toFixed(2)} vs ${p.avgSellingPrice.toFixed(2)} avg <span style={{ fontWeight: 600, color: deltaColor(gapPct, true), marginLeft: 6 }}>{delta(gapPct, "%")}</span></span>
+              </span>
+              {startPrice != null && (
+                <span className="sl-muted" style={{ display: "flex", justifyContent: "flex-end", fontSize: 11.5 }}>
+                  ${p.price.toFixed(2)} vs ${startPrice.toFixed(2)} start of period <span style={{ fontWeight: 600, color: deltaColor(startGapPct, true), marginLeft: 6 }}>{delta(startGapPct, "%")}</span>
+                </span>
+              )}
             </button>
           ))}
         </div>
       </Card>
-
-      <section>
-        <div style={{ marginBottom: 14 }}>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Retailer pricing</h2>
-          <div className="sl-muted" style={{ fontSize: 13, marginTop: 2 }}>Select a retailer to scope the page to that account{scopeLabel ? " · " + scopeLabel : ""}</div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))", gap: "var(--app-gap)" }}>
-          {retailerCards.map((r: any) => {
-            const active = retailer === r.id;
-            return (
-              <Card key={r.id} interactive selected={active} padding="16px 18px" onClick={() => { if (!active) { setRetailer(r.id); toast("Scoped to " + r.name + "."); } }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, minWidth: 0 }}>
-                  <span style={{ fontWeight: 500, fontSize: 14.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
-                  <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 20, flex: "none" }}>${r.avgPrice.toFixed(2)}</span>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 12 }}>
-                  {[["SKUs", String(r.skus)], ["Price index", r.priceIndex.toFixed(1)], ["Buy box 1P", r.buyBoxPresence + "%"]].map(([l, v]) => (
-                    <div key={l} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}><span className="sl-muted">{l}</span><span>{v}</span></div>
-                  ))}
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
 
       <Card padding="20px 22px 10px">
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
