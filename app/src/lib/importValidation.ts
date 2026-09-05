@@ -61,15 +61,17 @@ const DATE_COLUMN: Partial<Record<SheetName, string>> = {
 };
 
 const REQUIRED_TEXT_COLUMNS: Partial<Record<SheetName, string[]>> = {
-  "Content": ["Retailer id", "Category name", "Brand", "Title"],
+  "Content": ["Retailer id", "Category/account name", "Brand", "Title"],
   "Price": ["Retailer id"],
   "Share Of Search": ["keyword"],
   "MAP Price": ["Retailer id"],
 };
 
+const OTHER_SELLER_PRICE_COLUMNS = Array.from({ length: 10 }, (_, i) => `Other Seller ${i + 1} Price`);
+
 const NUMERIC_COLUMNS: Partial<Record<SheetName, string[]>> = {
-  "Content": ["Title no of chars", "No of images", "No of videos", "No of bullets", "Description no of chars", "No of questions", "Rating", "Total reviews"],
-  "Price": ["List everyday price", "Current price", "Subscription price"],
+  "Content": ["No of images", "No of videos", "No of bullets", "No of questions", "Rating", "Total reviews"],
+  "Price": ["List everyday price", "Current price", "Subscription price", ...OTHER_SELLER_PRICE_COLUMNS],
   "MAP Price": ["Map Price"],
 };
 

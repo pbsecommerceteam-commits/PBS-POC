@@ -230,6 +230,23 @@ export default function ProductDetail() {
           </Badge>
           <Badge tone={onPromotion ? "positive" : "neutral"}>{onPromotion ? "On Promotion" : "Not on Promotion"}</Badge>
         </div>
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border-subtle)" }}>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
+            Other sellers<InfoTip text="Real competing offers on this listing beyond whoever holds the buy box, up to 10 -- from the Price tab's Other Seller columns." />
+          </div>
+          {p.otherSellers.length === 0 ? (
+            <div className="sl-faint" style={{ fontSize: 12.5 }}>None observed on the latest crawl.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {p.otherSellers.map((s: { name: string; price: number | null }, i: number) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span>{s.name}</span>
+                  <span style={{ fontWeight: 600 }}>{s.price != null ? "$" + s.price.toFixed(2) : "—"}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </Card>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))", gap: "var(--app-gap)" }}>

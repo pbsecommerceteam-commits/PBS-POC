@@ -50,8 +50,14 @@ export interface Product {
    *  policy value, not something crawled). Null when that workbook has no
    *  MAP row for this SKU, an honest "not tracked under MAP", not 0. */
   mapPrice: number | null;
-  /** Direct link to the crawled retailer listing page (Price tab's "Spb url"). */
-  spbUrl: string | null;
+  /** Direct link to the crawled retailer listing page (Price tab's "Url"). */
+  url: string | null;
+  /** Other (non-buy-box) sellers observed on this listing and their price,
+   *  up to 10 -- real competing offers beyond whoever holds the buy box.
+   *  Empty on the current Sep 2022 crawl (never captured); populated once a
+   *  future upload's Price tab fills in the "Other Seller N Name/Price"
+   *  columns. */
+  otherSellers: Array<{ name: string; price: number | null }>;
   /** The literal crawled availability sentence (Price tab's "Stock status", e.g. "Only 1 left in stock - order soon."), distinct from the derived 3-bucket stockStatus below. */
   stockStatusRaw: string | null;
   /** The retailer's own posted discount, exactly as crawled (Price tab's "Coupon value", e.g. "4.22 (53%)"). */
@@ -71,17 +77,21 @@ export interface Product {
   descriptionLength: number;
   enhancedContent: boolean;
   retailerId: string;
-  vendorStockNo: string | null;
+  /** The vendor's own SKU / stock-keeping unit (Content/Price tab's "SKU",
+   *  formerly "Vendor stock no") -- distinct from retailerId (that
+   *  retailer's own native listing id). The same SKU appearing under 2+
+   *  different retailers means the same real product is sold in more than
+   *  one place; see CROSS_RETAILER_MATCH in mockData.ts, which prefers this
+   *  exact match over its brand+name-overlap fallback. */
+  sku: string | null;
   siteCategory: string | null;
   buyBoxSeller: string | null;
   buyBoxShipper: string | null;
   videoCount: number;
   questionCount: number;
   has360Image: boolean;
-  hasIngredients: boolean;
   descriptionText: string | null;
   bulletsText: string[];
-  ingredientsText: string | null;
   variations: string[];
   /** Real: share of tracked crawl days this listing held the 1P buy box
    *  (0-100). buyBox (Held/Lost) is a deterministic majority read of this

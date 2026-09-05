@@ -54,7 +54,6 @@ export const CONTENT_COLUMNS: Column<Product>[] = [
   { key: "bulletsText", label: "Bullet Points", minWidth: 280, sortable: true, render: (p) => <ClampedText text={p.bulletsText.length ? p.bulletsText.join(" • ") : null} />, csv: (p) => p.bulletsText.join(" | ") },
   { key: "variations", label: "Variations", minWidth: 220, sortable: true, render: (p) => <ClampedText text={p.variations.length ? p.variations.join(", ") : null} />, csv: (p) => p.variations.join(", ") },
   { key: "variationCount", label: "Variation Count", align: "right", minWidth: 110, sortable: true, render: (p) => p.variations.length, csv: (p) => p.variations.length },
-  { key: "ingredientsText", label: "Ingredients List", minWidth: 260, sortable: true, render: (p) => <ClampedText text={p.ingredientsText} />, csv: (p) => p.ingredientsText ?? "" },
   { key: "titleLength", label: "Title Length", align: "right", minWidth: 110, sortable: true, render: (p) => p.titleLength + " chars", csv: (p) => p.titleLength },
   { key: "imageCount", label: "Images", align: "right", minWidth: 90, sortable: true, render: (p) => p.imageCount, csv: (p) => p.imageCount },
   { key: "videoCount", label: "Videos", align: "right", minWidth: 90, sortable: true, render: (p) => p.videoCount, csv: (p) => p.videoCount },
@@ -67,7 +66,7 @@ export const CONTENT_COLUMNS: Column<Product>[] = [
     render: (p) => <ScorePill pass={passFail(p, c.id)} />,
     csv: (p) => passFail(p, c.id) ? 100 : 0,
   })),
-  { key: "vendorStockNo", label: "Vendor Stock No.", minWidth: 130, sortable: true, render: (p) => p.vendorStockNo ?? "—", csv: (p) => p.vendorStockNo ?? "" },
+  { key: "sku", label: "SKU", minWidth: 130, sortable: true, render: (p) => p.sku ?? "—", csv: (p) => p.sku ?? "" },
   { key: "siteCategory", label: "Site Category", minWidth: 200, sortable: true, render: (p) => p.siteCategory ?? "—", csv: (p) => p.siteCategory ?? "" },
   { key: "buyBoxSeller", label: "Buy Box Seller", minWidth: 150, sortable: true, render: (p) => p.buyBoxSeller ?? "—", csv: (p) => p.buyBoxSeller ?? "" },
   { key: "buyBoxShipper", label: "Buy Box Shipper", minWidth: 150, sortable: true, render: (p) => p.buyBoxShipper ?? "—", csv: (p) => p.buyBoxShipper ?? "" },
@@ -82,9 +81,9 @@ export const CONTENT_COLUMNS: Column<Product>[] = [
 const COLUMN_OPTIONS: ColumnOption[] = CONTENT_COLUMNS.map((c) => ({ id: c.key, label: c.label }));
 const DEFAULT_COLUMNS = new Set(COLUMN_OPTIONS.map((c) => c.id));
 /* Default table/export order: Product (pinned, see below) then Category,
-   Retailer, Retailer ID, Product Description, Bullet Points, Variations,
-   Variation Count and Ingredients up front as the fields most worth
-   reviewing, then every remaining column in its original relative order.
+   Retailer, Retailer ID, Product Description, Bullet Points, Variations and
+   Variation Count up front as the fields most worth reviewing, then every
+   remaining column in its original relative order.
    "Product" is excluded here (and from the picker's reorderable list) so
    it always renders first, same as it's excluded from being hidden. */
 export const DEFAULT_CONTENT_COLUMN_ORDER = CONTENT_COLUMNS.map((c) => c.key).filter((id) => id !== "name");
@@ -188,7 +187,6 @@ export default function ContentProducts() {
   const SORTERS = { ...productSorters, completeness: (a: Product, b: Product) => (9 - a.contentChecks.length) - (9 - b.contentChecks.length),
     bulletsText: (a: Product, b: Product) => a.bulletsText.length - b.bulletsText.length,
     descriptionText: (a: Product, b: Product) => a.descriptionLength - b.descriptionLength,
-    ingredientsText: (a: Product, b: Product) => Number(!!b.ingredientsText) - Number(!!a.ingredientsText),
     variationCount: (a: Product, b: Product) => a.variations.length - b.variations.length,
     variations: (a: Product, b: Product) => a.variations.length - b.variations.length,
     ...Object.fromEntries(CHECK_COLUMNS.map((c) => [c.key, (a: Product, b: Product) => Number(passFail(a, c.id)) - Number(passFail(b, c.id))])) };

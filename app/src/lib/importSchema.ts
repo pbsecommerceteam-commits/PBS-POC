@@ -22,26 +22,31 @@ export const KNOWN_RETAILER_SITES = [
 
 const VARIANT_COLS = Array.from({ length: 22 }, (_, i) => [`Varient label ${i + 1}`, `Varient value ${i + 1}`]).flat();
 const RANK_CATEGORY_COLS = ["Rank 1", "Rank 2", "Rank 3", "Rank 4", "Category 1", "Category 2", "Category 3", "Category 4"];
-const BULLET_COLS = Array.from({ length: 10 }, (_, i) => [`Bullet ${i + 1}`, `Bullet ${i + 1} length`]).flat();
+const BULLET_COLS = Array.from({ length: 10 }, (_, i) => `Bullet ${i + 1}`);
+const OTHER_SELLER_COLS = Array.from({ length: 10 }, (_, i) => [`Other Seller ${i + 1} Name`, `Other Seller ${i + 1} Price`]).flat();
+const SOS_SLOT_COLS = Array.from({ length: 65 }, (_, i) => [`Url_${i + 1}`, `Url_${i + 1}_Sponsored`, `Product_name_${i + 1}`, `Brand_${i + 1}`]).flat();
+
+/** Identifier columns every tab leads with (see build_import_template.py's
+ *  `reorder`) -- kept here too since importValidation.ts's per-row checks
+ *  (Retailer site enum, required text) key off these same names. */
+export const IDENTIFIER_COLS = ["SKU", "Retailer site", "Retailer id", "Url"];
 
 export const CONTENT_HEADERS = [
-  "Crawl date", "Retailer id", "SPB Url", "Category name", "Brand", "Retailer site", "Vendor stock no",
-  "Site category", "Buy box seller", "Buy box shipper", "Title", "Title no of chars", "Enhanced content",
-  "Product description", "Description no of chars", "No of bullets", "Front image", "No of images",
-  "No of videos", "Image 360", "Total reviews", "Rating", "Ingredients list", "No of questions",
+  "SKU", "Retailer site", "Retailer id", "Url", "Crawl date", "Category/account name", "Brand", "Site category",
+  "Buy box seller", "Buy box shipper", "Title", "Enhanced content", "Product description", "No of bullets",
+  "Front image", "No of images", "No of videos", "Image 360", "Total reviews", "Rating", "No of questions",
   ...VARIANT_COLS, ...RANK_CATEGORY_COLS, ...BULLET_COLS,
 ];
 
 export const PRICE_HEADERS = [
-  "Crawl date", "Product name", "Retailer id", "Spb url", "Category name", "Site brand", "Retailer site",
-  "Buy box seller", "Buy box shipper", "Vendor stock no", "Stock status", "List everyday price",
-  "Current price", "Subscription price", "Coupon value",
+  "SKU", "Retailer site", "Retailer id", "Url", "Crawl date", "Product name", "Category/account name",
+  "Site brand", "Buy box seller", "Buy box shipper", "Stock status", "List everyday price", "Current price",
+  "Subscription price", "Coupon value", ...OTHER_SELLER_COLS,
 ];
 
-const SOS_SLOT_COLS = Array.from({ length: 65 }, (_, i) => [`Url_${i + 1}`, `Url_${i + 1}_Sponsored`, `Product_name_${i + 1}`]).flat();
-export const SOS_HEADERS = ["Crawl_date", "keyword", "site", ...SOS_SLOT_COLS];
+export const SOS_HEADERS = ["site", "Crawl_date", "keyword", ...SOS_SLOT_COLS];
 
-export const MAP_HEADERS = ["Retailer site", "Retailer id", "Map Price"];
+export const MAP_HEADERS = ["SKU", "Retailer site", "Retailer id", "Url", "Map Price"];
 
 export const SHEET_HEADERS: Record<SheetName, string[]> = {
   "Content": CONTENT_HEADERS,

@@ -39,7 +39,7 @@ export const SALES_COLUMNS: Column<Product>[] = [
   { key: "retailerName", label: "Retailer", align: "center", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.retailerName}</span>, csv: (p) => p.retailerName },
   { key: "retailerId", label: "Retailer ID", align: "center", sortable: true, render: (p) => p.retailerId ?? "—", csv: (p) => p.retailerId ?? "" },
   { key: "brand", label: "Brand", align: "center", sortable: true, render: (p) => p.brand, csv: (p) => p.brand },
-  { key: "vendorStockNo", label: "Vendor Stock No.", align: "center", sortable: true, render: (p) => p.vendorStockNo ?? "—", csv: (p) => p.vendorStockNo ?? "" },
+  { key: "sku", label: "SKU", align: "center", sortable: true, render: (p) => p.sku ?? "—", csv: (p) => p.sku ?? "" },
   { key: "currentPrice", label: "Current Price", align: "center", sortable: true, render: (p) => <span>${(p.currentPrice ?? p.price).toFixed(2)}</span>, csv: (p) => (p.currentPrice ?? p.price).toFixed(2) },
   { key: "listPrice", label: "List Price", align: "center", sortable: true, render: (p) => <span>{p.listPrice != null ? "$" + p.listPrice.toFixed(2) : "—"}</span>, csv: (p) => p.listPrice != null ? p.listPrice.toFixed(2) : "" },
   { key: "subscriptionPrice", label: "Subscription Price", align: "center", sortable: true, render: (p) => <span>{p.subscriptionPrice != null ? "$" + p.subscriptionPrice.toFixed(2) : "—"}</span>, csv: (p) => p.subscriptionPrice != null ? p.subscriptionPrice.toFixed(2) : "" },
@@ -68,9 +68,9 @@ export const SALES_COLUMNS: Column<Product>[] = [
   ), csv: (p) => p.buyBoxRate, info: "Real % of tracked days this SKU's own listing (not a 3rd-party seller) held the buy box." },
   { key: "buyBoxSeller", label: "Buy Box Seller", align: "center", sortable: true, render: (p) => p.buyBoxSeller ?? "—", csv: (p) => p.buyBoxSeller ?? "" },
   { key: "buyBoxShipper", label: "Buy Box Shipper", align: "center", sortable: true, render: (p) => p.buyBoxShipper ?? "—", csv: (p) => p.buyBoxShipper ?? "" },
-  { key: "spbUrl", label: "Listing Link", align: "center", render: (p) => p.spbUrl
-    ? <a href={p.spbUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>View listing →</a>
-    : <span className="sl-faint">—</span>, csv: (p) => p.spbUrl ?? "" },
+  { key: "url", label: "Listing Link", align: "center", render: (p) => p.url
+    ? <a href={p.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>View listing →</a>
+    : <span className="sl-faint">—</span>, csv: (p) => p.url ?? "" },
 ];
 
 export default function SalesShareProducts() {

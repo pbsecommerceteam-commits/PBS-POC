@@ -236,6 +236,37 @@ def token_set(name):
     return set(w for w in words if len(w) > 2)
 
 
+def get_any(row, *names):
+    """Reads the first present column out of several possible header
+    spellings. The original Sep 2022 source workbook predates the import
+    template's renames (SPB Url -> Url, Category name -> Category/account
+    name, Vendor stock no -> SKU), so this script has to keep reading that
+    file unchanged while also accepting a fresh upload built on the new
+    template -- tried in order, first non-None wins."""
+    for n in names:
+        v = row.get(n)
+        if v is not None:
+            return v
+    return None
+
+
+def other_sellers(row, limit=10):
+    """Parses the import template's "Other Seller N Name"/"Other Seller N
+    Price" pairs (N=1..limit) into a compact list -- real competing sellers
+    on a listing beyond whoever holds the buy box. Empty/blank on every row
+    of the current real dataset (the Sep 2022 crawl never captured this),
+    so this returns [] until a future upload fills it in -- an honest gap,
+    not a fabricated seller list."""
+    out = []
+    for i in range(1, limit + 1):
+        name = row.get(f"Other Seller {i} Name")
+        if not name:
+            continue
+        price = row.get(f"Other Seller {i} Price")
+        out.append({"name": str(name), "price": float(price) if isinstance(price, (int, float)) else None})
+    return out
+
+
 def main():
     path = sys.argv[1]
     wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
@@ -289,10 +320,15 @@ def main():
     def content_completeness(row):
         # 9 equally-weighted (~11.1% each) pass/fail checks -- score is simply
         # (number passing / 9) * 100. Every check reads directly from a raw
-        # crawled field (including per-bullet text/length, e.g. "Bullet 3",
-        # "Bullet 3 length", Rating, and No of videos).
+        # crawled field (title/bullet/description text, Rating, No of
+        # videos). Character counts (title/description/bullet length) are
+        # computed here from the text itself rather than read from a
+        # separate "No of chars" column -- those columns were always just
+        # len(text) anyway, so this drops them from the import template as
+        # redundant, script-derivable data instead of something to fill in
+        # by hand every crawl.
         title = row.get("Title") or ""
-        title_len = row.get("Title no of chars") or 0
+        title_len = len(title)
         check_title = bool(title) and title_len <= 75
 
         n_images = row.get("No of images") or 0
@@ -306,14 +342,12 @@ def main():
 
         bullets = [row.get(f"Bullet {i}") for i in range(1, 11)]
         bullets = [b for b in bullets if b]
-        bullet_lengths = [row.get(f"Bullet {i} length") for i in range(1, 11) if row.get(f"Bullet {i}")]
+        bullet_lengths = [len(b) for b in bullets]
         check_bullet_caps = bool(bullets) and all(b[:1].isupper() for b in bullets)
-        check_bullet_length = bool(bullet_lengths) and all(
-            bl is not None and 150 <= bl <= 200 for bl in bullet_lengths
-        )
+        check_bullet_length = bool(bullet_lengths) and all(150 <= bl <= 200 for bl in bullet_lengths)
 
         desc = row.get("Product description") or ""
-        desc_len = row.get("Description no of chars") or 0
+        desc_len = len(desc)
         check_description = bool(desc) and 200 <= desc_len <= 2000
 
         rating = row.get("Rating")
@@ -476,7 +510,8 @@ def main():
             "content": [week_scores[wk] for wk in CONTENT_WEEKS],
         }
 
-        cat = CATEGORY_NORMALIZE.get(latest.get("Category name"), latest.get("Category name"))
+        cat_name = get_any(latest, "Category/account name", "Category name")
+        cat = CATEGORY_NORMALIZE.get(cat_name, cat_name)
         all_prices = [price_value(r) for r in prows if price_value(r) is not None]
         stock_flags_all = [f for f in (is_in_stock(r.get("Stock status")) for r in prows) if f is not None]
         # Same "in-stock AND owned" definition as the real Buy Box Ownership
@@ -506,24 +541,31 @@ def main():
         subscription_price = latest_price_row.get("Subscription price") if latest_price_row else None
         # Three more raw Price-tab fields from that same latest row, rounding
         # out all 14 real Price-tab columns (excluding Crawl date) somewhere
-        # in the model -- "Spb url" is a genuine direct link to the crawled
+        # in the model -- "Url" is a genuine direct link to the crawled
         # listing page; "Stock status" is the literal crawled availability
         # sentence (e.g. "Only 1 left in stock - order soon."), distinct from
         # the derived 3-bucket stockStatus every other feature reads; "Coupon
         # value" is the retailer's own posted discount, dollar amount and
         # percentage together (e.g. "4.22 (53%)"), exactly as crawled.
-        spb_url = latest_price_row.get("Spb url") if latest_price_row else None
+        url = get_any(latest_price_row, "Url", "Spb url") if latest_price_row else None
         stock_status_raw = latest_price_row.get("Stock status") if latest_price_row else None
         coupon_value = latest_price_row.get("Coupon value") if latest_price_row else None
+        # Other (non-buy-box) sellers on this listing and their price, up to
+        # 10 -- real competing offers beyond whoever currently holds the buy
+        # box. Blank on every row of the Sep 2022 crawl (never captured);
+        # populated only once a future upload's Price tab fills it in.
+        other_sellers_list = other_sellers(latest_price_row) if latest_price_row else []
 
         # Raw Content-tab fields (same "latest" row content_completeness()
         # already reads its checks from), surfaced individually so a UI can
         # show e.g. "Bullet Points: 7" rather than only the derived
         # pass/fail check -- these were previously computed and discarded.
-        title_length = latest.get("Title no of chars") or 0
+        # Title/description length are computed from the text itself (see
+        # content_completeness above), not read from a separate column.
+        title_length = len(latest.get("Title") or "")
         image_count = latest.get("No of images") or 0
         bullet_count = latest.get("No of bullets") or 0
-        description_length = latest.get("Description no of chars") or 0
+        description_length = len(latest.get("Product description") or "")
         enhanced_content = str(latest.get("Enhanced content") or "").strip().lower() == "yes"
         # The real front-of-listing product photo, hotlinked straight from
         # the retailer's own CDN (e.g. images-na.ssl-images-amazon.com,
@@ -540,28 +582,33 @@ def main():
         # source data and risks misrepresenting what the number means).
         retailer_id = latest.get("Retailer id")
         # Real MAP price, matched by the same (retailer, native id) key used
-        # for spbUrl/CROSS_RETAILER_MATCH/REAL_KEYWORD_MATCH elsewhere in
+        # for url/CROSS_RETAILER_MATCH/REAL_KEYWORD_MATCH elsewhere in
         # this pipeline -- None when the MAP workbook has no row for this
         # SKU (not tracked under MAP), an honest gap rather than a
         # fabricated policy price.
         map_price = map_price_by_site.get(code, {}).get(str(native_id))
-        vendor_stock_no = latest.get("Vendor stock no")
+        # "SKU" (the import template's rename of "Vendor stock no") -- the
+        # vendor's own stock-keeping unit, distinct from Retailer id (that
+        # retailer's own native listing id). When the same SKU appears under
+        # 2+ different retailers it's the same real product being sold in
+        # more than one place -- see the SKU_MATCH block below, which uses
+        # this as a higher-confidence signal than the brand+name-overlap
+        # heuristic CROSS_RETAILER_MATCH otherwise falls back to.
+        sku = get_any(latest, "SKU", "Vendor stock no")
         site_category = latest.get("Site category")
         buy_box_seller_raw = latest.get("Buy box seller")
         buy_box_shipper_raw = latest.get("Buy box shipper")
         video_count = latest.get("No of videos") or 0
         question_count = latest.get("No of questions") or 0
         has_360_image = bool(latest.get("Image 360"))
-        has_ingredients = bool(latest.get("Ingredients list"))
 
         # The actual crawled text behind title_length/bullet_count/
-        # description_length/has_ingredients above -- those stayed
-        # measurements-only in the first pass; a UI wanting to show the real
-        # copy (not just its length) needs these too.
+        # description_length above -- those stayed measurements-only in the
+        # first pass; a UI wanting to show the real copy (not just its
+        # length) needs these too.
         description_text = latest.get("Product description") or None
         bullets_text = [latest.get(f"Bullet {i}") for i in range(1, 11)]
         bullets_text = [b for b in bullets_text if b]
-        ingredients_text = latest.get("Ingredients list") or None
 
         # 22 Varient label/value pairs -- observed to be the *other* pack-
         # size/color/style options the retailer lists alongside this SKU
@@ -609,9 +656,10 @@ def main():
             "currentPrice": round(current_price, 2) if current_price is not None else None,
             "subscriptionPrice": round(subscription_price, 2) if subscription_price is not None else None,
             "mapPrice": round(map_price, 2) if map_price is not None else None,
-            "spbUrl": spb_url,
+            "url": url,
             "stockStatusRaw": stock_status_raw,
             "couponValue": coupon_value,
+            "otherSellers": other_sellers_list,
             # Ids of the 8 real content checks (see content_completeness)
             # this product currently FAILS -- empty list means all 8 pass.
             "contentChecks": content_checks_failed,
@@ -622,17 +670,15 @@ def main():
             "descriptionLength": description_length,
             "enhancedContent": enhanced_content,
             "retailerId": retailer_id,
-            "vendorStockNo": vendor_stock_no,
+            "sku": sku,
             "siteCategory": site_category,
             "buyBoxSeller": buy_box_seller_raw,
             "buyBoxShipper": buy_box_shipper_raw,
             "videoCount": video_count,
             "questionCount": question_count,
             "has360Image": has_360_image,
-            "hasIngredients": has_ingredients,
             "descriptionText": description_text,
             "bulletsText": bullets_text,
-            "ingredientsText": ingredients_text,
             "variations": variations,
         })
 
@@ -801,7 +847,7 @@ def main():
     # up to 65 result slots (Url_1..Url_65 + Product_name_N); a result
     # counts as "ours" when its Url_N contains one of this retailer's own
     # tracked catalog ids (retailerId, the same native id used for
-    # spbUrl/CROSS_RETAILER_MATCH elsewhere in this pipeline) -- e.g.
+    # url/CROSS_RETAILER_MATCH elsewhere in this pipeline) -- e.g.
     # amazon.com/dp/<ASIN>, walmart.com/ip/<id>, homedepot.com/p/<id>.
     # Pooled the same way every other rate in this file is pooled across
     # weeks: sum of matches / sum of total results, never an average of
@@ -906,11 +952,41 @@ def main():
         real_buybox_competitor[pid] = {"seller": top_seller, "daysWon": days_won}
 
     # ── CROSS_RETAILER_MATCH ─────────────────────────────────────────────────
+    # Two passes, SKU first: the vendor's own "SKU" (import template's rename
+    # of "Vendor stock no") is a real, retailer-agnostic product identifier
+    # -- when the exact same SKU shows up under 2+ different retailers, that
+    # IS the same product being sold in more than one place, no fuzzy
+    # matching needed. Falls back to the existing brand + >=45% name-overlap
+    # heuristic only for products with no SKU (or no SKU match), same as
+    # before this pass existed.
+    cross_retailer_match = defaultdict(dict)
+    by_sku = defaultdict(list)
+    for p in catalog:
+        if p.get("sku"):
+            by_sku[str(p["sku"]).strip().lower()].append(p)
+    sku_matched_ids = set()
+    for sku, plist in by_sku.items():
+        for i in range(len(plist)):
+            for j in range(i + 1, len(plist)):
+                a, b = plist[i], plist[j]
+                if a["retailer"] == b["retailer"]:
+                    continue
+                cross_retailer_match[a["id"]][b["retailer"]] = b["id"]
+                cross_retailer_match[b["id"]][a["retailer"]] = a["id"]
+                sku_matched_ids.add(a["id"])
+                sku_matched_ids.add(b["id"])
+
+    # Candidate pairs are collected and applied strictly in descending
+    # overlap order (best match first), rather than in whatever order the
+    # catalog list happens to hold them -- so when a product has more than
+    # one plausible cross-retailer candidate, the pair with the strongest
+    # name overlap always wins, deterministically, instead of silently
+    # depending on catalog iteration order.
     by_brand = defaultdict(list)
     for p in catalog:
         if p["brand"]:
             by_brand[str(p["brand"]).strip().lower()].append(p)
-    cross_retailer_match = defaultdict(dict)
+    candidates = []
     for brand, plist in by_brand.items():
         for i in range(len(plist)):
             for j in range(i + 1, len(plist)):
@@ -922,8 +998,12 @@ def main():
                     continue
                 overlap = len(ta & tb) / max(1, min(len(ta), len(tb)))
                 if overlap >= 0.45:
-                    cross_retailer_match[a["id"]][b["retailer"]] = b["id"]
-                    cross_retailer_match[b["id"]][a["retailer"]] = a["id"]
+                    candidates.append((overlap, a, b))
+    candidates.sort(key=lambda c: -c[0])
+    for overlap, a, b in candidates:
+        if b["retailer"] not in cross_retailer_match.get(a["id"], {}) and a["retailer"] not in cross_retailer_match.get(b["id"], {}):
+            cross_retailer_match[a["id"]][b["retailer"]] = b["id"]
+            cross_retailer_match[b["id"]][a["retailer"]] = a["id"]
 
     # ── keywordSet (real terms, illustrative volume/ownRank) ────────────────
     keyword_terms = sorted(keywords_seen)
@@ -963,10 +1043,13 @@ def main():
     def ts_str_list(v):
         return json.dumps([fix_mojibake(s) for s in v])
 
+    def ts_other_sellers(v):
+        return json.dumps([{"name": fix_mojibake(s["name"]), "price": s["price"]} for s in v])
+
     out.append("export const catalog = [")
     for p in catalog:
         out.append(
-            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, mapPrice: %s, spbUrl: %s, stockStatusRaw: %s, couponValue: %s, contentChecks: %s, titleLength: %s, imageUrl: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, vendorStockNo: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, hasIngredients: %s, descriptionText: %s, bulletsText: %s, ingredientsText: %s, variations: %s },"
+            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, mapPrice: %s, url: %s, stockStatusRaw: %s, couponValue: %s, otherSellers: %s, contentChecks: %s, titleLength: %s, imageUrl: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, sku: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, descriptionText: %s, bulletsText: %s, variations: %s },"
             % (
                 ts_str(p["id"]), ts_str(p["name"]), ts_str(p["brand"]), ts_str(p["category"]), ts_str(p["retailer"]),
                 ts_num(p["rank"], 1), ts_num(p["price"], 0), ts_num(p["avgSellingPrice"], p["price"] or 0),
@@ -975,15 +1058,15 @@ def main():
                 ts_num(p["priceChangePct"], 0.0), ts_str(p["priceGroup"]),
                 ts_num_or_null(p["listPrice"]), ts_num_or_null(p["currentPrice"]), ts_num_or_null(p["subscriptionPrice"]),
                 ts_num_or_null(p["mapPrice"]),
-                ts_str(p["spbUrl"]), ts_str(p["stockStatusRaw"]), ts_str(p["couponValue"]),
+                ts_str(p["url"]), ts_str(p["stockStatusRaw"]), ts_str(p["couponValue"]), ts_other_sellers(p["otherSellers"]),
                 json.dumps(p["contentChecks"]),
                 ts_num(p["titleLength"], 0), ts_str(p["imageUrl"]), ts_num(p["imageCount"], 0), ts_num(p["bulletCount"], 0),
                 ts_num(p["descriptionLength"], 0), ts_bool(p["enhancedContent"]),
-                ts_str(p["retailerId"]), ts_str(p["vendorStockNo"]), ts_str(p["siteCategory"]),
+                ts_str(p["retailerId"]), ts_str(p["sku"]), ts_str(p["siteCategory"]),
                 ts_str(p["buyBoxSeller"]), ts_str(p["buyBoxShipper"]),
                 ts_num(p["videoCount"], 0), ts_num(p["questionCount"], 0),
-                ts_bool(p["has360Image"]), ts_bool(p["hasIngredients"]),
-                ts_str(p["descriptionText"]), ts_str_list(p["bulletsText"]), ts_str(p["ingredientsText"]),
+                ts_bool(p["has360Image"]),
+                ts_str(p["descriptionText"]), ts_str_list(p["bulletsText"]),
                 ts_str_list(p["variations"]),
             )
         )
