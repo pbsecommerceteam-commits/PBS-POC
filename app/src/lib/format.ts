@@ -132,7 +132,7 @@ export const KPI_INFO: Record<string, string> = {
   rating: "Real average star rating across tracked SKUs, weighted by product.",
   oos: "Count of tracked SKUs currently out of stock in this scope.",
   avgcoverage: "Real average Keyword Coverage (of 10 tracked keywords) across tracked SKUs -- kept for backend use, not shown on any page.",
-  reviews: "Real total review count across tracked SKUs, summed from each product's crawled review total.",
+  reviews: "Real crawled review count -- summed across tracked SKUs on portfolio pages, or this SKU's own total on its Product Detail page.",
   sales: "Illustrative estimated sales -- no real transaction/units-sold data exists in this crawl; not shown on any page.",
   growth: "Illustrative sales growth -- derived from the illustrative sales estimate above, not real transaction data; not shown on any page.",
   share: "Illustrative market share -- no real competitor sales data exists to compute an actual share against; not shown on any page.",
