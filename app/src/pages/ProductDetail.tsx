@@ -86,12 +86,11 @@ export default function ProductDetail() {
      range so the line never renders clipped when MAP sits above/below
      every observed price point. */
   const priceLo = Math.min(lo, p.mapPrice ?? lo), priceHi = Math.max(hi, p.mapPrice ?? hi);
-  const priceChart = lineChart({ id: "d-price", title: "Price Trend", subtitle: "Shelf price over the period" + realNote + " · Competitor prices illustrative — no resolvable competitor entity in the raw crawl",
+  const priceChart = lineChart({ id: "d-price", title: "Price Trend", subtitle: "Shelf price over the period" + realNote,
     labels, lo: priceLo * 0.94, hi: priceHi * 1.06, ticks: [priceLo * 0.96, (priceLo + priceHi) / 2, priceHi * 1.04], fmt: (v) => "$" + v.toFixed(2), hideLegend: true,
     series: [{ name: "Price", values: t.price }],
     target: p.mapPrice ?? undefined, targetLabel: "MAP Price",
-    badge: p.mapPrice != null ? "MAP $" + p.mapPrice.toFixed(2) : undefined,
-    footer: detail.priceComparison.map((c: any) => ({ label: c.name, value: "$" + c.price.toFixed(2), color: c.price < p.price ? "var(--status-neutral-fg)" : "var(--status-positive-fg)" })) }, hover, onEnter);
+    badge: p.mapPrice != null ? "MAP $" + p.mapPrice.toFixed(2) : undefined }, hover, onEnter);
   const stockChart = barChart({ id: "d-stock", title: "Stock Availability 1P + 3P Trend", subtitle: "In-stock rate at this retailer" + realNote, badge: "Target 98%",
     labels, values: t.stock, valueName: "In stock", lo: 60, hi: 100, ticks: [60, 70, 80, 90, 100], fmt: (v) => v.toFixed(1) + "%", target: 98,
     fill: (v) => (v >= 98 ? "var(--status-positive-fg)" : "var(--color-accent-300)") }, hover, onEnter);

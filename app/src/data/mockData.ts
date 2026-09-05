@@ -1567,13 +1567,6 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
 function deriveInsights(s: any) {
   const lowAvail = s.products.filter((p: any) => p.inStockRate < 95);
   const weakContent = s.products.filter((p: any) => p.contentScore < 80);
-  const ownIndex = s.products.length
-    ? s.products.reduce((a: number, p: any) => a + p.priceIndex, 0) / s.products.length : 1;
-  const byIndex = s.competitors.slice().sort((a: any, b: any) => a.priceIndex - b.priceIndex);
-  const cheapest = byIndex[0];
-  const undercut = round(((ownIndex - cheapest.priceIndex) / ownIndex) * 100, 1);
-  const risers = s.competitors.slice().sort((a: any, b: any) => b.delta - a.delta);
-  const rising = risers.find((c: any) => c.id !== cheapest.id) || risers[0];
 
   const list: any[] = [];
   list.push({
@@ -1596,18 +1589,6 @@ function deriveInsights(s: any) {
         " dipped below the 95% availability threshold, an estimated " +
         (lowAvail.length * 0.4).toFixed(1) + " pts of category share at risk.",
     action: "Review products", target: "shelf",
-  });
-  list.push({
-    id: "i-price",
-    kind: Math.abs(undercut) > 5 ? "warning" : "neutral",
-    title: "Competitive price movement (illustrative)",
-    body: cheapest.name + " sits " + Math.abs(undercut).toFixed(1) + "% " +
-      (undercut > 0 ? "below" : "above") + " your price index on comparable lines" +
-      (rising && rising.id !== cheapest.id && rising.delta > 0
-        ? ", and " + rising.name + " gained " + rising.delta.toFixed(1) + " pts of search share."
-        : ".") +
-      " No competitor entity is resolvable from the raw crawl — see real buy-box-loss findings on individual product pages instead.",
-    action: "View competitors", target: "competitors",
   });
   list.push({
     id: "i-content",
@@ -2229,14 +2210,6 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
         const rr = rowRng(key, id + "-stars", String(stars));
         const w = [0.56, 0.24, 0.11, 0.05, 0.04][i] * (0.85 + rr() * 0.3);
         return { stars, count: Math.round(p.reviews * w) };
-      }),
-      // Illustrative -- competitorBrands has no real counterpart (no
-      // competitor entity is resolvable from the raw crawl, same finding
-      // as Competitors > Summary). Disclosed on the Price Trend chart's
-      // subtitle in ProductDetail.tsx.
-      priceComparison: competitorBrands.slice(0, 3).map((c) => {
-        const rr = rowRng(key, id + "-price", c.id);
-        return { name: c.name, price: round(p.price * (0.88 + rr() * 0.28), 2) };
       }),
       lastCrawl: "Today 06:40 UTC",
       sales: {
