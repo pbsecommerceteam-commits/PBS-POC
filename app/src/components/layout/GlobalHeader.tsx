@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useFilters } from "../../context/FiltersContext";
 import { useUi } from "../../context/UiContext";
 import { useAuth } from "../../context/AuthContext";
@@ -29,17 +29,13 @@ export function GlobalHeader() {
   const { notifDismissed, notifications, markAllRead } = useUi();
   const { logout } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
-  /* Picking a SKU is "go look at this one item", not just a background
-     scope change -- jump to Overview (where the product table can show its
-     row) the same way a notification/search-palette pick jumps straight
-     to Product Detail, just staying one level up so the surrounding real
-     portfolio context (retailer/category performance) is still visible. */
-  const onSkuChange = (id: string) => {
-    setSku(id);
-    if (id && location.pathname !== "/") navigate("/");
-  };
+  /* Picking a SKU is a scope change like Retailer/Category/Brand, not a
+     "go look at this item" action -- stay on whatever page the user is
+     already on (Overview, Pricing Intelligence, Content Intelligence, ...)
+     and let that page's own product table/KPIs narrow to the one SKU, the
+     same way DataContext already re-scopes every fetch when `sku` changes. */
+  const onSkuChange = (id: string) => setSku(id);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
