@@ -567,9 +567,10 @@ def main():
         # size/color/style options the retailer lists alongside this SKU
         # (e.g. label "size", values "4.52 Lb" / "7.06 Oz" / "1 Oz" across
         # pairs 1-4 for one product), not a per-product attribute table.
-        # 86 of 117 SKUs have none at all; kept as one aggregated list
-        # (count + "label: value" strings) rather than 22 separate sparse
-        # columns.
+        # 28 of 117 SKUs have at least one (86 variation entries total,
+        # ~3 each on average); the other 89 have none. Kept as one
+        # aggregated list (count + "label: value" strings) rather than 22
+        # separate sparse columns.
         variations = []
         for i in range(1, 23):
             v_label = latest.get(f"Varient label {i}")

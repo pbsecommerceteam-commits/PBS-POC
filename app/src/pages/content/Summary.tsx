@@ -51,10 +51,11 @@ export default function ContentSummary() {
   const improvedTable = scoreMoveTable("Score Improved", `${improved} SKUs with a real content score gain, Sep 1 → Sep 29`, improvedProducts);
   const declinedTable = scoreMoveTable("Score Declined", `${declined} SKUs with a real content score drop, Sep 1 → Sep 29`, declinedProducts);
   const variationsTable = table("Products With Variations", `${withVariations} of ${snap.products.length} SKUs, ${totalVariations} variations tracked in total`,
-    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "Variations", align: "right" }],
+    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "Variations", align: "left" }, { label: "Count", align: "right" }],
     variationProducts.map((p: any) => ({ cells: [
       cell(p.name, { onClick: () => goToProduct(p.id) }),
       cell(p.retailerName),
+      cell(p.variations.join(", ")),
       cell(String(p.variations.length), { align: "right", strong: true }),
     ] })));
   const issueTable = (checkId: string, label: string) => {
