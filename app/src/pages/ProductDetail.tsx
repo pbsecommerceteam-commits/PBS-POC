@@ -183,7 +183,7 @@ export default function ProductDetail() {
             <div className="sl-faint" style={{ fontSize: 12, marginTop: 6 }}>Crawled {detail.lastCrawl} · {detail.note}</div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div className="sl-eyebrow" style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>Shelf score<InfoTip text="Composite (out of 75) of this SKU's real in-stock rate (30%), content score (25%) and rating (20%), minus a penalty when priced over 5% above its own average selling price." /></div>
+            <div className="sl-eyebrow" style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>Shelf score<InfoTip text="Composite of this SKU's real in-stock rate (40%), content score (40%) and rating (20%), minus a penalty when priced over 5% above its own average selling price." /></div>
             <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 30, lineHeight: 1.1 }}>{p.shelfScore}</div>
           </div>
         </div>

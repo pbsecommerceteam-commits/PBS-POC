@@ -1024,13 +1024,10 @@ function productFor(p: (typeof catalog)[number]) {
    visibility data is tracked internally (see REAL_KEYWORD_MATCH,
    REAL_SOS_WEEKLY) for possible future use, but must not surface anywhere
    in the tool right now, including as a silent input to a score the tool
-   does show. In-Stock/Content/Rating keep their original absolute weights
-   (30/25/20) rather than being inflated to fill the removed 25% -- an
-   honest "3 real factors, out of 75 possible points" beats a rescaled
-   number that implies a 4th factor still counts. */
+   does show. In-Stock/Content/Rating weights: 40/40/20. */
 function withShelfMetrics(q: any) {
   q.shelfScore = clamp(Math.round(
-    q.inStockRate * 0.3 + q.contentScore * 0.25 +
+    q.inStockRate * 0.4 + q.contentScore * 0.4 +
     (q.rating / 5) * 100 * 0.2 - Math.max(0, q.priceIndex - 1.05) * 40
   ), 20, 100);
   return q;
@@ -1519,9 +1516,8 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
          here for possible future use, but neither feeds Overall Score or
          anything else the frontend shows -- keyword/search data must not
          surface anywhere in the tool right now (see withShelfMetrics'
-         comment). Overall Score is In-Stock/Content/Rating only, at their
-         original absolute weights (30/25/20, out of 75 -- not rescaled to
-         fill the removed 25%), matching categoryPerformance below. */
+         comment). Overall Score is In-Stock/Content/Rating only, weighted
+         40/40/20, matching categoryPerformance below. */
       const realSos = realCurrentValueSos(rt.id, period, dateRange, rangeMatch?.idx, category, brand, sku);
       const sosR = realSos != null ? round(realSos, 1) : round(clamp(0.3 + b.sos + (rr() - 0.5) * 0.4, 0, 3), 1);
       const retailerProducts = catalog.filter((p) => p.retailer === rt.id && (!category || p.category === category) && (!brand || p.brand === brand) && (!sku || p.id === sku));
@@ -1532,7 +1528,7 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       const inStockR = realStock != null ? round(realStock, 1) : round(clamp(96.5 + b.stock + (rr() - 0.5) * 3, 85, 100), 1);
       const contentR = realContent != null ? Math.round(realContent) : clamp(Math.round(85 + b.content + (rr() - 0.5) * 8), 40, 100);
       const ratingR = realRating != null ? round(realRating, 2) : round(clamp(4.3 + b.rating + (rr() - 0.5) * 0.2, 3.4, 5), 2);
-      const overall = Math.round((inStockR / 100) * 30 + (contentR / 100) * 25 + (ratingR / 5) * 20);
+      const overall = Math.round((inStockR / 100) * 40 + (contentR / 100) * 40 + (ratingR / 5) * 20);
       return {
         id: rt.id, name: rt.name, sos: sosR, sosDelta: round((rr() - 0.5) * 4, 1),
         coverage: coverageR,
@@ -1555,7 +1551,7 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       const ratingC = inCat.length ? avg((p) => p.rating, 2) : round(clamp(4.3 + rr() * 0.4, 3.4, 5), 2);
       // Same formula/weights/clamp as snapshot()'s retailerPerformance
       // overall -- see the comment there.
-      const overall = Math.round((availC / 100) * 30 + (contentC / 100) * 25 + (ratingC / 5) * 20);
+      const overall = Math.round((availC / 100) * 40 + (contentC / 100) * 40 + (ratingC / 5) * 20);
       return {
         category: c, skus: inCat.length, sos: sosC, sosDelta: round((rr() - 0.5) * 5, 1),
         coverage: coverageC,
