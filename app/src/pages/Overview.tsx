@@ -106,7 +106,7 @@ export default function Overview() {
         <span style={{ fontWeight: 600, minWidth: 30 }}>{p.contentScore}%</span>
       </div>
     ) },
-    { key: "opportunity", label: "Opportunity", align: "center", sortable: true, info: "A real composite flag: points for being out of/low stock, scoring under 80% content, having low/no keyword coverage, or rating under 4.0 -- High/Medium/Low by total points, not a single field.", render: (p) => <Badge tone={opportunityTone(p.opportunity)}>{p.opportunity}</Badge> },
+    { key: "opportunity", label: "Opportunity", align: "center", sortable: true, info: "A real composite flag: points for being out of/low stock, scoring under 80% content, or rating under 4.0 -- High/Medium/Low by total points, not a single field.", render: (p) => <Badge tone={opportunityTone(p.opportunity)}>{p.opportunity}</Badge> },
   ];
 
   return (
@@ -146,7 +146,7 @@ export default function Overview() {
       <Card padding="20px 22px 10px">
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>Retailer performance<InfoTip text="Real in-stock rate, content score and rating per retailer, pooled from your tracked SKUs there. Overall score = 30% in-stock + 25% content + 20% rating + 25% keyword coverage (not shown, backend-only)." /></h3>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>Retailer performance<InfoTip text="Real in-stock rate, content score and rating per retailer, pooled from your tracked SKUs there. Overall score (out of 75) = 30% in-stock + 25% content + 20% rating." /></h3>
             <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>Select a retailer to scope the whole workspace to it</div>
           </div>
         </div>

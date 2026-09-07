@@ -319,7 +319,7 @@ export const notificationFeed = [
   { id: "n1", severity: "high", title: "Stock alert", text: "Tetra Koi Vibrance Pond Fish Food Sticks out of stock all month at Lowe's", time: "12m ago", product: "r6-1000735640" },
   { id: "n2", severity: "high", title: "Price alert", text: "BLACK+DECKER SmartGrind Coffee Grinder jumped 150% at Walmart while availability dropped to 27%", time: "38m ago", product: "r3-14320955" },
   { id: "n3", severity: "medium", title: "Buy box alert", text: "Dingo Mini Bones has lost the buy box to a third-party reseller for 29 of the last 30 days on Walmart.com", time: "1h ago", product: "r3-8207932" },
-  { id: "n4", severity: "medium", title: "Search alert", text: "PetSmart's own FURminator tools made up 4 of the results for \"Deshedding Brush\" this period, the strongest real keyword showing across every tracked retailer", time: "2h ago", product: "r5-48923" },
+  { id: "n4", severity: "medium", title: "MAP alert", text: "Garden Safe Brand Insecticidal Soap Insect Killer is priced $6.98 on Amazon, $3.02 under its $10.00 MAP", time: "2h ago", product: "r1-B000BWY6K2" },
   { id: "n5", severity: "low", title: "Content opportunity", text: "111 products scored under 80 on content completeness across the portfolio", time: "5h ago", product: "r6-1165507" },
 ];
 
@@ -1020,29 +1020,29 @@ function productFor(p: (typeof catalog)[number]) {
 
 /* Shelf metrics are derived from the row itself so every surface — overview,
    shelf, product detail, CSV — reports the same number for the same SKU.
-   Shelf Score's visibility term is real keywordCoverage (0-10, see
-   productFor/REAL_KEYWORD_MATCH) scaled to a 0-100 share, not the old
-   illustrative per-product search-rank-derived estimate -- no separate
-   "search visibility" figure is computed here any more. */
+   Keyword coverage is deliberately NOT a term here -- keyword/search-
+   visibility data is tracked internally (see REAL_KEYWORD_MATCH,
+   REAL_SOS_WEEKLY) for possible future use, but must not surface anywhere
+   in the tool right now, including as a silent input to a score the tool
+   does show. In-Stock/Content/Rating keep their original absolute weights
+   (30/25/20) rather than being inflated to fill the removed 25% -- an
+   honest "3 real factors, out of 75 possible points" beats a rescaled
+   number that implies a 4th factor still counts. */
 function withShelfMetrics(q: any) {
   q.shelfScore = clamp(Math.round(
-    (q.keywordCoverage * 10) * 0.25 + q.inStockRate * 0.3 + q.contentScore * 0.25 +
+    q.inStockRate * 0.3 + q.contentScore * 0.25 +
     (q.rating / 5) * 100 * 0.2 - Math.max(0, q.priceIndex - 1.05) * 40
   ), 20, 100);
   return q;
 }
 
-/* Opportunity = how much upside a fix on this SKU would unlock. Weighted so a
-   low-keyword-coverage SKU with weak availability or content ranks highest.
-   keywordCoverage is real (0-10, see productFor) -- 0 (not found under any
-   of the 10 tracked keywords) is the worst tier, matching the majority of
-   the catalog honestly rather than spreading products across fabricated
-   rank-position tiers. */
+/* Opportunity = how much upside a fix on this SKU would unlock, from stock/
+   content/rating only -- keyword coverage is tracked internally (see
+   withShelfMetrics' comment above) but not used here, same reasoning. */
 function scoreOpportunity(p: any) {
   let s = 0;
   if (p.stockStatus === "Out of Stock") s += 3; else if (p.stockStatus === "Low Stock") s += 1.5;
   if (p.contentScore < 70) s += 2; else if (p.contentScore < 80) s += 1;
-  if (p.keywordCoverage === 0) s += 1.5; else if (p.keywordCoverage < 3) s += 0.75;
   if (p.rating < 4) s += 1;
   return s >= 4 ? "High" : s >= 2 ? "Medium" : "Low";
 }
@@ -1515,13 +1515,13 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
     retailerPerformance: retailers.slice(1).map((rt) => {
       const rr = rowRng(key, "retailerPerf", rt.id);
       const b = RETAILER_BIAS[rt.id];
-      /* Search Visibility (sos) is kept computed here for any future/
-         backend use, but is no longer what Overall Score is built from or
-         what the frontend shows -- see the retired kpi("sos", ...) note
-         above. Overall Score's real "how findable is this retailer" term
-         is now Keyword Coverage (0-10 real matches per SKU, scaled to 0-100
-         the same way the per-product shelfScore formula does), matching
-         categoryPerformance below and shelfData()'s byRetailer/byCategory. */
+      /* Search Visibility (sos) and Keyword Coverage are both kept computed
+         here for possible future use, but neither feeds Overall Score or
+         anything else the frontend shows -- keyword/search data must not
+         surface anywhere in the tool right now (see withShelfMetrics'
+         comment). Overall Score is In-Stock/Content/Rating only, at their
+         original absolute weights (30/25/20, out of 75 -- not rescaled to
+         fill the removed 25%), matching categoryPerformance below. */
       const realSos = realCurrentValueSos(rt.id, period, dateRange, rangeMatch?.idx, category, brand, sku);
       const sosR = realSos != null ? round(realSos, 1) : round(clamp(0.3 + b.sos + (rr() - 0.5) * 0.4, 0, 3), 1);
       const retailerProducts = catalog.filter((p) => p.retailer === rt.id && (!category || p.category === category) && (!brand || p.brand === brand) && (!sku || p.id === sku));
@@ -1532,9 +1532,7 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       const inStockR = realStock != null ? round(realStock, 1) : round(clamp(96.5 + b.stock + (rr() - 0.5) * 3, 85, 100), 1);
       const contentR = realContent != null ? Math.round(realContent) : clamp(Math.round(85 + b.content + (rr() - 0.5) * 8), 40, 100);
       const ratingR = realRating != null ? round(realRating, 2) : round(clamp(4.3 + b.rating + (rr() - 0.5) * 0.2, 3.4, 5), 2);
-      const overall = Math.round(
-        (coverageR / 100) * 25 + (inStockR / 100) * 30 + (contentR / 100) * 25 + (ratingR / 5) * 20
-      );
+      const overall = Math.round((inStockR / 100) * 30 + (contentR / 100) * 25 + (ratingR / 5) * 20);
       return {
         id: rt.id, name: rt.name, sos: sosR, sosDelta: round((rr() - 0.5) * 4, 1),
         coverage: coverageR,
@@ -1548,8 +1546,8 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       const rr = rowRng(key, "categoryPerf", c);
       const inCat = pool.filter((p) => p.category === c);
       const avg = (f: (p: any) => number, d: number) => (inCat.length ? round(inCat.reduce((a, p) => a + f(p), 0) / inCat.length, d) : 0);
-      // Same retirement as retailerPerformance above -- sos kept for the
-      // backend, Overall Score now driven by real Keyword Coverage.
+      // Same retirement as retailerPerformance above -- sos/coverage kept
+      // computed for the backend, not used in Overall Score.
       const sosC = round(clamp(0.3 + rr() * 1.2 + bias.sos / 2, 0, 3), 1);
       const coverageC = inCat.length ? round(avg((p) => p.keywordCoverage, 2) * 10, 1) : 0;
       const availC = inCat.length ? avg((p) => p.inStockRate, 1) : round(94 + rr() * 5, 1);
@@ -1557,7 +1555,7 @@ function snapshot(retailer: string, period: string, dateRange?: DateRange | null
       const ratingC = inCat.length ? avg((p) => p.rating, 2) : round(clamp(4.3 + rr() * 0.4, 3.4, 5), 2);
       // Same formula/weights/clamp as snapshot()'s retailerPerformance
       // overall -- see the comment there.
-      const overall = Math.round((coverageC / 100) * 25 + (availC / 100) * 30 + (contentC / 100) * 25 + (ratingC / 5) * 20);
+      const overall = Math.round((availC / 100) * 30 + (contentC / 100) * 25 + (ratingC / 5) * 20);
       return {
         category: c, skus: inCat.length, sos: sosC, sosDelta: round((rr() - 0.5) * 5, 1),
         coverage: coverageC,
@@ -2245,13 +2243,13 @@ export function fetchProduct(id: string, { retailer = "all", period = "12w", dat
 }
 
 export function toCsv(rows: any[]) {
-  const cols = ["SKU", "Product", "Brand", "Category", "Retailer", "Keyword Coverage (of 10)", "Keyword Coverage Delta", "Price", "Price Index", "Stock Status", "In Stock %", "Rating", "Reviews", "Content Completeness", "Shelf Score", "Opportunity"];
+  const cols = ["SKU", "Product", "Brand", "Category", "Retailer", "Price", "Price Index", "Stock Status", "In Stock %", "Rating", "Reviews", "Content Completeness", "Shelf Score", "Opportunity"];
   const cell = (v: any) => {
     const s = String(v == null ? "" : v);
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
   const lines = [cols.join(",")].concat(rows.map((p) => [
-    p.id.toUpperCase(), p.name, p.brand, p.category, p.retailerName, p.keywordCoverage, p.keywordCoverageDelta,
+    p.id.toUpperCase(), p.name, p.brand, p.category, p.retailerName,
     p.price.toFixed(2), (p.priceIndex * 100).toFixed(0), p.stockStatus, p.inStockRate,
     p.rating.toFixed(2), p.reviews, p.contentScore, p.shelfScore, p.opportunity,
   ].map(cell).join(",")));

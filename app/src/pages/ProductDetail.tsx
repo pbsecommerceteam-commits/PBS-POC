@@ -155,7 +155,7 @@ export default function ProductDetail() {
       cell(r.listed ? r.rating.toFixed(2) : "—", { align: "right" }),
       cell(r.listed ? r.content + "%" : "—", { align: "right" }),
     ] })),
-    "Matches are found by same brand + ≥45% product-name overlap within our own tracked sample -- not every retailer's full catalog, so \"Not tracked\" can mean genuinely absent or simply outside this sample.");
+    "Matches are found by exact SKU when both listings share one, else same brand + ≥45% product-name overlap, within our own tracked sample -- not every retailer's full catalog, so \"Not tracked\" can mean genuinely absent or simply outside this sample.");
 
   return (
     <PageShell title={p.name} subtitle={`${p.brand} · ${p.category} · ${p.retailerName}`}
@@ -183,7 +183,7 @@ export default function ProductDetail() {
             <div className="sl-faint" style={{ fontSize: 12, marginTop: 6 }}>Crawled {detail.lastCrawl} · {detail.note}</div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div className="sl-eyebrow" style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>Shelf score<InfoTip text="Composite of this SKU's real keyword coverage (25%), in-stock rate (30%), content score (25%) and rating (20%), minus a penalty when priced over 5% above its own average selling price." /></div>
+            <div className="sl-eyebrow" style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>Shelf score<InfoTip text="Composite (out of 75) of this SKU's real in-stock rate (30%), content score (25%) and rating (20%), minus a penalty when priced over 5% above its own average selling price." /></div>
             <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 30, lineHeight: 1.1 }}>{p.shelfScore}</div>
           </div>
         </div>
