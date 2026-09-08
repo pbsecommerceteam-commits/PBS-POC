@@ -179,7 +179,10 @@ export default function ProductDetail() {
               <Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge>
               <Badge tone={opportunityTone(p.opportunity)}>{p.opportunity} opportunity</Badge>
             </div>
-            <div className="sl-muted" style={{ fontSize: 13, marginTop: 4 }}>{p.id.toUpperCase()} · {p.brand} · {p.category} · {p.retailerName}</div>
+            <div className="sl-muted" style={{ fontSize: 13, marginTop: 4 }}>
+              {p.id.toUpperCase()} · {p.brand} · {p.category} · {p.retailerName}
+              {p.url && <> · <a href={p.url} target="_blank" rel="noopener noreferrer">View listing →</a></>}
+            </div>
             <div className="sl-faint" style={{ fontSize: 12, marginTop: 6 }}>Crawled {detail.lastCrawl} · {detail.note}</div>
           </div>
           <div style={{ textAlign: "right" }}>

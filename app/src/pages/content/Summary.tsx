@@ -25,9 +25,12 @@ export default function ContentSummary() {
   const { improved, declined } = snap.contentChange;
   /* Real, from the 22 Varient label/value pairs each product's Content-tab
      row carries (see build_mock_data.py) -- the retailer's other pack-size/
-     color/style listings for that SKU, not a synthetic estimate. */
-  const withVariations = snap.products.filter((p: any) => p.variations.length > 0).length;
-  const totalVariations = snap.products.reduce((a: number, p: any) => a + p.variations.length, 0);
+     color/style listings for that SKU, not a synthetic estimate. A single
+     variation entry is usually just a crawl artifact (one stray label/value
+     pair with no real sibling option), not a genuine "this SKU has
+     variants" case -- so a SKU only counts here once it has 2 or more. */
+  const withVariations = snap.products.filter((p: any) => p.variations.length >= 2).length;
+  const totalVariations = snap.products.filter((p: any) => p.variations.length >= 2).reduce((a: number, p: any) => a + p.variations.length, 0);
 
   /* Real week-over-week (Sep 1 vs Sep 29) content score movement, same
      REAL_PRODUCT_WEEKLY series snap.contentChange's counts are tallied
@@ -38,7 +41,7 @@ export default function ContentSummary() {
     .filter((m: any) => !!m.series);
   const improvedProducts = scoreMoves.filter((m: any) => m.series[4] > m.series[0]).sort((a: any, b: any) => (b.series[4] - b.series[0]) - (a.series[4] - a.series[0]));
   const declinedProducts = scoreMoves.filter((m: any) => m.series[4] < m.series[0]).sort((a: any, b: any) => (a.series[4] - a.series[0]) - (b.series[4] - b.series[0]));
-  const variationProducts = snap.products.filter((p: any) => p.variations.length > 0).sort((a: any, b: any) => b.variations.length - a.variations.length);
+  const variationProducts = snap.products.filter((p: any) => p.variations.length >= 2).sort((a: any, b: any) => b.variations.length - a.variations.length);
 
   const scoreMoveTable = (title: string, subtitle: string, rows: any[]) => table(title, subtitle,
     [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "Sep 1", align: "right" }, { label: "Sep 29", align: "right" }, { label: "Change", align: "right" }],
@@ -101,7 +104,7 @@ export default function ContentSummary() {
         </Card>
         <KpiCard k={kpiCard(issues, spark)} />
         <Card padding="18px 20px" interactive onClick={() => setDrill(variationsTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Products With Variations<InfoTip text="Real count of SKUs with at least one variant option (size/color/style) from the crawl's 22 Variant label/value pairs. Most SKUs have none." /></div>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Products With Variations<InfoTip text="Real count of SKUs with 2 or more variant options (size/color/style) from the crawl's 22 Variant label/value pairs -- a single entry is usually a crawl artifact, not a genuine variant set. Most SKUs have none." /></div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{withVariations}<span style={{ fontSize: 16, fontWeight: 500 }}> / {snap.products.length}</span></div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Real pack-size/color/style listings, {totalVariations} tracked in total</div>
         </Card>

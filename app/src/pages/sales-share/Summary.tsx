@@ -317,9 +317,16 @@ export default function SalesShareSummary() {
   const tierFields: Array<{ key: "listPrice" | "currentPrice" | "subscriptionPrice"; label: string }> = [
     { key: "listPrice", label: "List price" }, { key: "currentPrice", label: "Current price" }, { key: "subscriptionPrice", label: "Subscription price" },
   ];
+  /* Current price falls back to List price when a SKU never posted a
+     Current price -- List is still the real, currently-in-effect price for
+     that listing, so this tier reads "what it actually costs right now"
+     rather than under-counting SKUs that simply have no separate markdown.
+     List/Subscription stay exact-field-only, same as before. */
+  const tierValue = (p: Product, key: "listPrice" | "currentPrice" | "subscriptionPrice") =>
+    key === "currentPrice" ? p.currentPrice ?? p.listPrice : p[key];
   const tiers = tierFields.map((f) => {
-    const withValue = scopedProducts.filter((p: Product) => p[f.key] != null);
-    const avg = withValue.length ? withValue.reduce((a: number, p: Product) => a + (p[f.key] as number), 0) / withValue.length : null;
+    const withValue = scopedProducts.filter((p: Product) => tierValue(p, f.key) != null);
+    const avg = withValue.length ? withValue.reduce((a: number, p: Product) => a + (tierValue(p, f.key) as number), 0) / withValue.length : null;
     return { ...f, avg, tracked: withValue.length };
   });
 
@@ -429,8 +436,8 @@ export default function SalesShareSummary() {
       </div>
 
       <Card padding="20px 22px">
-        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>Price Tiers<InfoTip text="Real average List/Current/Subscription price from the Price-tab crawl, each averaged only over SKUs that actually posted that field." /></h3>
-        <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 16 }}>Real Price-tab fields — a product with no value for a tier never posted that price{scopeLabel ? " · " + scopeLabel : ""}</div>
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>Price Tiers<InfoTip text="Real average List/Current/Subscription price from the Price-tab crawl. Current price falls back to List price for a SKU that never posted a separate current price -- List and Subscription stay exact-field-only." /></h3>
+        <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2, marginBottom: 16 }}>Real Price-tab fields — Current price falls back to List price when missing; List/Subscription only count SKUs that posted that field{scopeLabel ? " · " + scopeLabel : ""}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 16 }}>
           {tiers.map((t) => (
             <div key={t.key}>

@@ -10,7 +10,7 @@ import { kpiCard, cell, table, seriesToCsv, downloadCsv, type TableConfig } from
 import type { Product } from "../../models/types";
 import type { ReviewsContext } from "./Layout";
 
-function groupBy(products: Product[], key: "retailerName" | "category") {
+function groupBy(products: Product[], key: "retailerName" | "category" | "brand") {
   const map = new Map<string, { skus: number; ratingSum: number; reviews: number; products: Product[] }>();
   products.forEach((p) => {
     const k = p[key];
@@ -89,6 +89,41 @@ export default function ReviewsSummary() {
   const retailerGroups = groupBy(products, "retailerName");
   const categoryGroups = groupBy(products, "category");
 
+  /* Best/worst rated products and brands -- excludes SKUs with 0 reviews
+     (never genuinely rated, not a real "bad" score of 0) from both lists,
+     same reasoning as the rest of the app's real-rating handling. Ranked
+     by rating first, review count as the tiebreaker (and the reason it's
+     shown alongside) so a 5.00 from 1 review doesn't outrank a 4.8 from
+     500 without the reader seeing why. */
+  const ratedProducts = products.filter((p) => p.reviews > 0);
+  const bestProducts = ratedProducts.slice().sort((a, b) => b.rating - a.rating || b.reviews - a.reviews).slice(0, 5);
+  const worstProducts = ratedProducts.slice().sort((a, b) => a.rating - b.rating || b.reviews - a.reviews).slice(0, 5);
+  const brandGroups = groupBy(ratedProducts, "brand");
+  const bestBrands = brandGroups.slice().sort((a, b) => b.avgRating - a.avgRating || b.reviews - a.reviews).slice(0, 5);
+  const worstBrands = brandGroups.slice().sort((a, b) => a.avgRating - b.avgRating || b.reviews - a.reviews).slice(0, 5);
+
+  const productRankTable = (title: string, subtitle: string, rows: Product[]) => table(title, subtitle,
+    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "Rating", align: "right" }, { label: "Reviews", align: "right" }],
+    rows.map((p) => ({ cells: [
+      cell(p.name, { onClick: () => goToProduct(p.id) }),
+      cell(p.retailerName),
+      cell(p.rating.toFixed(2), { align: "right", strong: true }),
+      cell(p.reviews.toLocaleString(), { align: "right" }),
+    ] })));
+  const bestProductsTable = productRankTable("Best Rated Products", "Top 5 by rating, review count as tiebreaker -- excludes never-reviewed SKUs", bestProducts);
+  const worstProductsTable = productRankTable("Worst Rated Products", "Bottom 5 by rating, review count as tiebreaker -- excludes never-reviewed SKUs", worstProducts);
+
+  const brandRankTable = (title: string, subtitle: string, rows: typeof brandGroups) => table(title, subtitle,
+    [{ label: "Brand", align: "left" }, { label: "Tracked SKUs", align: "right" }, { label: "Avg rating", align: "right" }, { label: "Review count", align: "right" }],
+    rows.map((b) => ({ cells: [
+      cell(b.name, { strong: true, onClick: () => setDrill(groupDrill("Brand", b.name, b.products)) }),
+      cell(String(b.skus), { align: "right" }),
+      cell(b.avgRating.toFixed(2), { align: "right", strong: true }),
+      cell(b.reviews.toLocaleString(), { align: "right" }),
+    ] })));
+  const bestBrandsTable = brandRankTable("Best Rated Brands", "Top 5 by average rating across reviewed SKUs, review count as tiebreaker", bestBrands);
+  const worstBrandsTable = brandRankTable("Worst Rated Brands", "Bottom 5 by average rating across reviewed SKUs, review count as tiebreaker", worstBrands);
+
   const retailerTable = table("Retailer comparison", "Average rating and review count at each monitored retailer -- click a row to see its SKUs",
     [{ label: "Retailer", align: "left" }, { label: "Tracked SKUs", align: "right" }, { label: "Avg rating", align: "right" }, { label: "Review count", align: "right" }],
     retailerGroups.map((r) => ({ cells: [
@@ -115,6 +150,14 @@ export default function ReviewsSummary() {
       </div>
       <DataTable t={retailerTable} />
       <DataTable t={categoryTable} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
+        <DataTable t={bestProductsTable} />
+        <DataTable t={worstProductsTable} />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
+        <DataTable t={bestBrandsTable} />
+        <DataTable t={worstBrandsTable} />
+      </div>
       {drill && <DrilldownModal t={drill} onClose={() => setDrill(null)} />}
     </>
   );
