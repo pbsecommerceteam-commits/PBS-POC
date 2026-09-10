@@ -3358,6 +3358,58 @@ function realAvgPriceWeekly(company: string, period: string, retailer: string, r
   return row.avgPrice;
 }
 
+/* Real, category/brand/SKU-scoped fallback for the retailer/portfolio-level
+   real* functions above (realRangeValue, realRollupSeries, etc.) -- those
+   tables have no category dimension and return null whenever one of those
+   filters is active, which used to fall all the way through to synthetic
+   RETAILER_BIAS-anchored jitter (unrelated to the filtered scope, and the
+   source of a real reported bug: a category-filtered KPI showing a made-up
+   number instead of the true category value). Rather than fabricate
+   anything, average the already category/brand/SKU-filtered `pool`'s own
+   real per-product fields -- the exact same computation
+   categoryPerformance/byCategory already use for their per-category cards
+   (independently verified correct against a client-provided reference), so
+   the top-level KPI headline always agrees with them. `deltaField`, when
+   given, is REAL_PRODUCT_WEEKLY's matching per-week key -- delta is the
+   real average (last real week/day - first) across the pool; omitted
+   (e.g. no weekly series for that field) leaves delta at 0 rather than
+   fabricating movement. */
+function realPoolRange(pool: any[], valueField: (p: any) => number, digits: number, deltaField?: "stockRate" | "buyBoxRate" | "rating" | "content" | "price"): { value: number; delta: number } | null {
+  if (!pool.length) return null;
+  const value = round(pool.reduce((a, p) => a + valueField(p), 0) / pool.length, digits);
+  let delta = 0;
+  if (deltaField) {
+    const withData = pool.filter((p) => (REAL_PRODUCT_WEEKLY as any)[p.id]?.[deltaField]?.length);
+    if (withData.length) {
+      const deltas = withData.map((p) => {
+        const arr = (REAL_PRODUCT_WEEKLY as any)[p.id][deltaField];
+        return arr[arr.length - 1] - arr[0];
+      });
+      delta = round(deltas.reduce((a, b) => a + b, 0) / deltas.length, digits);
+    }
+  }
+  return { value, delta };
+}
+
+/* Same principle as realPoolRange, but for the KPI card's spark/trend line --
+   averages each in-scope product's own REAL_PRODUCT_WEEKLY series (the same
+   real per-week/day crawl data the retailer-level real* series above reads,
+   just pooled per-product instead of per-retailer) across the
+   category/brand/SKU-filtered `pool`, per week index. `rangeIdx` follows the
+   same convention as realRollupSeries -- offset by 1 into the wider
+   REAL_WEEK_DATES-aligned array when given (the custom date-range case);
+   omitted defaults to the full real window (defaultWideIdx). */
+function realPoolSeries(pool: any[], field: "stockRate" | "buyBoxRate" | "rating" | "content" | "price", company: string, rangeIdx?: number[]): number[] | null {
+  const withData = pool.filter((p) => (REAL_PRODUCT_WEEKLY as any)[p.id]?.[field]?.length);
+  if (!withData.length) return null;
+  const idxs = rangeIdx ? rangeIdx.map((i) => i + 1) : defaultWideIdx(company);
+  if (!idxs.length) return null;
+  return idxs.map((i) => {
+    const vals = withData.map((p) => (REAL_PRODUCT_WEEKLY as any)[p.id][field][i]).filter((v: number) => v != null);
+    return vals.length ? vals.reduce((a: number, b: number) => a + b, 0) / vals.length : 0;
+  });
+}
+
 function snapshot(company: string, retailer: string, period: string, dateRange?: DateRange | null, category?: string, brand?: string, sku?: string) {
   const key = company + "|" + retailer + "|" + period + "|" + (category || "") + "|" + (brand || "") + "|" + (sku || "") + (dateRange ? "|" + dateRange.start + ".." + dateRange.end : "");
   const seed = hash(key);
@@ -3397,14 +3449,22 @@ function snapshot(company: string, retailer: string, period: string, dateRange?:
   // range selection (already equal to sos.length by construction), or the
   // synthetic n-length case (also already equal to sos.length).
   const visibilityLabels = labels.slice(-sos.length);
+  const pool = poolFor(company, retailer, key, category, brand, sku);
+  // Whenever a category/brand/SKU filter narrows the scope, REAL_ROLLUP_WEEKLY
+  // has no dimension for it -- realRollupSeries bails to null, so a real
+  // pool-based fallback (see realPoolSeries's comment) takes over before any
+  // synthetic jitter does.
+  const catScoped = !!(category || brand || sku);
   const stockVals = realRollupSeries(company, period, retailer, "stockRate", rangeMatch?.idx, category, brand, sku)
+    ?? (catScoped ? realPoolSeries(pool, "stockRate", company, rangeMatch?.idx) : null)
     ?? series(seed + 4, n, 96.4 + 1.4 * sw + bias.stock, 96.4 + bias.stock, 0.5, 1).map((v) => round(clamp(v, 88, 100), 1));
   const ratingVals = realRollupSeries(company, period, retailer, "rating", rangeMatch?.idx, category, brand, sku)
+    ?? (catScoped ? realPoolSeries(pool, "rating", company, rangeMatch?.idx) : null)
     ?? series(seed + 5, n, 4.32 - 0.14 * sw + bias.rating, 4.32 + bias.rating, 0.03, 2);
   const contentVals = (realRollupSeries(company, period, retailer, "content", rangeMatch?.idx, category, brand, sku)?.map((v) => Math.round(v)))
+    ?? (catScoped ? realPoolSeries(pool, "content", company, rangeMatch?.idx)?.map((v) => Math.round(v)) : null)
     ?? series(seed + 6, n, 87 - 8 * sw + bias.content, 87 + bias.content, 1.2, 0).map((v) => clamp(Math.round(v), 40, 100));
 
-  const pool = poolFor(company, retailer, key, category, brand, sku);
   const oos = pool.filter((p) => p.stockStatus === "Out of Stock").length;
   const avgCoverage = round(pool.reduce((a, p) => a + p.keywordCoverage, 0) / (pool.length || 1), 1);
   const reviewVolume = pool.reduce((a, p) => a + p.reviews, 0);
@@ -3431,9 +3491,12 @@ function snapshot(company: string, retailer: string, period: string, dateRange?:
      data applies; falls back to the unweighted per-product average
      otherwise. */
   const avgPriceNow = round(pool.reduce((a, p) => a + p.price, 0) / (pool.length || 1), 2);
-  const avgPriceSeries = realAvgPriceWeekly(company, period, retailer, rangeMatch?.idx, category, brand, sku) ?? series(seed + 21, n, avgPriceNow * 1.02, avgPriceNow, avgPriceNow * 0.01, 2);
+  const avgPriceSeries = realAvgPriceWeekly(company, period, retailer, rangeMatch?.idx, category, brand, sku)
+    ?? (catScoped ? realPoolSeries(pool, "price", company, rangeMatch?.idx) : null)
+    ?? series(seed + 21, n, avgPriceNow * 1.02, avgPriceNow, avgPriceNow * 0.01, 2);
   const buyNow = round((pool.filter((p) => p.buyBox).length / (pool.length || 1)) * 100, 0);
-  const buyBoxSeries = realRollupSeries(company, period, retailer, "buyBoxRate", rangeMatch?.idx, category, brand, sku)?.map((v) => Math.round(v))
+  const buyBoxSeries = (realRollupSeries(company, period, retailer, "buyBoxRate", rangeMatch?.idx, category, brand, sku)?.map((v) => Math.round(v)))
+    ?? (catScoped ? realPoolSeries(pool, "buyBoxRate", company, rangeMatch?.idx)?.map((v) => Math.round(v)) : null)
     ?? series(seed + 22, n, buyNow + 2 * sw, buyNow, 1.2, 0).map((v) => clamp(Math.round(v), 40, 100));
 
   const out: any = {
@@ -3445,11 +3508,21 @@ function snapshot(company: string, retailer: string, period: string, dateRange?:
     generatedAt: "Today 06:40 UTC",
     kpis: [
       kpi("sos", "Search Visibility", "%", sos, 20, 1, realRangeValueSos(company, retailer, dateRange ? rangeMatch!.idx : defaultNarrowIdx(company), category, brand, sku), visibilityLabels),
-      kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1, realRangeValue(company, retailer, "stockRate", dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)),
-      kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2, realRangeValueAvgPrice(company, retailer, dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)),
-      kpi("content", "Content Completeness", "%", contentVals, 95, 0, realRangeValue(company, retailer, "content", dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)),
-      kpi("buybox", "Buy Box Ownership 1P", "%", buyBoxSeries, 95, 1, realRangeValue(company, retailer, "buyBoxRate", dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)),
-      kpi("rating", "Average Rating", "", ratingVals, 4.5, 2, realRangeValue(company, retailer, "rating", dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)),
+      kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1,
+        realRangeValue(company, retailer, "stockRate", dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)
+          ?? (catScoped ? realPoolRange(pool, (p: any) => p.inStockRate, 1, "stockRate") : null)),
+      kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2,
+        realRangeValueAvgPrice(company, retailer, dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)
+          ?? (catScoped ? realPoolRange(pool, (p: any) => p.price, 2, "price") : null)),
+      kpi("content", "Content Completeness", "%", contentVals, 95, 0,
+        realRangeValue(company, retailer, "content", dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)
+          ?? (catScoped ? realPoolRange(pool, (p: any) => p.contentScore, 0, "content") : null)),
+      kpi("buybox", "Buy Box Ownership 1P", "%", buyBoxSeries, 95, 1,
+        realRangeValue(company, retailer, "buyBoxRate", dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)
+          ?? (catScoped ? realPoolRange(pool, (p: any) => p.buyBoxRate, 1, "buyBoxRate") : null)),
+      kpi("rating", "Average Rating", "", ratingVals, 4.5, 2,
+        realRangeValue(company, retailer, "rating", dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)
+          ?? (catScoped ? realPoolRange(pool, (p: any) => p.rating, 2, "rating") : null)),
       { id: "oos", label: "Out of Stock SKUs", unit: "", target: 0, value: oos, delta: Math.round((r() - 0.5) * 4), spark: series(seed + 8, n, oos + 1, oos, 0.7, 0).map((v) => clamp(v, 0, 20)), labels },
       // Real -- average keywordCoverage (0-10) across the pool; delta is a
       // real 0 (see REAL_KEYWORD_MATCH's comment -- no movement was
@@ -3582,9 +3655,20 @@ function snapshot(company: string, retailer: string, period: string, dateRange?:
       const realStock = realCurrentValue(company, rt.id, "stockRate", period, dateRange, wideMatch?.idx, category, brand, sku);
       const realContent = realCurrentValue(company, rt.id, "content", period, dateRange, wideMatch?.idx, category, brand, sku);
       const realRating = realCurrentValue(company, rt.id, "rating", period, dateRange, wideMatch?.idx, category, brand, sku);
-      const inStockR = realStock != null ? round(realStock, 1) : round(clamp(96.5 + b.stock + (rr() - 0.5) * 3, 85, 100), 1);
-      const contentR = realContent != null ? Math.round(realContent) : clamp(Math.round(85 + b.content + (rr() - 0.5) * 8), 40, 100);
-      const ratingR = realRating != null ? round(realRating, 2) : round(clamp(4.3 + b.rating + (rr() - 0.5) * 0.2, 3.4, 5), 2);
+      // Same category/brand/SKU real pool-based fallback as byRetailer in
+      // shelfData() -- retailerProducts is this retailer's own real,
+      // already-scoped catalog rows, so averaging its raw stockBias/
+      // content/rating fields stays genuinely real instead of falling to
+      // the RETAILER_BIAS-anchored jitter below.
+      const inStockR = realStock != null ? round(realStock, 1)
+        : catScoped && retailerProducts.length ? round(retailerProducts.reduce((a, p) => a + (p.stockBias ?? 1) * 100, 0) / retailerProducts.length, 1)
+        : round(clamp(96.5 + b.stock + (rr() - 0.5) * 3, 85, 100), 1);
+      const contentR = realContent != null ? Math.round(realContent)
+        : catScoped && retailerProducts.length ? Math.round(retailerProducts.reduce((a, p) => a + (p.content ?? 0), 0) / retailerProducts.length)
+        : clamp(Math.round(85 + b.content + (rr() - 0.5) * 8), 40, 100);
+      const ratingR = realRating != null ? round(realRating, 2)
+        : catScoped && retailerProducts.length ? round(retailerProducts.reduce((a, p) => a + (p.rating ?? 0), 0) / retailerProducts.length, 2)
+        : round(clamp(4.3 + b.rating + (rr() - 0.5) * 0.2, 3.4, 5), 2);
       const overall = Math.round((inStockR / 100) * 40 + (contentR / 100) * 40 + (ratingR / 5) * 20);
       return {
         id: rt.id, name: rt.name, sos: sosR, sosDelta: round((rr() - 0.5) * 4, 1),
@@ -3710,9 +3794,14 @@ function shelfData(company: string, retailer: string, period: string, dateRange?
   // (4 real SOS weeks vs. up to 5 for everything else), so its own label
   // list needs the matching trailing slice.
   const visibilityLabels = labels.slice(-sos.length);
+  // Same category/brand/SKU real pool-based fallback as snapshot() -- see
+  // realPoolSeries/realPoolRange's comments.
+  const catScoped = !!(category || brand || sku);
   const stockVals = realRollupSeries(company, period, retailer, "stockRate", rangeMatch?.idx, category, brand, sku)
+    ?? (catScoped ? realPoolSeries(pool, "stockRate", company, rangeMatch?.idx) : null)
     ?? series(seed + 4, n, 96.4 + 1.4 * sw + bias.stock, 96.4 + bias.stock, 0.5, 1).map((v) => round(clamp(v, 88, 100), 1));
   const contentVals = (realRollupSeries(company, period, retailer, "content", rangeMatch?.idx, category, brand, sku)?.map((v) => Math.round(v)))
+    ?? (catScoped ? realPoolSeries(pool, "content", company, rangeMatch?.idx)?.map((v) => Math.round(v)) : null)
     ?? series(seed + 6, n, 87 - 8 * sw + bias.content, 87 + bias.content, 1.2, 0).map((v) => clamp(Math.round(v), 40, 100));
 
   /* Real Average Price (pooled from raw daily rows, see
@@ -3721,9 +3810,12 @@ function shelfData(company: string, retailer: string, period: string, dateRange?
      card and the Benchmarks "period average price" row below, so the two
      never disagree. */
   const avgPriceNow = realCurrentAvgPrice(company, retailer, period, dateRange, wideMatch?.idx, category, brand, sku) ?? avg(pool, (p) => p.price, 2);
-  const avgPriceSeries = realAvgPriceWeekly(company, period, retailer, rangeMatch?.idx, category, brand, sku) ?? series(seed + 21, n, avgPriceNow * 1.02, avgPriceNow, avgPriceNow * 0.01, 2);
+  const avgPriceSeries = realAvgPriceWeekly(company, period, retailer, rangeMatch?.idx, category, brand, sku)
+    ?? (catScoped ? realPoolSeries(pool, "price", company, rangeMatch?.idx) : null)
+    ?? series(seed + 21, n, avgPriceNow * 1.02, avgPriceNow, avgPriceNow * 0.01, 2);
   const buyNow = round((pool.filter((p) => p.buyBox).length / (pool.length || 1)) * 100, 0);
-  const buyBox = realRollupSeries(company, period, retailer, "buyBoxRate", rangeMatch?.idx, category, brand, sku)?.map((v) => Math.round(v))
+  const buyBox = (realRollupSeries(company, period, retailer, "buyBoxRate", rangeMatch?.idx, category, brand, sku)?.map((v) => Math.round(v)))
+    ?? (catScoped ? realPoolSeries(pool, "buyBoxRate", company, rangeMatch?.idx)?.map((v) => Math.round(v)) : null)
     ?? series(seed + 22, n, buyNow + 2 * sw, buyNow, 1.2, 0).map((v) => clamp(Math.round(v), 40, 100));
 
   /* Same reasoning as snapshot() -- `range` (pooled, see realRangeValue's
@@ -3881,10 +3973,18 @@ function shelfData(company: string, retailer: string, period: string, dateRange?
     generatedAt: "Today 06:40 UTC",
     kpis: [
       kpi("sos", "Search Visibility", "%", sos, 20, 1, realRangeValueSos(company, retailer, dateRange ? rangeMatch!.idx : defaultNarrowIdx(company), category, brand, sku), visibilityLabels),
-      kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1, realRangeValue(company, retailer, "stockRate", dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)),
-      kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2, realRangeValueAvgPrice(company, retailer, dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)),
-      kpi("content", "Content Completeness", "%", contentVals, 95, 0, realRangeValue(company, retailer, "content", dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)),
-      kpi("buybox", "Buy Box Ownership 1P", "%", buyBox, 95, 1, realRangeValue(company, retailer, "buyBoxRate", dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)),
+      kpi("instock", "Stock Availability 1P + 3P", "%", stockVals, 98, 1,
+        realRangeValue(company, retailer, "stockRate", dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)
+          ?? (catScoped ? realPoolRange(pool, (p: any) => p.inStockRate, 1, "stockRate") : null)),
+      kpi("pidx", "Average Price", "", avgPriceSeries, 0, 2,
+        realRangeValueAvgPrice(company, retailer, dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)
+          ?? (catScoped ? realPoolRange(pool, (p: any) => p.price, 2, "price") : null)),
+      kpi("content", "Content Completeness", "%", contentVals, 95, 0,
+        realRangeValue(company, retailer, "content", dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)
+          ?? (catScoped ? realPoolRange(pool, (p: any) => p.contentScore, 0, "content") : null)),
+      kpi("buybox", "Buy Box Ownership 1P", "%", buyBox, 95, 1,
+        realRangeValue(company, retailer, "buyBoxRate", dateRange ? wideMatch!.idx : defaultWideIdx(company), category, brand, sku)
+          ?? (catScoped ? realPoolRange(pool, (p: any) => p.buyBoxRate, 1, "buyBoxRate") : null)),
     ],
     visibility: {
       // Same rescaled offset as snapshot()'s visibility.previous -- see the
@@ -3990,7 +4090,7 @@ function salesData(company: string, retailer: string, period: string, dateRange?
 
   const byRetailer = companyRetailers(company).map((rt) => {
     const rr = rowRng(key, "salesRetailer", rt.id);
-    const own = catalog.filter((p) => p.company === company && p.retailer === rt.id && (!brand || p.brand === brand) && (!sku || p.id === sku))
+    const own = catalog.filter((p) => p.company === company && p.retailer === rt.id && (!category || p.category === category) && (!brand || p.brand === brand) && (!sku || p.id === sku))
       .map((p) => withSalesMetrics(withShelfMetrics(productFor(p)), key));
     const rSales = sum(own, (p) => p.sales) || Math.round(total / 4);
     const rPrev = sum(own, (p) => p.prevSales) || 1;
