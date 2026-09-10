@@ -471,6 +471,7 @@ def process_company(company, content_rows, price_rows, sos_rows, map_price_by_si
     content_score_by_week = {}  # pid -> {week: score}
     raw_rating_by_product = {}
 
+    pid_to_category = {}
     for (code, native_id), weeks in content_by_product.items():
         latest_dk = max(weeks.keys())
         latest = weeks[latest_dk]
@@ -559,6 +560,7 @@ def process_company(company, content_rows, price_rows, sos_rows, map_price_by_si
 
         cat_name = get_any(latest, "Category/account name", "Category name")
         cat = CATEGORY_NORMALIZE.get(cat_name, cat_name)
+        pid_to_category[pid] = cat
         all_prices = [price_value(r) for r in prows if price_value(r) is not None]
         stock_flags_all = [f for f in (is_in_stock(r.get("Stock status")) for r in prows) if f is not None]
         buybox_flags_all = [
@@ -698,18 +700,16 @@ def process_company(company, content_rows, price_rows, sos_rows, map_price_by_si
         price_only_by_code[code].append((code, native_id))
 
     company_retailers = sorted({p["retailer"] for p in catalog} | set(price_only_by_code.keys()))
+    company_categories = sorted({c for c in pid_to_category.values() if c})
 
-    real_rollup_weekly = {}
-    for scope in ["portfolio"] + company_retailers:
-        ids = [pid for pid in real_product_weekly if scope == "portfolio" or pid_to_key[pid][0] == scope]
-        if not ids:
-            continue
-        id_pairs = [pid_to_key[pid] for pid in ids]
-        stock_id_pairs = id_pairs + (
-            [pair for pairs in price_only_by_code.values() for pair in pairs]
-            if scope == "portfolio" else price_only_by_code[scope]
-        )
-
+    def compute_rollup(ids, stock_id_pairs):
+        """Same real per-day-row pooling regardless of scope -- raw
+        Stock status / Buy box seller / price rows within each bucket
+        window, summed and weighted exactly like the portfolio/retailer
+        rollup always has. Reused below for the category-scoped rollups so
+        a category filter pools the same real day-level rows a client's
+        own pivot table would, not an unweighted average of already-
+        summarized per-product numbers."""
         stockRate, buyBoxRate, stockWeight, buyBoxWeight, rating, content = [], [], [], [], [], []
         stockRateSum, buyBoxRateSum = [], []
         avgPrice, avgPriceWeight, avgPriceSum = [], [], []
@@ -744,12 +744,40 @@ def process_company(company, content_rows, price_rows, sos_rows, map_price_by_si
         for wi in range(len(content_weeks)):
             wk = content_weeks[wi]
             content.append(avg([content_score_by_week[i][wk] for i in ids if i in content_score_by_week]))
-        real_rollup_weekly[scope] = {
+        return {
             "stockRate": stockRate, "buyBoxRate": buyBoxRate, "rating": rating, "content": content,
             "stockRateWeight": stockWeight, "buyBoxRateWeight": buyBoxWeight,
             "stockRateSum": stockRateSum, "buyBoxRateSum": buyBoxRateSum,
             "avgPrice": avgPrice, "avgPriceWeight": avgPriceWeight, "avgPriceSum": avgPriceSum,
         }
+
+    real_rollup_weekly = {}
+    for scope in ["portfolio"] + company_retailers:
+        ids = [pid for pid in real_product_weekly if scope == "portfolio" or pid_to_key[pid][0] == scope]
+        if not ids:
+            continue
+        id_pairs = [pid_to_key[pid] for pid in ids]
+        stock_id_pairs = id_pairs + (
+            [pair for pairs in price_only_by_code.values() for pair in pairs]
+            if scope == "portfolio" else price_only_by_code[scope]
+        )
+        real_rollup_weekly[scope] = compute_rollup(ids, stock_id_pairs)
+
+        # Category-scoped rollup, keyed "<scope>::<category>" -- same real
+        # per-day pooling as above, restricted to this scope's own real
+        # category values. Fills the gap the category/brand/SKU real*
+        # functions in mockData.ts fall through on (no category dimension
+        # in the plain per-scope table above): a category filter used to
+        # fall back to an unweighted average of per-product snapshots (or
+        # worse, synthetic jitter), which didn't match a client's own
+        # pivot-table calculation the way the un-filtered rows already did.
+        # No price-only SKUs here -- they have no known category.
+        for cat in company_categories:
+            cat_ids = [pid for pid in ids if pid_to_category.get(pid) == cat]
+            if not cat_ids:
+                continue
+            cat_pairs = [pid_to_key[pid] for pid in cat_ids]
+            real_rollup_weekly[scope + "::" + cat] = compute_rollup(cat_ids, cat_pairs)
 
     portfolio_avg = {k: avg(real_rollup_weekly["portfolio"][k]) for k in ["stockRate", "buyBoxRate", "rating", "content"]} if "portfolio" in real_rollup_weekly else {}
 
