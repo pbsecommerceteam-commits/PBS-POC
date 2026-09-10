@@ -49,10 +49,9 @@ export function Sidebar() {
   return (
     <aside className="sl-sidebar" style={{ width: collapsed ? 68 : 252 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 10px 22px" }}>
-        <div className="sl-brand-mark">SL</div>
+        <div className="sl-brand-mark">PI</div>
         <div style={{ display: labelDisplay, minWidth: 0 }}>
-          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16, lineHeight: 1.1, whiteSpace: "nowrap" }}>Shelfline</div>
-          <div className="sl-faint" style={{ fontSize: 10.5, whiteSpace: "nowrap" }}>Digital shelf intelligence</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 14, lineHeight: 1.25 }}>Perfality Intelligence System</div>
         </div>
       </div>
 

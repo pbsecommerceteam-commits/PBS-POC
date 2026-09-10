@@ -3978,7 +3978,7 @@ function salesData(company: string, retailer: string, period: string, dateRange?
   const rankOf = (id: string) => rankOrder.indexOf(id) + 1;
 
   const shareRows = [{
-    id: "own", name: "Shelfline portfolio", current: share, previous: prevShare,
+    id: "own", name: "Your portfolio", current: share, previous: prevShare,
     change: round(share - prevShare, 1), own: true, rank: rankOf("own"),
   }].concat(rivals.map((r) => ({
     id: r.id, name: r.name, current: r.now, previous: r.before,

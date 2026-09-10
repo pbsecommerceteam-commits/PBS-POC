@@ -25,8 +25,8 @@ function CompanyPicker({ companies, onPick }: { companies: string[]; onPick: (na
   return (
     <div style={{ minHeight: "100vh", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--surface-page)", padding: 32 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-        <div className="sl-brand-mark" style={{ width: 34, height: 34, fontSize: 14 }}>SL</div>
-        <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 18 }}>Shelfline</div>
+        <div className="sl-brand-mark" style={{ width: 34, height: 34, fontSize: 14 }}>PI</div>
+        <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 18 }}>Perfality Intelligence System</div>
       </div>
       <h1 style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 22, margin: "18px 0 6px" }}>Choose a company</h1>
       <p className="sl-muted" style={{ fontSize: 13.5, margin: "0 0 28px", textAlign: "center", maxWidth: 420 }}>

@@ -16,7 +16,7 @@ export function AiInsightBanner({ eyebrow, children, action }: {
     <div className="sl-intelligence" style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
       <span className="sl-intelligence__badge">
         <span aria-hidden style={{ fontSize: 13 }}>✦</span>
-        {eyebrow || "Shelfline Intelligence"}
+        {eyebrow || "Perfality Intelligence"}
       </span>
       <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--text-primary)" }}>{children}</div>
       {action}

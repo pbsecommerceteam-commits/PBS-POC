@@ -40,8 +40,8 @@ export default function Login() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div className="sl-brand-mark" style={{ width: 34, height: 34, fontSize: 14 }}>SL</div>
-          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 18 }}>Shelfline</div>
+          <div className="sl-brand-mark" style={{ width: 34, height: 34, fontSize: 14 }}>PI</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 18 }}>Perfality Intelligence System</div>
           <span style={{ marginLeft: "auto" }}>
             <Badge tone="positive">
               <span
@@ -56,7 +56,6 @@ export default function Login() {
         </div>
 
         <div style={{ maxWidth: 380 }}>
-          <div className="sl-eyebrow" style={{ color: "var(--sidebar-muted)", marginBottom: 10 }}>Digital shelf intelligence</div>
           <h1 style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 30, lineHeight: 1.25, margin: "0 0 14px" }}>
             Availability, pricing, content, and rank — tracked across every retailer you sell on.
           </h1>
@@ -73,7 +72,7 @@ export default function Login() {
           </div>
         </div>
 
-        <div style={{ color: "var(--sidebar-muted)", fontSize: 11.5 }}>© 2026 Shelfline. Internal demo workspace.</div>
+        <div style={{ color: "var(--sidebar-muted)", fontSize: 11.5 }}>© 2026 Perfality Intelligence System. Internal demo workspace.</div>
       </div>
 
       <div style={{ flex: "1 1 58%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-page)", padding: 32 }}>

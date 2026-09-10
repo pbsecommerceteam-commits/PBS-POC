@@ -190,7 +190,7 @@ export default function ImportData() {
               {result.ok ? (
                 <>
                   <div className="sl-muted" style={{ fontSize: 12.5, lineHeight: 1.5 }}>
-                    This file is well-formed and ready. Shelfline has no backend yet (see Settings → Data source), so
+                    This file is well-formed and ready. This tool has no backend yet (see Settings → Data source), so
                     saving here keeps the validated file safely on this device — it still needs to be run through the
                     same data pipeline used for every real refresh in this project (build_mock_data.py → splice into
                     mockData.ts → commit) before it shows up on the dashboard.
@@ -239,7 +239,7 @@ export default function ImportData() {
           <Card padding="18px 20px" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>How this works</h3>
             <div className="sl-muted" style={{ fontSize: 12.5, lineHeight: 1.6 }}>
-              Shelfline is a proof of concept with no live backend yet — the dashboard is generated from a real crawl
+              This tool is a proof of concept with no live backend yet — the dashboard is generated from a real crawl
               file, not entered by hand. This page checks a new crawl file is well-formed and keeps it safely staged
               in your browser; turning a staged file into new dashboard numbers is a short manual step (rerunning the
               same pipeline every prior data refresh has used) rather than something this page fabricates on the spot.
