@@ -25,7 +25,12 @@ export function PageShell({
   const rangeNote = dateRange ? snap?.dateRange?.note : null;
   const { openAlert } = useUi();
   const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const windowLabel = dateRange ? `${fmtDate(dateRange.start)} – ${fmtDate(dateRange.end)}` : "Sep 1 – 30, 2022 (all data)";
+  // "All data" window is this company's own real crawl range (see snap.labels,
+  // built from its own observed dates -- see REAL_WEEK_LABELS in mockData.ts) --
+  // never a hardcoded Sep 2022, which only Perfality's crawl actually covers.
+  const realLabels: string[] = snap?.labels ?? [];
+  const allDataLabel = realLabels.length ? `${realLabels[0]} – ${realLabels[realLabels.length - 1]} (all data)` : "All data";
+  const windowLabel = dateRange ? `${fmtDate(dateRange.start)} – ${fmtDate(dateRange.end)}` : allDataLabel;
 
   return (
     <main style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "28px 28px 48px" }}>

@@ -84,7 +84,7 @@ function buildHover(
  *  maintain instead of every lineChart/barChart call site. Every claim
  *  reflects this app's real data derivation (see mockData.ts). */
 export const CHART_INFO: Record<string, string> = {
-  "d-price": "Real shelf price, one point per real crawl day this month (Sep 1-29). The dashed line is this SKU's real MAP price, when tracked.",
+  "d-price": "Real shelf price, one point per real crawl day this company was tracked. The dashed line is this SKU's real MAP price, when tracked.",
   "d-stock": "Real in-stock rate (1P + 3P) at this retailer, from the raw crawl's daily stock-status field.",
   "d-rating": "Real average star rating over the period. The 5/4/3/2/1-star footer breakdown below is illustrative -- the crawl has a real total rating and review count, but no real per-star split to derive it from.",
   "d-reviews": "Real total tracked review count over the period, from the crawl's review-count field.",

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFilters } from "../../context/FiltersContext";
 import { useUi } from "../../context/UiContext";
@@ -14,18 +14,19 @@ const SEVERITY_GROUP: Record<string, { label: string; order: number }> = {
   low: { label: "Information", order: 2 },
 };
 
-/* Every tracked SKU, real name + the retailer's own native product id
-   (what the user searches "by retailer ID or Product name") -- built once
-   at module scope since catalog never changes at runtime. */
-const SKU_OPTIONS = [
-  { id: "", name: "All SKUs" },
-  ...catalog.map((p) => ({ id: p.id, name: p.name, sub: p.retailerId || undefined })),
-];
-
 export function GlobalHeader() {
-  const { retailer, category, brand, dateRange, sku, setRetailer, setCategory, setBrand, setDateRange, setSku, retailers, categories, brands } = useFilters();
+  const { company, setCompany, companies, retailer, category, brand, dateRange, sku, setRetailer, setCategory, setBrand, setDateRange, setSku, retailers, categories, brands } = useFilters();
+  const companyOptions = companies.map((c) => ({ id: c, name: c }));
   const categoryOptions = [{ id: "", name: "All categories" }, ...categories.map((c) => ({ id: c, name: c }))];
   const brandOptions = [{ id: "", name: "All brands" }, ...brands.map((b) => ({ id: b, name: b }))];
+  /* Every tracked SKU FOR THIS COMPANY, real name + the retailer's own
+     native product id (what the user searches "by retailer ID or Product
+     name") -- scoped to `company` so switching companies never leaves a
+     stale cross-company SKU list in the picker. */
+  const skuOptions = useMemo(() => [
+    { id: "", name: "All SKUs" },
+    ...(catalog as any[]).filter((p) => p.company === company).map((p) => ({ id: p.id, name: p.name, sub: p.retailerId || undefined })),
+  ], [company]);
   const { notifDismissed, notifications, markAllRead } = useUi();
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -72,10 +73,11 @@ export function GlobalHeader() {
   return (
     <header ref={rootRef} className="sl-header">
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        <FilterSelect label="Company" value={company} onChange={setCompany} options={companyOptions} width={168} />
         <FilterSelect label="Retailer" value={retailer} onChange={setRetailer} options={retailers} width={168} />
         <FilterSelect label="Category" value={category} onChange={setCategory} options={categoryOptions} width={178} />
         <FilterSelect label="Brand" value={brand} onChange={setBrand} options={brandOptions} width={168} searchable searchPlaceholder="Search brands…" />
-        <FilterSelect label="SKU" value={sku} onChange={onSkuChange} options={SKU_OPTIONS} width={190} searchable searchPlaceholder="Product name or retailer ID…" />
+        <FilterSelect label="SKU" value={sku} onChange={onSkuChange} options={skuOptions} width={190} searchable searchPlaceholder="Product name or retailer ID…" />
         <DateRangePicker value={dateRange} onChange={setDateRange} />
       </div>
 

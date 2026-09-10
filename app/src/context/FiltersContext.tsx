@@ -1,7 +1,12 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { catalog, categories, retailers, type DateRange } from "../data/mockData";
+import { catalog, companies, retailers, type DateRange } from "../data/mockData";
 
 interface FiltersValue {
+  /** The selected client/company -- "" means none chosen yet, which gates
+   *  the whole authenticated app behind a company picker (see
+   *  RequireCompany) rather than defaulting to a blended cross-company
+   *  view that would average together unrelated businesses' numbers. */
+  company: string;
   retailer: string;
   category: string;
   /** Real catalog brand name, "" for every brand. A plain filter dimension
@@ -13,6 +18,7 @@ interface FiltersValue {
    *  pinned. Lets a page jump straight to one item's own row/overview
    *  instead of only the whole retailer/category-scoped pool. */
   sku: string;
+  setCompany: (name: string) => void;
   setRetailer: (id: string) => void;
   setCategory: (id: string) => void;
   setBrand: (name: string) => void;
@@ -24,29 +30,39 @@ interface FiltersValue {
   setSku: (id: string) => void;
   retailerName: string;
   categoryName: string;
+  companies: typeof companies;
+  /** Scoped to the selected company's own real retailers/categories/brands
+   *  -- every company only ever sells on a handful of the globally-known
+   *  retailer codes, and category/account values are entirely company-
+   *  specific, so these must never be the raw global lists. */
   retailers: typeof retailers;
-  categories: typeof categories;
+  categories: string[];
   brands: string[];
 }
 
 const FiltersContext = createContext<FiltersValue | null>(null);
 
-/** The global filters every analytics page reads instead of keeping its own
- *  copy, so changing any of them updates every page consistently. `dateRange`
- *  is an optional custom window (start/end ISO dates) that, when set, scopes
- *  the data to that window — clearing it reverts to "Last 4 weeks" (the only
- *  window backed by real crawl data; there's no user-facing period control
- *  any more, see mockData.ts's real-vs-synthetic gating on `period === "4w"`,
- *  which every fetch call below still receives, just always as this fixed
- *  value). */
-const BRANDS = Array.from(new Set((catalog as any[]).map((p) => p.brand as string))).sort();
-
 export function FiltersProvider({ children }: { children: ReactNode }) {
+  const [company, setCompanyState] = useState("");
   const [retailer, setRetailer] = useState("all");
   const [category, setCategory] = useState("");
   const [brand, setBrand] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
   const [sku, setSkuState] = useState("");
+
+  const setCompany = (name: string) => {
+    setCompanyState(name);
+    // A retailer/category/brand/SKU picked under one company is almost
+    // never valid for another (different companies rarely share a
+    // category/account label, and never share a SKU) -- reset the whole
+    // scope on switch rather than leaving a stale, silently-mismatched
+    // filter in place.
+    setRetailer("all");
+    setCategory("");
+    setBrand("");
+    setSkuState("");
+    setDateRange(null);
+  };
 
   const setSku = (id: string) => {
     setSkuState(id);
@@ -58,12 +74,29 @@ export function FiltersProvider({ children }: { children: ReactNode }) {
     if (brand && brand !== p.brand) setBrand(p.brand);
   };
 
+  const companyRetailers = useMemo(() => {
+    if (!company) return [];
+    const codes = new Set((catalog as any[]).filter((p) => p.company === company).map((p) => p.retailer));
+    return retailers.filter((r) => r.id !== "all" && codes.has(r.id));
+  }, [company]);
+
+  const companyCategories = useMemo(() => {
+    if (!company) return [];
+    return Array.from(new Set((catalog as any[]).filter((p) => p.company === company).map((p) => p.category as string))).sort();
+  }, [company]);
+
+  const companyBrands = useMemo(() => {
+    if (!company) return [];
+    return Array.from(new Set((catalog as any[]).filter((p) => p.company === company).map((p) => p.brand as string))).sort();
+  }, [company]);
+
   const value = useMemo<FiltersValue>(() => ({
-    retailer, category, brand, dateRange, sku, setRetailer, setCategory, setBrand, setDateRange, setSku,
-    retailerName: retailers.find((r) => r.id === retailer)?.name ?? "",
+    company, retailer, category, brand, dateRange, sku,
+    setCompany, setRetailer, setCategory, setBrand, setDateRange, setSku,
+    retailerName: companyRetailers.find((r) => r.id === retailer)?.name ?? (retailer === "all" ? "All retailers" : ""),
     categoryName: category || "All categories",
-    retailers, categories, brands: BRANDS,
-  }), [retailer, category, brand, dateRange, sku]);
+    companies, retailers: companyRetailers, categories: companyCategories, brands: companyBrands,
+  }), [company, retailer, category, brand, dateRange, sku, companyRetailers, companyCategories, companyBrands]);
 
   return <FiltersContext.Provider value={value}>{children}</FiltersContext.Provider>;
 }

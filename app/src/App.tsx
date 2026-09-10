@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/layout/AppShell";
 import { RequireAuth } from "./components/layout/RequireAuth";
+import { RequireCompany } from "./components/layout/RequireCompany";
 import { AuthProvider } from "./context/AuthContext";
 import { FiltersProvider } from "./context/FiltersContext";
 import { DataProvider } from "./context/DataContext";
@@ -35,7 +36,7 @@ export default function App() {
           <DataProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<RequireAuth><AppShell /></RequireAuth>}>
+            <Route path="/" element={<RequireAuth><RequireCompany><AppShell /></RequireCompany></RequireAuth>}>
               <Route index element={<Navigate to="/overview" replace />} />
               <Route path="overview" element={<Overview />} />
 

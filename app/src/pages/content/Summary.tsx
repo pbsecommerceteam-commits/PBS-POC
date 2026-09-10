@@ -38,22 +38,25 @@ export default function ContentSummary() {
      which SKUs moved, not just how many. */
   const scoreMoves = snap.products
     .map((p: any) => ({ p, series: (REAL_PRODUCT_WEEKLY as any)[p.id]?.content }))
-    .filter((m: any) => !!m.series);
-  const improvedProducts = scoreMoves.filter((m: any) => m.series[4] > m.series[0]).sort((a: any, b: any) => (b.series[4] - b.series[0]) - (a.series[4] - a.series[0]));
-  const declinedProducts = scoreMoves.filter((m: any) => m.series[4] < m.series[0]).sort((a: any, b: any) => (a.series[4] - a.series[0]) - (b.series[4] - b.series[0]));
+    .filter((m: any) => !!m.series && m.series.length);
+  const lastI = (s: number[]) => s.length - 1;
+  const improvedProducts = scoreMoves.filter((m: any) => m.series[lastI(m.series)] > m.series[0]).sort((a: any, b: any) => (b.series[lastI(b.series)] - b.series[0]) - (a.series[lastI(a.series)] - a.series[0]));
+  const declinedProducts = scoreMoves.filter((m: any) => m.series[lastI(m.series)] < m.series[0]).sort((a: any, b: any) => (a.series[lastI(a.series)] - a.series[0]) - (b.series[lastI(b.series)] - b.series[0]));
   const variationProducts = snap.products.filter((p: any) => p.variations.length >= 2).sort((a: any, b: any) => b.variations.length - a.variations.length);
+  const firstLabel = snap.labels[0], lastLabel = snap.labels[snap.labels.length - 1];
+  const periodRange = firstLabel + " → " + lastLabel;
 
   const scoreMoveTable = (title: string, subtitle: string, rows: any[]) => table(title, subtitle,
-    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "Sep 1", align: "right" }, { label: "Sep 29", align: "right" }, { label: "Change", align: "right" }],
-    rows.map(({ p, series }: any) => ({ cells: [
+    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: firstLabel, align: "right" }, { label: lastLabel, align: "right" }, { label: "Change", align: "right" }],
+    rows.map(({ p, series }: any) => { const li = lastI(series); return { cells: [
       cell(p.name, { onClick: () => goToProduct(p.id) }),
       cell(p.retailerName),
       cell(String(series[0]), { align: "right" }),
-      cell(String(series[4]), { align: "right" }),
-      cell((series[4] >= series[0] ? "+" : "") + (series[4] - series[0]), { align: "right", color: series[4] >= series[0] ? "var(--status-positive-fg)" : "var(--status-negative-fg)" }),
-    ] })));
-  const improvedTable = scoreMoveTable("Score Improved", `${improved} SKUs with a real content score gain, Sep 1 → Sep 29`, improvedProducts);
-  const declinedTable = scoreMoveTable("Score Declined", `${declined} SKUs with a real content score drop, Sep 1 → Sep 29`, declinedProducts);
+      cell(String(series[li]), { align: "right" }),
+      cell((series[li] >= series[0] ? "+" : "") + (series[li] - series[0]), { align: "right", color: series[li] >= series[0] ? "var(--status-positive-fg)" : "var(--status-negative-fg)" }),
+    ] }; }));
+  const improvedTable = scoreMoveTable("Score Improved", `${improved} SKUs with a real content score gain, ${periodRange}`, improvedProducts);
+  const declinedTable = scoreMoveTable("Score Declined", `${declined} SKUs with a real content score drop, ${periodRange}`, declinedProducts);
   const variationsTable = table("Products With Variations", `${withVariations} of ${snap.products.length} SKUs, ${totalVariations} variations tracked in total`,
     [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "Variations", align: "left" }, { label: "Count", align: "right" }],
     variationProducts.map((p: any) => ({ cells: [
@@ -93,14 +96,14 @@ export default function ContentSummary() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,200px),1fr))", gap: "var(--app-gap)" }}>
         <KpiCard k={kpiCard(content, spark)} />
         <Card padding="18px 20px" interactive onClick={() => setDrill(improvedTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Score Improved<InfoTip text="Real per-SKU Content Score movement, first vs. last real weekly checkpoint (Sep 1 to Sep 29) -- not a fabricated delta." /></div>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Score Improved<InfoTip text={`Real per-SKU Content Score movement, first vs. last real weekly checkpoint (${periodRange}) -- not a fabricated delta.`} /></div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: "var(--status-positive-fg)" }}>{improved}</div>
-          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real Sep 1 → Sep 29 · click to view</div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real {periodRange} · click to view</div>
         </Card>
         <Card padding="18px 20px" interactive onClick={() => setDrill(declinedTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Score Declined<InfoTip text="Real per-SKU Content Score movement, first vs. last real weekly checkpoint (Sep 1 to Sep 29) -- not a fabricated delta." /></div>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Score Declined<InfoTip text={`Real per-SKU Content Score movement, first vs. last real weekly checkpoint (${periodRange}) -- not a fabricated delta.`} /></div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: "var(--status-negative-fg)" }}>{declined}</div>
-          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real Sep 1 → Sep 29 · click to view</div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real {periodRange} · click to view</div>
         </Card>
         <KpiCard k={kpiCard(issues, spark)} />
         <Card padding="18px 20px" interactive onClick={() => setDrill(variationsTable)}>

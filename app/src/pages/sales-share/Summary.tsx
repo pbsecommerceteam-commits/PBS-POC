@@ -251,19 +251,21 @@ export default function SalesShareSummary() {
   let trendValueLabel = "Average price", trendMapLabel = "Avg MAP Price";
   if (skuMatch) {
     const w = (REAL_PRODUCT_WEEKLY as any)[skuMatch.id];
+    const companyLabels = REAL_WEEK_LABELS[(skuMatch as any).company] || [];
     if (w) {
-      trendLabels = REAL_WEEK_LABELS; trendValues = w.price; trendMap = skuMatch.mapPrice ?? null;
-      trendTitle = skuMatch.name; trendSubtitle = "Real crawl price, Sep 1–29 · " + skuMatch.retailerName;
+      trendLabels = companyLabels; trendValues = w.price; trendMap = skuMatch.mapPrice ?? null;
+      trendTitle = skuMatch.name; trendSubtitle = "Real crawl price · " + skuMatch.retailerName;
       trendValueLabel = "Price"; trendMapLabel = "MAP Price";
     }
   } else if (priceTrendCategory && catProducts.length) {
     const withSeries = catProducts.map((p: Product) => (REAL_PRODUCT_WEEKLY as any)[p.id]?.price).filter((s: any): s is number[] => !!s);
+    const companyLabels = REAL_WEEK_LABELS[(catProducts[0] as any)?.company] || [];
     if (withSeries.length) {
-      trendLabels = REAL_WEEK_LABELS;
-      trendValues = REAL_WEEK_LABELS.map((_l, i) => withSeries.reduce((a: number, s: number[]) => a + s[i], 0) / withSeries.length);
+      trendLabels = companyLabels;
+      trendValues = companyLabels.map((_l, i) => withSeries.reduce((a: number, s: number[]) => a + s[i], 0) / withSeries.length);
       const catMapVals = catProducts.filter((p: Product) => p.mapPrice != null).map((p: Product) => p.mapPrice!);
       trendMap = catMapVals.length ? catMapVals.reduce((a: number, v: number) => a + v, 0) / catMapVals.length : null;
-      trendTitle = priceTrendCategory + " Average Price Trend"; trendSubtitle = "Real pooled average price, Sep 1–29 · " + priceTrendCategory + " category";
+      trendTitle = priceTrendCategory + " Average Price Trend"; trendSubtitle = "Real pooled average price · " + priceTrendCategory + " category";
       trendValueLabel = "Average price"; trendMapLabel = "Avg MAP Price";
     }
   }

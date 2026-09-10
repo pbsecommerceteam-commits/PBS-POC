@@ -1,13 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { catalog, retailers, user } from "../data/mockData";
+import { catalog, companies, retailers, user } from "../data/mockData";
 import { Badge } from "../components/ui/Badge";
 
 const STATS = [
   { label: "Tracked SKUs", value: String(catalog.length) },
+  { label: "Companies", value: String(companies.length) },
   { label: "Retailers monitored", value: String(retailers.length - 1) },
-  { label: "Source crawl", value: "Sep 2022" },
 ];
 
 export default function Login() {
@@ -61,7 +61,7 @@ export default function Login() {
             Availability, pricing, content, and rank — tracked across every retailer you sell on.
           </h1>
           <p style={{ color: "var(--sidebar-muted)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-            This workspace runs on a real September 2022 crawl across {retailers.slice(1).map((r) => r.name).join(", ")}.
+            This workspace runs on real crawl data for {companies.length} companies, tracked across {retailers.length - 1} retailers.
           </p>
           <div style={{ display: "flex", gap: 28, marginTop: 28 }}>
             {STATS.map((s) => (

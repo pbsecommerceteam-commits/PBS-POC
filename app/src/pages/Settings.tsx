@@ -42,7 +42,7 @@ export default function Settings() {
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, paddingTop: 12, borderTop: "1px solid var(--border-subtle)" }}><span className="sl-muted">Snapshot</span><span style={{ fontFamily: "monospace" }}>GET /api/snapshot</span></div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span className="sl-muted">Product detail</span><span style={{ fontFamily: "monospace" }}>GET /api/products/{"{id}"}</span></div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span className="sl-muted">Crawl cadence</span><span>Every 6 hours</span></div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span className="sl-muted">Retailers monitored</span><span>{retailers.length - 1}</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span className="sl-muted">Retailers monitored</span><span>{retailers.length}</span></div>
         </Card>
       </div>
     </PageShell>

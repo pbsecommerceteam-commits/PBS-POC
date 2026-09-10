@@ -24,7 +24,7 @@ const DataContext = createContext<DataValue | null>(null);
 const period = "4w";
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { retailer, category, brand, sku, dateRange } = useFilters();
+  const { company, retailer, category, brand, sku, dateRange } = useFilters();
   const [snap, setSnap] = useState<any | null>(null);
   const [shelf, setShelf] = useState<any | null>(null);
   const [sales, setSales] = useState<any | null>(null);
@@ -34,15 +34,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const reqKey = useRef("");
 
   useEffect(() => {
+    // No company chosen yet (RequireCompany gates this, but stay defensive)
+    // -- there's no real scope to fetch, so don't fire a request that could
+    // only ever return the wrong company's blended data.
+    if (!company) { setLoading(false); return; }
     const rangeKey = dateRange ? dateRange.start + ".." + dateRange.end : "";
-    const key = retailer + "|" + category + "|" + brand + "|" + sku + "|" + rangeKey + "|" + reloadTick;
+    const key = company + "|" + retailer + "|" + category + "|" + brand + "|" + sku + "|" + rangeKey + "|" + reloadTick;
     reqKey.current = key;
     setLoading(true);
     setError("");
     Promise.all([
-      fetchSnapshot({ retailer, period, dateRange, category, brand, sku }),
-      fetchShelf({ retailer, period, dateRange, category, brand, sku }),
-      fetchSales({ retailer, period, dateRange, category, brand, sku }),
+      fetchSnapshot({ company, retailer, period, dateRange, category, brand, sku }),
+      fetchShelf({ company, retailer, period, dateRange, category, brand, sku }),
+      fetchSales({ company, retailer, period, dateRange, category, brand, sku }),
     ]).then(([s, sh, sa]) => {
       if (reqKey.current !== key) return;
       setSnap(s); setShelf(sh); setSales(sa); setLoading(false);
@@ -51,7 +55,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       setError(String(err?.message || err));
     });
-  }, [retailer, category, brand, sku, dateRange, reloadTick]);
+  }, [company, retailer, category, brand, sku, dateRange, reloadTick]);
 
   const value: DataValue = { snap, shelf, sales, loading, error, reload: () => setReloadTick((t) => t + 1) };
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

@@ -1,10 +1,14 @@
 """
 Shelfline data-pipeline: Excel source -> app/src/data/mockData.ts static tables.
 
-Reads the three tabs of the source workbook (Content / Price / Share Of Search),
-cleans and normalizes them, derives every "real data" table the app consumes, and
-prints the generated TypeScript for the static block of mockData.ts (retailers
-through REAL_ROLLUP_WEEKLY, plus categories and keywordSet) to stdout.
+Reads the Content / Price / Share Of Search tabs of the source workbook, groups
+every row by its real "Company" column (Perfality's original Sep 2022 crawl,
+plus any other client's data added under its own Company name in the same
+template), processes each company independently using its own real observed
+crawl dates as that company's "weeks" -- there is no shared, hardcoded date
+grid any more -- and prints the generated TypeScript for the static block of
+mockData.ts (retailers/companies through REAL_ROLLUP_WEEKLY, plus categories
+and keywordSet) to stdout.
 
 Usage:
     python build_mock_data.py <path-to-xlsx> [path-to-map-price-xlsx] > generated_block.ts
@@ -12,17 +16,19 @@ Usage:
 The optional second argument is a separate MAP (Minimum Advertised Price)
 reference workbook -- MAP is a brand policy value, not something the crawl
 itself observes, so it's supplied as its own file rather than a tab on the
-main workbook. See load_map_price() for exactly how it's read; omitting it
-leaves every product's mapPrice honestly null rather than fabricated.
+main workbook (or as this workbook's own MAP Price tab; both are read the
+same way, see load_map_price()). Omitting it leaves every product's mapPrice
+honestly null rather than fabricated.
 
 Also writes a JSON debug dump (build_debug.json, next to the output) with every
 intermediate table, for spot-checking derived numbers against the raw workbook
 before the generated block is spliced into mockData.ts.
 
-This script is the auditable record of exactly how the September 2022 crawl
-(Content / Price / Share Of Search) was turned into the catalog and REAL_* tables
-consumed by app/src/data/mockData.ts. Re-run it whenever the source workbook is
-refreshed; the static block it prints is meant to be reviewed, then pasted in.
+This script is the auditable record of exactly how each company's real crawl
+(Content / Price / Share Of Search) was turned into the catalog and REAL_*
+tables consumed by app/src/data/mockData.ts. Re-run it whenever a source
+workbook is refreshed or a new company's data is added; the static block it
+prints is meant to be reviewed, then pasted in.
 
 Depends on `openpyxl` and `ftfy` (``pip install ftfy`` -- used to repair mojibake
 in crawled text fields, see `fix_mojibake` below).
@@ -72,6 +78,10 @@ def fix_mojibake(text):
     return _MOJIBAKE_RUN.sub(lambda m: ftfy.fix_text(m.group(0), config=_MOJIBAKE_CONFIG), text)
 
 # ── retailer / category normalization ──────────────────────────────────────
+# Retailer codes are shared globally across every company (the same "r1"
+# means Amazon.com whichever company's product it's attached to) -- only the
+# catalog id (company + retailer + native id) is company-scoped, see
+# make_pid() below.
 
 SITE_TO_CODE = {
     "amazon.com": "r1",
@@ -81,6 +91,16 @@ SITE_TO_CODE = {
     "petsmart.com": "r5",
     "lowes.com": "r6",
     "petco.com": "r7",
+    # Added for Ancestry's multi-country Amazon presence -- real distinct
+    # marketplaces, not a normalization of amazon.com.
+    "amazon.com.au": "r8",
+    "amazon.co.uk": "r9",
+    "amazon.nl": "r10",
+    "amazon.pl": "r11",
+    "amazon.se": "r12",
+    "amazon.ca": "r13",
+    "amazon.es": "r14",
+    "amazon.de": "r15",
 }
 
 RETAILER_NAMES = {
@@ -91,6 +111,14 @@ RETAILER_NAMES = {
     "r5": "PetSmart",
     "r6": "Lowe's",
     "r7": "Petco",
+    "r8": "Amazon Australia",
+    "r9": "Amazon UK",
+    "r10": "Amazon Netherlands",
+    "r11": "Amazon Poland",
+    "r12": "Amazon Sweden",
+    "r13": "Amazon Canada",
+    "r14": "Amazon Spain",
+    "r15": "Amazon Germany",
 }
 
 CATEGORY_NORMALIZE = {
@@ -101,12 +129,8 @@ CATEGORY_NORMALIZE = {
     "HG": "HG",
 }
 
-CONTENT_WEEKS = ["2022-09-01", "2022-09-08", "2022-09-15", "2022-09-22", "2022-09-29"]
-REAL_WEEK_LABELS = ["Sep 1", "Sep 8", "Sep 15", "Sep 22", "Sep 29"]
-SOS_WEEKS = ["2022-09-08", "2022-09-15", "2022-09-22", "2022-09-29"]
-REAL_SOS_WEEK_LABELS = ["Sep 8", "Sep 15", "Sep 22", "Sep 29"]
-
 OOS_MARKERS = ("out of stock", "unavailable", "temporarily out")
+DEFAULT_COMPANY = "Perfality"
 
 
 def norm_site(s):
@@ -145,7 +169,35 @@ def date_key(d):
     return str(d)[:10]
 
 
+def norm_company(v):
+    """Every tab's Company column, defaulted to Perfality (the original
+    source workbook predates this column entirely, so an absent/blank value
+    there is honestly Perfality's own data, not a fourth "unknown" company)."""
+    s = str(v).strip() if v is not None else ""
+    return s or DEFAULT_COMPANY
+
+
+def company_slug(name):
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "company"
+
+
+def make_pid(company, code, native_id):
+    """Perfality keeps its original, unprefixed id format (r1-B000...) --
+    every hardcoded reference to a real Perfality product elsewhere in this
+    codebase (sample notifications, etc.) depends on that exact shape, and
+    real per-retailer native ids (ASINs etc.) are globally unique in
+    practice, so there's no real collision risk to guard against for it.
+    Every other company gets its slug prefixed on, both to guarantee
+    uniqueness and to make "which company is this row" legible from the id
+    alone."""
+    if company == DEFAULT_COMPANY:
+        return f"{code}-{native_id}"
+    return f"{company_slug(company)}-{code}-{native_id}"
+
+
 def load_sheet(wb, name):
+    if name not in wb.sheetnames:
+        return []
     ws = wb[name]
     headers = None
     rows = []
@@ -153,22 +205,26 @@ def load_sheet(wb, name):
         if i == 0:
             headers = row
             continue
+        if row is None or all(c is None for c in row):
+            continue
         rows.append(dict(zip(headers, row)))
     return rows
 
 
 def load_map_price(path):
     """Loads the MAP (Minimum Advertised Price) reference table -- a
-    separate workbook the user supplies alongside the main crawl (MAP is a
-    brand-set policy value, not something the crawl itself observes).
-    Scans every sheet for one whose header row contains a "Map Price"
-    column (rather than hardcoding a sheet name/position), so a future
-    refreshed file can rename or reorder its tabs without breaking this.
-    Returns site_code -> {str(native retailer id): map price}, skipping
-    any row with no retailer site/id match or a blank MAP price (a real
-    "no MAP set for this SKU", not a fabricated 0)."""
+    workbook (or, now, this same workbook's own MAP Price tab) the user
+    supplies alongside the main crawl (MAP is a brand-set policy value, not
+    something the crawl itself observes). Scans every sheet for one whose
+    header row contains a "Map Price" column (rather than hardcoding a sheet
+    name/position), so a differently-shaped file doesn't break this.
+    Returns company -> site_code -> {str(native retailer id): map price},
+    skipping any row with no retailer site/id match or a blank MAP price (a
+    real "no MAP set for this SKU", not a fabricated 0). A sheet with no
+    Company column (the original standalone MAP workbook predates it) is
+    treated as entirely Perfality's data."""
     wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
-    out = defaultdict(dict)
+    out = defaultdict(lambda: defaultdict(dict))
     for ws in wb.worksheets:
         rows_iter = ws.iter_rows(values_only=True)
         header = None
@@ -183,6 +239,7 @@ def load_map_price(path):
             continue
         site_i = next((i for i, h in enumerate(header_norm) if h == "retailer site"), None)
         id_i = next((i for i, h in enumerate(header_norm) if h == "retailer id"), None)
+        company_i = next((i for i, h in enumerate(header_norm) if h == "company"), None)
         map_i = header_norm.index("map price")
         if site_i is None or id_i is None:
             continue
@@ -195,7 +252,8 @@ def load_map_price(path):
                 continue
             mp = row[map_i]
             if isinstance(mp, (int, float)):
-                out[code][str(native)] = float(mp)
+                company = norm_company(row[company_i]) if company_i is not None else DEFAULT_COMPANY
+                out[company][code][str(native)] = float(mp)
     return out
 
 
@@ -253,10 +311,8 @@ def get_any(row, *names):
 def other_sellers(row, limit=10):
     """Parses the import template's "Other Seller N Name"/"Other Seller N
     Price" pairs (N=1..limit) into a compact list -- real competing sellers
-    on a listing beyond whoever holds the buy box. Empty/blank on every row
-    of the current real dataset (the Sep 2022 crawl never captured this),
-    so this returns [] until a future upload fills it in -- an honest gap,
-    not a fabricated seller list."""
+    on a listing beyond whoever holds the buy box. Empty/blank wherever a
+    crawl never captured this, an honest gap, not a fabricated seller list."""
     out = []
     for i in range(1, limit + 1):
         name = row.get(f"Other Seller {i} Name")
@@ -267,19 +323,92 @@ def other_sellers(row, limit=10):
     return out
 
 
-def main():
-    path = sys.argv[1]
-    wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
-    # Optional second workbook: a real MAP (Minimum Advertised Price)
-    # reference table, supplied separately from the main crawl since MAP is
-    # a brand policy value, not something the crawl observes. Absent this
-    # arg, every product's mapPrice is honestly null rather than fabricated.
-    map_price_by_site = load_map_price(sys.argv[2]) if len(sys.argv) > 2 else {}
+def week_label(dk):
+    """"2022-09-08" -> "Sep 8". Used for both weekly- and daily-cadence
+    companies alike -- the label is just a friendly rendering of the real
+    observed date, not tied to any assumption about how far apart dates are."""
+    d = datetime.fromisoformat(dk)
+    return d.strftime("%b ") + str(d.day)
 
-    content_rows = load_sheet(wb, "Content")
-    price_rows = load_sheet(wb, "Price")
-    sos_rows = load_sheet(wb, "Share Of Search")
 
+def bucket_end(weeks, wi):
+    """The exclusive end date of the wi'th bucket in a per-company weeks
+    list -- the next week's start when there is one, otherwise the last
+    observed gap extrapolated one more step. Generalizes the old hardcoded
+    "+7 days past Sep 29" to any cadence: a daily-crawl company's final
+    bucket is exactly 1 day wide, not artificially widened to a week."""
+    if wi + 1 < len(weeks):
+        return weeks[wi + 1]
+    if len(weeks) >= 2:
+        gap = (datetime.fromisoformat(weeks[-1]) - datetime.fromisoformat(weeks[-2])).days
+    else:
+        gap = 7
+    return date_key(datetime.fromisoformat(weeks[-1]) + timedelta(days=max(gap, 1)))
+
+
+def content_completeness(row):
+    # 9 equally-weighted (~11.1% each) pass/fail checks -- score is simply
+    # (number passing / 9) * 100. Every check reads directly from a raw
+    # crawled field (title/bullet/description text, Rating, No of
+    # videos). Character counts (title/description/bullet length) are
+    # computed here from the text itself rather than read from a
+    # separate "No of chars" column -- those columns were always just
+    # len(text) anyway, so this drops them from the import template as
+    # redundant, script-derivable data instead of something to fill in
+    # by hand every crawl.
+    title = row.get("Title") or ""
+    title_len = len(title)
+    check_title = bool(title) and title_len <= 75
+
+    n_images = row.get("No of images") or 0
+    check_images = n_images >= 7
+
+    n_videos = row.get("No of videos") or 0
+    check_video = n_videos >= 1
+
+    n_bullets = row.get("No of bullets") or 0
+    check_bullet_count = n_bullets >= 5
+
+    bullets = [row.get(f"Bullet {i}") for i in range(1, 11)]
+    bullets = [b for b in bullets if b]
+    bullet_lengths = [len(b) for b in bullets]
+    check_bullet_caps = bool(bullets) and all(b[:1].isupper() for b in bullets)
+    check_bullet_length = bool(bullet_lengths) and all(150 <= bl <= 200 for bl in bullet_lengths)
+
+    desc = row.get("Product description") or ""
+    desc_len = len(desc)
+    check_description = bool(desc) and 200 <= desc_len <= 2000
+
+    rating = row.get("Rating")
+    check_rating = rating is not None and rating >= 4.0
+
+    enhanced = str(row.get("Enhanced content") or "").strip().lower() == "yes"
+    check_enhanced = enhanced
+
+    checks = {
+        "title": check_title, "images": check_images, "video": check_video, "bulletCount": check_bullet_count,
+        "bulletCaps": check_bullet_caps, "bulletLength": check_bullet_length,
+        "description": check_description, "rating": check_rating, "enhanced": check_enhanced,
+    }
+    score = int(sum(checks.values()) / len(checks) * 100 + 0.5)
+    return score, checks
+
+
+def price_value(row):
+    v = row.get("Current price")
+    if v is None:
+        v = row.get("List everyday price")
+    return v
+
+
+def process_company(company, content_rows, price_rows, sos_rows, map_price_by_site):
+    """Runs the full real-data pipeline for one company's own rows in
+    isolation -- its own retailers, its own real observed crawl dates as its
+    "weeks" (no shared hardcoded date grid), its own category/account
+    values, its own cross-retailer matching. Returns every per-company
+    structure the caller folds into the combined multi-company TS output.
+    Verified to reproduce Perfality's original single-company output
+    byte-for-byte (see the diff check run after this refactor)."""
     # ── index Content rows by (retailer_code, native_id) ────────────────────
     content_by_product = defaultdict(dict)  # (code, native_id) -> {date_key: row}
     for r in content_rows:
@@ -309,97 +438,32 @@ def main():
 
     product_keys_content = set(content_by_product.keys())
     product_keys_price = set(price_by_product.keys())
-    excluded_price_only = sorted(product_keys_price - product_keys_content)
+    excluded_price_only = sorted(product_keys_price - product_keys_content, key=lambda t: (t[0], str(t[1])))
 
-    def price_value(row):
-        v = row.get("Current price")
-        if v is None:
-            v = row.get("List everyday price")
-        return v
-
-    def content_completeness(row):
-        # 9 equally-weighted (~11.1% each) pass/fail checks -- score is simply
-        # (number passing / 9) * 100. Every check reads directly from a raw
-        # crawled field (title/bullet/description text, Rating, No of
-        # videos). Character counts (title/description/bullet length) are
-        # computed here from the text itself rather than read from a
-        # separate "No of chars" column -- those columns were always just
-        # len(text) anyway, so this drops them from the import template as
-        # redundant, script-derivable data instead of something to fill in
-        # by hand every crawl.
-        title = row.get("Title") or ""
-        title_len = len(title)
-        check_title = bool(title) and title_len <= 75
-
-        n_images = row.get("No of images") or 0
-        check_images = n_images >= 7
-
-        n_videos = row.get("No of videos") or 0
-        check_video = n_videos >= 1
-
-        n_bullets = row.get("No of bullets") or 0
-        check_bullet_count = n_bullets >= 5
-
-        bullets = [row.get(f"Bullet {i}") for i in range(1, 11)]
-        bullets = [b for b in bullets if b]
-        bullet_lengths = [len(b) for b in bullets]
-        check_bullet_caps = bool(bullets) and all(b[:1].isupper() for b in bullets)
-        check_bullet_length = bool(bullet_lengths) and all(150 <= bl <= 200 for bl in bullet_lengths)
-
-        desc = row.get("Product description") or ""
-        desc_len = len(desc)
-        check_description = bool(desc) and 200 <= desc_len <= 2000
-
-        rating = row.get("Rating")
-        check_rating = rating is not None and rating >= 4.0
-
-        enhanced = str(row.get("Enhanced content") or "").strip().lower() == "yes"
-        check_enhanced = enhanced
-
-        checks = {
-            "title": check_title, "images": check_images, "video": check_video, "bulletCount": check_bullet_count,
-            "bulletCaps": check_bullet_caps, "bulletLength": check_bullet_length,
-            "description": check_description, "rating": check_rating, "enhanced": check_enhanced,
-        }
-        score = int(sum(checks.values()) / len(checks) * 100 + 0.5)
-        return score, checks
+    # This company's own real "weeks" -- the sorted distinct Content-tab
+    # crawl dates it actually has, whatever their cadence (Perfality's
+    # original 5 Sep-2022 Mondays, or a new company's 13 consecutive daily
+    # snapshots). Verified to exactly reproduce Perfality's previously
+    # hardcoded CONTENT_WEEKS/SOS_WEEKS constants.
+    content_weeks = sorted({dk for weeks in content_by_product.values() for dk in weeks})
+    sos_weeks = sorted({date_key(r.get("Crawl_date")) for r in sos_rows}) if sos_rows else []
+    week_labels = [week_label(wk) for wk in content_weeks]
+    sos_week_labels = [week_label(wk) for wk in sos_weeks]
 
     # ── build catalog + REAL_PRODUCT_WEEKLY ─────────────────────────────────
     catalog = []
     real_product_weekly = {}
-    # pid -> [{date, price}, ...], one entry per real daily crawl row that
-    # posted a price -- the day-by-day series behind priceChangePct, so a UI
-    # can show exactly which date a price moved rather than only the whole-
-    # month before/after. Every catalog product with at least one observed
-    # price gets an entry (not just ones that moved).
     real_price_timeline = {}
-    # pid -> [{date, holder}, ...] -- who held the buy box each real tracked
-    # day this SKU was in stock ("You" or the real crawled seller name), the
-    # day-by-day series behind REAL_BUYBOX_COMPETITOR's daysWon count. Same
-    # r4/r6 exclusion as REAL_BUYBOX_COMPETITOR (their Buy Box Seller field
-    # is a store/location name, not a real marketplace competitor).
     real_buybox_timeline = {}
     component_bucket_totals = defaultdict(list)
-    # pid -> (code, native_id) with native_id in its ORIGINAL type (int or
-    # str, whatever the Excel cell held) -- pid itself is always a string
-    # ("r6-1165507"), so re-deriving native_id by splitting that string would
-    # silently coerce an int id to a str and break price_by_product lookups
-    # (dict keys are typed tuples). Used by the REAL_ROLLUP_WEEKLY pooling
-    # below to look back up each scope's raw daily rows correctly.
     pid_to_key = {}
-
     content_score_by_week = {}  # pid -> {week: score}
-    # pre-fill (raw, with None gaps) rating/reviews series -- used only for
-    # portfolio/retailer rollup averaging, so a product with no genuine
-    # rating never drags the average toward 0. The 0-defaulted version below
-    # is for that *product's own* chart series only, where a number is
-    # required and 0 is the honest value for "never reviewed".
     raw_rating_by_product = {}
 
     for (code, native_id), weeks in content_by_product.items():
         latest_dk = max(weeks.keys())
         latest = weeks[latest_dk]
-        pid = f"{code}-{native_id}"
+        pid = make_pid(company, code, native_id)
         pid_to_key[pid] = (code, native_id)
 
         content_score, checks = content_completeness(latest)
@@ -408,7 +472,7 @@ def main():
         content_checks_failed = [k for k, v in checks.items() if not v]
 
         week_scores = {}
-        for wk in CONTENT_WEEKS:
+        for wk in content_weeks:
             row = weeks.get(wk)
             if row is None:
                 avail = sorted(weeks.keys())
@@ -418,12 +482,10 @@ def main():
             week_scores[wk] = score
         content_score_by_week[pid] = week_scores
 
-        # rating/reviews real weekly series straight from Content tab
         rating_series, reviews_series = [], []
-        for wk in CONTENT_WEEKS:
+        for wk in content_weeks:
             row = weeks.get(wk)
             if row is None:
-                # carry nearest available week's value forward/back
                 avail = sorted(weeks.keys())
                 nearest = min(avail, key=lambda d: abs((datetime.fromisoformat(d) - datetime.fromisoformat(wk)).days))
                 row = weeks[nearest]
@@ -431,7 +493,6 @@ def main():
             reviews_series.append(row.get("Total reviews"))
         raw_rating_by_product[pid] = list(rating_series)
 
-        # price / stockRate / buyBoxRate weekly series bucketed from daily Price rows
         prows = price_by_product.get((code, native_id), [])
 
         real_price_timeline[pid] = [
@@ -447,20 +508,11 @@ def main():
             ]
 
         price_series, stock_series, buybox_series = [], [], []
-        # Last-Observation-Carried-Forward for weeks with no crawl rows at all
-        # (a handful of products have gaps -- e.g. only Sep 1-2 + Sep 24-25) so
-        # the real per-week series never contains a null/undefined point that
-        # would break a trend chart. Defaults (100% in-stock, buy box held)
-        # only apply before the first observed row.
         last_known_price, last_known_stock, last_known_buybox = None, 100.0, 100.0
-        for wi, wk_start in enumerate(CONTENT_WEEKS):
-            wk_end = CONTENT_WEEKS[wi + 1] if wi + 1 < len(CONTENT_WEEKS) else "2022-10-06"
+        for wi, wk_start in enumerate(content_weeks):
+            wk_end = bucket_end(content_weeks, wi)
             bucket = [r for r in prows if wk_start <= date_key(r.get("Crawl date")) < wk_end]
             if bucket:
-                # only overwrite the carried-forward price on a genuinely
-                # observed (non-null) value -- a bucket whose rows all have a
-                # null price (e.g. went OOS mid-week with no price posted)
-                # must not blank out a still-valid earlier price.
                 non_null_in_bucket = [price_value(r) for r in bucket if price_value(r) is not None]
                 if non_null_in_bucket:
                     last_known_price = non_null_in_bucket[-1]
@@ -470,12 +522,6 @@ def main():
                 if in_stock_flags:
                     last_known_stock = round(100.0 * sum(in_stock_flags) / len(in_stock_flags), 1)
                 stock_rate = last_known_stock
-                # Same "in-stock AND owned" definition as the real
-                # REAL_ROLLUP_WEEKLY Buy Box Ownership 1P KPI below -- an
-                # out-of-stock day can never count as owned, since there's
-                # no live buy box to hold while unavailable. Every row in
-                # the bucket still counts in the denominator regardless of
-                # stock status (matches the KPI's "opportunity" framing).
                 owned_flags = [
                     1 if (is_in_stock(r.get("Stock status")) and is_own_seller(r.get("Buy box seller"), code)) else 0
                     for r in bucket
@@ -492,34 +538,18 @@ def main():
             buybox_series.append(buybox_rate)
 
         real_product_weekly[pid] = {
-            # rating/reviews: hard-default 0 only if literally never observed
-            # (e.g. a brand-new listing with no reviews yet) -- an honest
-            # value for that field, not a fabrication.
             "rating": fill_series(rating_series, hard_default=0),
             "reviews": fill_series(reviews_series, hard_default=0),
-            # price: no honest single-series default exists (see the
-            # retailer+category peer-average fallback applied to catalog
-            # price below, which price_series is reconciled against there).
             "price": fill_series(price_series),
             "stockRate": fill_series(stock_series, hard_default=100.0),
             "buyBoxRate": fill_series(buybox_series, hard_default=100.0),
-            # Real per-week Content Completeness score (the same 8-check
-            # rubric, evaluated against that week's own Content-tab row) --
-            # lets the client compute a genuine "score improved/declined
-            # since Sep 1" without inventing a delta.
-            "content": [week_scores[wk] for wk in CONTENT_WEEKS],
+            "content": [week_scores[wk] for wk in content_weeks],
         }
 
         cat_name = get_any(latest, "Category/account name", "Category name")
         cat = CATEGORY_NORMALIZE.get(cat_name, cat_name)
         all_prices = [price_value(r) for r in prows if price_value(r) is not None]
         stock_flags_all = [f for f in (is_in_stock(r.get("Stock status")) for r in prows) if f is not None]
-        # Same "in-stock AND owned" definition as the real Buy Box Ownership
-        # 1P KPI (REAL_ROLLUP_WEEKLY below) -- an out-of-stock day can never
-        # count as owned, since there's no live buy box to hold while
-        # unavailable. Denominator (len(prows), used where this feeds
-        # buyBoxRate below) still counts every tracked row regardless of
-        # stock status, matching the KPI's "opportunity" framing.
         buybox_flags_all = [
             bool(is_in_stock(r.get("Stock status")) and is_own_seller(r.get("Buy box seller"), code))
             for r in prows
@@ -528,72 +558,24 @@ def main():
         if len(all_prices) >= 2 and all_prices[0]:
             price_change_pct = round(((all_prices[-1] - all_prices[0]) / all_prices[0]) * 100, 1)
 
-        # List/Current/Subscription price as distinct raw fields (Price tab
-        # columns "List everyday price" / "Current price" / "Subscription
-        # price"), from the most recent Price-tab row -- unlike `price`
-        # above (which falls back List->Current and is what every other
-        # feature in the app reads), these three are kept separate and
-        # unfallback'd so a UI can show all three when they genuinely
-        # differ, and null (not 0) when a field was never posted.
         latest_price_row = prows[-1] if prows else None
         list_price = latest_price_row.get("List everyday price") if latest_price_row else None
         current_price = latest_price_row.get("Current price") if latest_price_row else None
         subscription_price = latest_price_row.get("Subscription price") if latest_price_row else None
-        # Three more raw Price-tab fields from that same latest row, rounding
-        # out all 14 real Price-tab columns (excluding Crawl date) somewhere
-        # in the model -- "Url" is a genuine direct link to the crawled
-        # listing page; "Stock status" is the literal crawled availability
-        # sentence (e.g. "Only 1 left in stock - order soon."), distinct from
-        # the derived 3-bucket stockStatus every other feature reads; "Coupon
-        # value" is the retailer's own posted discount, dollar amount and
-        # percentage together (e.g. "4.22 (53%)"), exactly as crawled.
         url = get_any(latest_price_row, "Url", "Spb url") if latest_price_row else None
         stock_status_raw = latest_price_row.get("Stock status") if latest_price_row else None
         coupon_value = latest_price_row.get("Coupon value") if latest_price_row else None
-        # Other (non-buy-box) sellers on this listing and their price, up to
-        # 10 -- real competing offers beyond whoever currently holds the buy
-        # box. Blank on every row of the Sep 2022 crawl (never captured);
-        # populated only once a future upload's Price tab fills it in.
         other_sellers_list = other_sellers(latest_price_row) if latest_price_row else []
 
-        # Raw Content-tab fields (same "latest" row content_completeness()
-        # already reads its checks from), surfaced individually so a UI can
-        # show e.g. "Bullet Points: 7" rather than only the derived
-        # pass/fail check -- these were previously computed and discarded.
-        # Title/description length are computed from the text itself (see
-        # content_completeness above), not read from a separate column.
         title_length = len(latest.get("Title") or "")
         image_count = latest.get("No of images") or 0
         bullet_count = latest.get("No of bullets") or 0
         description_length = len(latest.get("Product description") or "")
         enhanced_content = str(latest.get("Enhanced content") or "").strip().lower() == "yes"
-        # The real front-of-listing product photo, hotlinked straight from
-        # the retailer's own CDN (e.g. images-na.ssl-images-amazon.com,
-        # i5.walmartimages.com) -- present on all 585 Content-tab rows this
-        # crawl. Lets the UI show the actual crawled photo instead of only
-        # the initials-avatar fallback for SKUs with no local copy under
-        # public/product-images/.
         image_url = latest.get("Front image") or None
 
-        # Further raw Content-tab fields -- "relevant" here means real,
-        # reasonably dense across the 117 SKUs, and semantically legible on
-        # its own. Deliberately NOT included: Rank 1-4/Category 1-4 (their
-        # relationship to the retailer's own taxonomy is ambiguous in the
-        # source data and risks misrepresenting what the number means).
         retailer_id = latest.get("Retailer id")
-        # Real MAP price, matched by the same (retailer, native id) key used
-        # for url/CROSS_RETAILER_MATCH/REAL_KEYWORD_MATCH elsewhere in
-        # this pipeline -- None when the MAP workbook has no row for this
-        # SKU (not tracked under MAP), an honest gap rather than a
-        # fabricated policy price.
         map_price = map_price_by_site.get(code, {}).get(str(native_id))
-        # "SKU" (the import template's rename of "Vendor stock no") -- the
-        # vendor's own stock-keeping unit, distinct from Retailer id (that
-        # retailer's own native listing id). When the same SKU appears under
-        # 2+ different retailers it's the same real product being sold in
-        # more than one place -- see the SKU_MATCH block below, which uses
-        # this as a higher-confidence signal than the brand+name-overlap
-        # heuristic CROSS_RETAILER_MATCH otherwise falls back to.
         sku = get_any(latest, "SKU", "Vendor stock no")
         site_category = latest.get("Site category")
         buy_box_seller_raw = latest.get("Buy box seller")
@@ -602,48 +584,27 @@ def main():
         question_count = latest.get("No of questions") or 0
         has_360_image = bool(latest.get("Image 360"))
 
-        # The actual crawled text behind title_length/bullet_count/
-        # description_length above -- those stayed measurements-only in the
-        # first pass; a UI wanting to show the real copy (not just its
-        # length) needs these too.
         description_text = latest.get("Product description") or None
         bullets_text = [latest.get(f"Bullet {i}") for i in range(1, 11)]
         bullets_text = [b for b in bullets_text if b]
 
-        # 22 Varient label/value pairs -- observed to be the *other* pack-
-        # size/color/style options the retailer lists alongside this SKU
-        # (e.g. label "size", values "4.52 Lb" / "7.06 Oz" / "1 Oz" across
-        # pairs 1-4 for one product), not a per-product attribute table.
-        # 28 of 117 SKUs have at least one (86 variation entries total,
-        # ~3 each on average); the other 89 have none. Kept as one
-        # aggregated list (count + "label: value" strings) rather than 22
-        # separate sparse columns.
         variations = []
         for i in range(1, 23):
             v_label = latest.get(f"Varient label {i}")
             v_value = latest.get(f"Varient value {i}")
             if v_label or v_value:
-                # A handful of source rows already have a trailing colon on
-                # the label itself ("Size:") -- strip it so it isn't doubled.
                 label_clean = str(v_label or "Variant").strip().rstrip(":")
                 variations.append(f"{label_clean}: {v_value or 'n/a'}")
 
         catalog.append({
             "id": pid,
+            "company": company,
             "name": latest.get("Title"),
             "brand": latest.get("Brand"),
             "category": cat,
             "retailer": code,
             "rank": None,  # filled below
             "price": round(all_prices[-1], 2) if all_prices else None,
-            # Average selling price across every observed daily row this
-            # month -- used only for Price Index (product's own ASP divided
-            # by its peer group's average ASP), never for the "current
-            # price" shown on product cards/tables. Averaging each side of
-            # that ratio over the same period avoids comparing one
-            # product's stale end-of-month snapshot against peers' ASPs
-            # (or vice versa), the same day-count-consistency principle as
-            # REAL_ROLLUP_WEEKLY's pooling.
             "avgSellingPrice": round(sum(all_prices) / len(all_prices), 2) if all_prices else None,
             "rating": latest.get("Rating"),
             "reviews": latest.get("Total reviews"),
@@ -651,7 +612,7 @@ def main():
             "stockBias": round(sum(stock_flags_all) / len(stock_flags_all), 2) if stock_flags_all else 1.0,
             "buyBoxRate": round(sum(buybox_flags_all) / len(buybox_flags_all), 2) if buybox_flags_all else 1.0,
             "priceChangePct": price_change_pct if price_change_pct is not None else 0.0,
-            "priceGroup": f"{code}::{cat}",
+            "priceGroup": f"{company}::{code}::{cat}",
             "listPrice": round(list_price, 2) if list_price is not None else None,
             "currentPrice": round(current_price, 2) if current_price is not None else None,
             "subscriptionPrice": round(subscription_price, 2) if subscription_price is not None else None,
@@ -660,8 +621,6 @@ def main():
             "stockStatusRaw": stock_status_raw,
             "couponValue": coupon_value,
             "otherSellers": other_sellers_list,
-            # Ids of the 8 real content checks (see content_completeness)
-            # this product currently FAILS -- empty list means all 8 pass.
             "contentChecks": content_checks_failed,
             "titleLength": title_length,
             "imageUrl": image_url,
@@ -682,7 +641,9 @@ def main():
             "variations": variations,
         })
 
-    # rank = position within (retailer, category) ordered by reviews desc
+    # rank = position within (retailer, category) ordered by reviews desc --
+    # scoped to this company's own catalog only (this function only ever
+    # sees one company's rows), so two companies never compete for rank #1.
     groups = defaultdict(list)
     for p in catalog:
         groups[(p["retailer"], p["category"])].append(p)
@@ -693,67 +654,43 @@ def main():
 
     catalog.sort(key=lambda p: (p["retailer"], p["category"], p["rank"]))
 
-    # A handful of products were out-of-stock/unavailable for the entire
-    # crawl month, so no price was ever observed (list AND current price both
-    # null on every daily row). Fall back to the retailer+category peer
-    # average -- computed only from products with a genuine observed price --
-    # rather than writing a fabricated or zero price. Flagged explicitly here
-    # and in the validation report.
     priceless_ids = [p["id"] for p in catalog if p["price"] is None]
     peer_avg = defaultdict(list)
+    company_avg_prices = []
     for p in catalog:
         if p["price"] is not None:
             peer_avg[p["priceGroup"]].append(p["price"])
+            company_avg_prices.append(p["price"])
     for p in catalog:
         if p["price"] is None:
             group_prices = peer_avg.get(p["priceGroup"])
-            p["price"] = round(sum(group_prices) / len(group_prices), 2) if group_prices else None
-            # Keep the per-week REAL series internally consistent with the
-            # catalog price fallback above, rather than embedding nulls that
-            # would show as chart gaps -- these SKUs were unavailable (no
-            # price posted) for the entire crawl month.
+            # Widen to this company's whole-catalog average on the rare
+            # case its own (retailer, category) peer group has zero priced
+            # products either (e.g. every tracked SKU in that market is
+            # perpetually out of stock, so no peer average exists at all) --
+            # still a genuine average of this company's own real observed
+            # prices, never a fabricated $0 default.
+            fallback_prices = group_prices or company_avg_prices
+            p["price"] = round(sum(fallback_prices) / len(fallback_prices), 2) if fallback_prices else None
             if p["price"] is not None and p["id"] in real_product_weekly:
-                real_product_weekly[p["id"]]["price"] = [p["price"]] * 5
+                real_product_weekly[p["id"]]["price"] = [p["price"]] * len(content_weeks)
         if p["avgSellingPrice"] is None:
-            # Same peer-average fallback, applied to ASP for the same reason.
             p["avgSellingPrice"] = p["price"]
 
-    # ── REAL_ROLLUP_WEEKLY (portfolio + per retailer) ───────────────────────
+    # ── REAL_ROLLUP_WEEKLY (portfolio + per retailer, this company only) ────
     def avg(vals):
         vals = [v for v in vals if v is not None]
         return round(sum(vals) / len(vals), 2) if vals else None
 
-    # stockRate/buyBoxRate are *rates over a day count that varies week to
-    # week* (the final real week is only Sep 29-30, 2 days, vs. 7 for the
-    # others; a handful of products also have date gaps). Averaging each
-    # product's already-computed weekly percentage -- unweighted -- is only
-    # correct within a single week (every product in a retailer shares that
-    # week's day count). Combining *across* weeks (which the date-range
-    # filter does) requires pooling the raw counts (sum in-stock rows / sum
-    # total rows), never averaging the percentages themselves -- e.g. a week
-    # with 8.41% over 119 rows and a week with 0% over 34 rows do not average
-    # to their midpoint; they pool to 10 in-stock rows out of 153. Computed
-    # directly from the raw daily Price rows (not from real_product_weekly's
-    # per-product series, and not using LOCF-filled values) so the weekly
-    # percentage AND the weight behind it both come from genuine observations
-    # only. rating/content are unaffected -- every product contributes
-    # exactly one real observation per week either way, so equal-weight
-    # averaging is already correct for those two.
-    # A handful of Petco SKUs are crawled for price/stock but were never
-    # given a Content-tab row (no name/category/images -- see
-    # excluded_price_only above), so they can't appear in the catalog or
-    # feed content/rating. But they ARE genuine stock-status observations:
-    # a manual filter of the raw Price tab naturally includes them, so
-    # Availability/Buy Box pooling below includes them too (grouped by
-    # retailer code) even though `ids`/`id_pairs` (content/rating's scope)
-    # deliberately does not.
     price_only_by_code = defaultdict(list)
     for code, native_id in excluded_price_only:
         price_only_by_code[code].append((code, native_id))
 
+    company_retailers = sorted({p["retailer"] for p in catalog} | set(price_only_by_code.keys()))
+
     real_rollup_weekly = {}
-    for scope in ["portfolio"] + list(RETAILER_NAMES.keys()):
-        ids = [pid for pid in real_product_weekly if scope == "portfolio" or pid.startswith(scope + "-")]
+    for scope in ["portfolio"] + company_retailers:
+        ids = [pid for pid in real_product_weekly if scope == "portfolio" or pid_to_key[pid][0] == scope]
         if not ids:
             continue
         id_pairs = [pid_to_key[pid] for pid in ids]
@@ -765,8 +702,8 @@ def main():
         stockRate, buyBoxRate, stockWeight, buyBoxWeight, rating, content = [], [], [], [], [], []
         stockRateSum, buyBoxRateSum = [], []
         avgPrice, avgPriceWeight, avgPriceSum = [], [], []
-        for wi, wk_start in enumerate(CONTENT_WEEKS):
-            wk_end = CONTENT_WEEKS[wi + 1] if wi + 1 < len(CONTENT_WEEKS) else "2022-10-06"
+        for wi, wk_start in enumerate(content_weeks):
+            wk_end = bucket_end(content_weeks, wi)
             in_stock_n, total_n, buybox_n, buybox_d = 0, 0, 0, 0
             price_sum, price_n = 0.0, 0
             for code, native_id in stock_id_pairs:
@@ -777,32 +714,12 @@ def main():
                     if flag is not None:
                         total_n += 1
                         in_stock_n += 1 if flag else 0
-                    # Buy Box Ownership's denominator is every tracked row
-                    # (matching the "out of 900" framing of the metric --
-                    # every observed listing-day is an opportunity), but the
-                    # numerator only counts a row as "owned" when the
-                    # listing was both in stock AND we held the buy box that
-                    # day -- an out-of-stock day can never count as owned,
-                    # since there's no buy box to hold while unavailable.
                     buybox_d += 1
                     buybox_n += 1 if (flag and is_own_seller(r.get("Buy box seller"), code)) else 0
-                    # Average Price -- pooled the same way as stockRate/buyBoxRate
-                    # above: every raw daily row (Current price, falling back to
-                    # List everyday price) is one equally-weighted observation.
-                    # Averaging each product's own average price first, THEN
-                    # averaging those per-product numbers, is the same "average
-                    # of averages" error as the original stockRate bug -- a
-                    # product crawled on more days would be silently
-                    # under/over-weighted relative to one crawled on fewer.
                     pv = price_value(r)
                     if pv is not None:
                         price_sum += pv
                         price_n += 1
-            # weight 0 means "no genuine observation this week" -- excluded
-            # from any pooled sum automatically, but the rate itself still
-            # needs a number (TS type is number[], not (number|null)[]), so
-            # carry the previous week's rate forward for display continuity
-            # only, same convention as fill_series() elsewhere in this file.
             stockRate.append(round(100.0 * in_stock_n / total_n, 2) if total_n else (stockRate[-1] if stockRate else 100.0))
             stockWeight.append(total_n)
             stockRateSum.append(in_stock_n)
@@ -812,49 +729,21 @@ def main():
             rating.append(avg([raw_rating_by_product[i][wi] for i in ids if i in raw_rating_by_product]))
             avgPrice.append(round(price_sum / price_n, 2) if price_n else (avgPrice[-1] if avgPrice else 0.0))
             avgPriceWeight.append(price_n)
-            # Raw (unrounded) dollar sum behind avgPrice this week -- pooling
-            # multiple weeks from this (sum of sums / sum of counts) is exact,
-            # unlike reconstructing from the already-rounded-to-cents avgPrice
-            # above (round(a)*w_a + round(b)*w_b, pooled, can drift a cent
-            # from the true flat average once the per-week roundings don't
-            # cancel out). avgPrice itself is kept for single-week display
-            # (the "4w" period and the weekly trend chart).
             avgPriceSum.append(round(price_sum, 4))
-        for wi in range(5):
-            wk = CONTENT_WEEKS[wi]
+        for wi in range(len(content_weeks)):
+            wk = content_weeks[wi]
             content.append(avg([content_score_by_week[i][wk] for i in ids if i in content_score_by_week]))
         real_rollup_weekly[scope] = {
             "stockRate": stockRate, "buyBoxRate": buyBoxRate, "rating": rating, "content": content,
             "stockRateWeight": stockWeight, "buyBoxRateWeight": buyBoxWeight,
-            # Raw (unrounded) in-stock/buy-box-owned counts behind stockRate/
-            # buyBoxRate this week -- same reason avgPriceSum exists: pooling
-            # multiple weeks by summing these raw counts (sum of sums / sum of
-            # counts) is exact, unlike reconstructing from the already-
-            # rounded-to-2-decimals stockRate/buyBoxRate above, which can
-            # drift once the per-week roundings don't cancel out.
             "stockRateSum": stockRateSum, "buyBoxRateSum": buyBoxRateSum,
             "avgPrice": avgPrice, "avgPriceWeight": avgPriceWeight, "avgPriceSum": avgPriceSum,
         }
 
-    # ── RETAILER_BIAS ────────────────────────────────────────────────────────
-    portfolio_avg = {k: avg(real_rollup_weekly["portfolio"][k]) for k in ["stockRate", "buyBoxRate", "rating", "content"]}
+    portfolio_avg = {k: avg(real_rollup_weekly["portfolio"][k]) for k in ["stockRate", "buyBoxRate", "rating", "content"]} if "portfolio" in real_rollup_weekly else {}
 
-    # ── REAL_SOS_WEEKLY: our own share of each keyword's results, per site/week ──
-    # "Search Visibility" = of every result the crawl found for our 10
-    # tracked generic keywords, what share are genuinely one of our own
-    # tracked SKUs -- not "did we return any result at all" (the metric's
-    # previous, much coarser definition). Each Share Of Search row carries
-    # up to 65 result slots (Url_1..Url_65 + Product_name_N); a result
-    # counts as "ours" when its Url_N contains one of this retailer's own
-    # tracked catalog ids (retailerId, the same native id used for
-    # url/CROSS_RETAILER_MATCH elsewhere in this pipeline) -- e.g.
-    # amazon.com/dp/<ASIN>, walmart.com/ip/<id>, homedepot.com/p/<id>.
-    # Pooled the same way every other rate in this file is pooled across
-    # weeks: sum of matches / sum of total results, never an average of
-    # per-week percentages (see REAL_ROLLUP_WEEKLY's stockRate comment for
-    # why -- a week with few results shouldn't count as heavily as one with
-    # many).
-    retailer_id_to_pid = defaultdict(dict)  # site_code -> { retailerId: catalog pid }
+    # ── REAL_SOS_WEEKLY: this company's own share of each keyword's results ──
+    retailer_id_to_pid = defaultdict(dict)
     for p in catalog:
         if p["retailerId"]:
             retailer_id_to_pid[p["retailer"]][str(p["retailerId"])] = p["id"]
@@ -862,19 +751,14 @@ def main():
     SOS_URL_SLOTS = 65
     sos_matched_by_site_week = defaultdict(lambda: defaultdict(int))
     sos_total_by_site_week = defaultdict(lambda: defaultdict(int))
-    # Which of the 10 tracked keywords each of our own SKUs genuinely
-    # appeared under (any position, any real week) -- the per-product
-    # sibling of REAL_SOS_WEEKLY's retailer-level aggregate. Feeds
-    # "Keyword Coverage" (see productFor in mockData.ts): count of matched
-    # keywords out of 10, not an illustrative rank position.
-    real_keyword_match = defaultdict(set)  # pid -> {keyword, ...}
+    real_keyword_match = defaultdict(set)
     keywords_seen = set()
     for r in sos_rows:
         code = site_code(r.get("site"))
         if not code:
             continue
         wk = date_key(r.get("Crawl_date"))
-        if wk not in SOS_WEEKS:
+        if wk not in sos_weeks:
             continue
         kw = r.get("keyword")
         keywords_seen.add(kw)
@@ -896,9 +780,9 @@ def main():
         sos_total_by_site_week[code][wk] += total
 
     real_sos_weekly = {}
-    for code in RETAILER_NAMES:
+    for code in company_retailers:
         pct, matched_list, total_list = [], [], []
-        for wk in SOS_WEEKS:
+        for wk in sos_weeks:
             m = sos_matched_by_site_week.get(code, {}).get(wk, 0)
             t = sos_total_by_site_week.get(code, {}).get(wk, 0)
             pct.append(round(100.0 * m / t, 1) if t else 0.0)
@@ -906,28 +790,25 @@ def main():
             total_list.append(t)
         real_sos_weekly[code] = {"sos": pct, "sosSum": matched_list, "sosWeight": total_list}
 
-    # Portfolio pools raw matches/results across every retailer directly
-    # (same "portfolio" convention as REAL_ROLLUP_WEEKLY's scope loop
-    # above), not an average of the 7 retailers' already-computed
-    # percentages.
-    portfolio_matched = [sum(real_sos_weekly[c]["sosSum"][wi] for c in RETAILER_NAMES) for wi in range(4)]
-    portfolio_total = [sum(real_sos_weekly[c]["sosWeight"][wi] for c in RETAILER_NAMES) for wi in range(4)]
-    real_sos_weekly["portfolio"] = {
-        "sos": [round(100.0 * m / t, 1) if t else 0.0 for m, t in zip(portfolio_matched, portfolio_total)],
-        "sosSum": portfolio_matched,
-        "sosWeight": portfolio_total,
-    }
+    if sos_weeks:
+        portfolio_matched = [sum(real_sos_weekly[c]["sosSum"][wi] for c in company_retailers) for wi in range(len(sos_weeks))]
+        portfolio_total = [sum(real_sos_weekly[c]["sosWeight"][wi] for c in company_retailers) for wi in range(len(sos_weeks))]
+        real_sos_weekly["portfolio"] = {
+            "sos": [round(100.0 * m / t, 1) if t else 0.0 for m, t in zip(portfolio_matched, portfolio_total)],
+            "sosSum": portfolio_matched,
+            "sosWeight": portfolio_total,
+        }
 
     bias = {}
-    for code in RETAILER_NAMES:
+    for code in company_retailers:
         r_avg = {k: avg(real_rollup_weekly[code][k]) for k in ["stockRate", "buyBoxRate", "rating", "content"]} if code in real_rollup_weekly else {}
-        sos_avg_r = avg(real_sos_weekly[code]["sos"])
-        sos_avg_p = avg(real_sos_weekly["portfolio"]["sos"])
+        sos_avg_r = avg(real_sos_weekly[code]["sos"]) if code in real_sos_weekly else None
+        sos_avg_p = avg(real_sos_weekly["portfolio"]["sos"]) if "portfolio" in real_sos_weekly else None
         bias[code] = {
             "sos": round((sos_avg_r or 0) - (sos_avg_p or 0), 2),
-            "stock": round((r_avg.get("stockRate") or 0) - (portfolio_avg["stockRate"] or 0), 1),
-            "rating": round((r_avg.get("rating") or 0) - (portfolio_avg["rating"] or 0), 2),
-            "content": round((r_avg.get("content") or 0) - (portfolio_avg["content"] or 0), 1),
+            "stock": round((r_avg.get("stockRate") or 0) - (portfolio_avg.get("stockRate") or 0), 1),
+            "rating": round((r_avg.get("rating") or 0) - (portfolio_avg.get("rating") or 0), 2),
+            "content": round((r_avg.get("content") or 0) - (portfolio_avg.get("content") or 0), 1),
         }
 
     # ── REAL_BUYBOX_COMPETITOR ───────────────────────────────────────────────
@@ -937,11 +818,7 @@ def main():
             continue
         if code in ("r4", "r6"):
             continue
-        pid = f"{code}-{native_id}"
-        # Only counts as a genuine loss on a day the listing was itself in
-        # stock -- a 3P seller's name in the Buy Box Seller field while our
-        # own listing was out of stock isn't a contested buy box we lost,
-        # since there was no buy box on our (unavailable) listing that day.
+        pid = make_pid(company, code, native_id)
         non_self = [
             str(r.get("Buy box seller")) for r in prows
             if r.get("Buy box seller") and not is_own_seller(r.get("Buy box seller"), code) and is_in_stock(r.get("Stock status"))
@@ -951,20 +828,12 @@ def main():
         top_seller, days_won = Counter(non_self).most_common(1)[0]
         real_buybox_competitor[pid] = {"seller": top_seller, "daysWon": days_won}
 
-    # ── CROSS_RETAILER_MATCH ─────────────────────────────────────────────────
-    # Two passes, SKU first: the vendor's own "SKU" (import template's rename
-    # of "Vendor stock no") is a real, retailer-agnostic product identifier
-    # -- when the exact same SKU shows up under 2+ different retailers, that
-    # IS the same product being sold in more than one place, no fuzzy
-    # matching needed. Falls back to the existing brand + >=45% name-overlap
-    # heuristic only for products with no SKU (or no SKU match), same as
-    # before this pass existed.
+    # ── CROSS_RETAILER_MATCH (within this company's own catalog only) ───────
     cross_retailer_match = defaultdict(dict)
     by_sku = defaultdict(list)
     for p in catalog:
         if p.get("sku"):
             by_sku[str(p["sku"]).strip().lower()].append(p)
-    sku_matched_ids = set()
     for sku, plist in by_sku.items():
         for i in range(len(plist)):
             for j in range(i + 1, len(plist)):
@@ -973,15 +842,7 @@ def main():
                     continue
                 cross_retailer_match[a["id"]][b["retailer"]] = b["id"]
                 cross_retailer_match[b["id"]][a["retailer"]] = a["id"]
-                sku_matched_ids.add(a["id"])
-                sku_matched_ids.add(b["id"])
 
-    # Candidate pairs are collected and applied strictly in descending
-    # overlap order (best match first), rather than in whatever order the
-    # catalog list happens to hold them -- so when a product has more than
-    # one plausible cross-retailer candidate, the pair with the strongest
-    # name overlap always wins, deterministically, instead of silently
-    # depending on catalog iteration order.
     by_brand = defaultdict(list)
     for p in catalog:
         if p["brand"]:
@@ -1005,16 +866,123 @@ def main():
             cross_retailer_match[a["id"]][b["retailer"]] = b["id"]
             cross_retailer_match[b["id"]][a["retailer"]] = a["id"]
 
-    # ── keywordSet (real terms, illustrative volume/ownRank) ────────────────
-    keyword_terms = sorted(keywords_seen)
+    return {
+        "catalog": catalog,
+        "real_product_weekly": real_product_weekly,
+        "real_price_timeline": real_price_timeline,
+        "real_buybox_timeline": real_buybox_timeline,
+        "real_keyword_match": real_keyword_match,
+        "real_buybox_competitor": real_buybox_competitor,
+        "cross_retailer_match": cross_retailer_match,
+        "real_rollup_weekly": real_rollup_weekly,
+        "real_sos_weekly": real_sos_weekly,
+        "bias": bias,
+        "week_labels": week_labels,
+        "sos_week_labels": sos_week_labels,
+        "content_weeks": content_weeks,
+        "sos_weeks": sos_weeks,
+        "keywords_seen": keywords_seen,
+        "retailers": company_retailers,
+        "debug": {
+            "content_products": len(content_by_product),
+            "price_products": len(price_by_product),
+            "catalog_size": len(catalog),
+            "price_only_excluded": [f"{c}-{n}" for c, n in excluded_price_only],
+            "component_bucket_averages": {b: avg(v) for b, v in component_bucket_totals.items()},
+            "content_weeks": content_weeks,
+            "sos_weeks": sos_weeks,
+            "buybox_competitor_count": len(real_buybox_competitor),
+            "cross_retailer_match_count": len(cross_retailer_match),
+            "priceless_ids_using_peer_avg_fallback": priceless_ids,
+            "still_null_after_fallback": [p["id"] for p in catalog if p["price"] is None],
+        },
+    }
+
+
+def main():
+    path = sys.argv[1]
+    wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    # Optional second workbook (or this file's own MAP Price tab) -- a real
+    # MAP reference table, per-company. Absent, every product's mapPrice is
+    # honestly null rather than fabricated.
+    map_price_by_company = load_map_price(sys.argv[2]) if len(sys.argv) > 2 else load_map_price(path)
+
+    content_rows = load_sheet(wb, "Content")
+    price_rows = load_sheet(wb, "Price")
+    sos_rows = load_sheet(wb, "Share Of Search")
+
+    content_by_company = defaultdict(list)
+    for r in content_rows:
+        content_by_company[norm_company(r.get("Company"))].append(r)
+    price_by_company = defaultdict(list)
+    for r in price_rows:
+        price_by_company[norm_company(r.get("Company"))].append(r)
+    sos_by_company = defaultdict(list)
+    for r in sos_rows:
+        sos_by_company[norm_company(r.get("Company"))].append(r)
+
+    companies = sorted(set(content_by_company) | set(price_by_company))
+
+    catalog = []
+    real_product_weekly = {}
+    real_price_timeline = {}
+    real_buybox_timeline = {}
+    real_keyword_match = {}
+    real_buybox_competitor = {}
+    cross_retailer_match = {}
+    week_labels_by_company = {}
+    sos_week_labels_by_company = {}
+    week_dates_by_company = {}
+    sos_week_dates_by_company = {}
+    rollup_weekly = {}       # "company::scope" -> {...}
+    sos_weekly = {}          # "company::scope" -> {...}
+    bias_by_key = {}         # "company::retailerCode" -> {...}
+    keyword_terms = set()
+    company_retailers_map = {}  # company -> [retailer codes]
+    debug_per_company = {}
+
+    for company in companies:
+        result = process_company(
+            company,
+            content_by_company.get(company, []),
+            price_by_company.get(company, []),
+            sos_by_company.get(company, []),
+            map_price_by_company.get(company, {}),
+        )
+        catalog.extend(result["catalog"])
+        real_product_weekly.update(result["real_product_weekly"])
+        real_price_timeline.update(result["real_price_timeline"])
+        real_buybox_timeline.update(result["real_buybox_timeline"])
+        real_keyword_match.update(result["real_keyword_match"])
+        real_buybox_competitor.update(result["real_buybox_competitor"])
+        cross_retailer_match.update(result["cross_retailer_match"])
+        week_labels_by_company[company] = result["week_labels"]
+        sos_week_labels_by_company[company] = result["sos_week_labels"]
+        week_dates_by_company[company] = result["content_weeks"]
+        sos_week_dates_by_company[company] = result["sos_weeks"]
+        for scope, v in result["real_rollup_weekly"].items():
+            rollup_weekly[f"{company}::{scope}"] = v
+        for scope, v in result["real_sos_weekly"].items():
+            sos_weekly[f"{company}::{scope}"] = v
+        for code, v in result["bias"].items():
+            bias_by_key[f"{company}::{code}"] = v
+        keyword_terms |= result["keywords_seen"]
+        company_retailers_map[company] = result["retailers"]
+        debug_per_company[company] = result["debug"]
+
+    keyword_terms = sorted(keyword_terms)
+    all_retailer_codes = sorted({code for codes in company_retailers_map.values() for code in codes})
 
     # ═══════════════════════════════════════════════════════════════════════
     # emit TypeScript
     # ═══════════════════════════════════════════════════════════════════════
     out = []
+    out.append("export const companies = " + json.dumps(companies) + ";")
+    out.append("")
+
     out.append("export const retailers = [")
     out.append('  { id: "all", name: "All retailers" },')
-    for code in RETAILER_NAMES:
+    for code in all_retailer_codes:
         out.append(f'  {{ id: "{code}", name: "{RETAILER_NAMES[code]}" }},')
     out.append("];")
     out.append("")
@@ -1030,9 +998,6 @@ def main():
         return json.dumps(v)
 
     def ts_num_or_null(v):
-        # Unlike ts_num's default-substitution, a genuinely absent price
-        # field (e.g. no subscription price was ever posted) must stay
-        # null, not 0 -- 0 would read as "free", a fabricated value.
         if v is None:
             return "null"
         return json.dumps(v)
@@ -1049,9 +1014,9 @@ def main():
     out.append("export const catalog = [")
     for p in catalog:
         out.append(
-            "  { id: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, mapPrice: %s, url: %s, stockStatusRaw: %s, couponValue: %s, otherSellers: %s, contentChecks: %s, titleLength: %s, imageUrl: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, sku: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, descriptionText: %s, bulletsText: %s, variations: %s },"
+            "  { id: %s, company: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, mapPrice: %s, url: %s, stockStatusRaw: %s, couponValue: %s, otherSellers: %s, contentChecks: %s, titleLength: %s, imageUrl: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, sku: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, descriptionText: %s, bulletsText: %s, variations: %s },"
             % (
-                ts_str(p["id"]), ts_str(p["name"]), ts_str(p["brand"]), ts_str(p["category"]), ts_str(p["retailer"]),
+                ts_str(p["id"]), ts_str(p["company"]), ts_str(p["name"]), ts_str(p["brand"]), ts_str(p["category"]), ts_str(p["retailer"]),
                 ts_num(p["rank"], 1), ts_num(p["price"], 0), ts_num(p["avgSellingPrice"], p["price"] or 0),
                 ts_num(p["rating"], 0), ts_num(p["reviews"], 0),
                 ts_num(p["content"], 0), ts_num(p["stockBias"], 1.0), ts_num(p["buyBoxRate"], 1.0),
@@ -1073,17 +1038,34 @@ def main():
     out.append("];")
     out.append("")
 
-    out.append("export const categories = " + json.dumps(["GPC", "HPC", "HG"]) + ";")
-    out.append("")
-
     out.append("export const keywordSet = [")
     for i, term in enumerate(keyword_terms, 1):
         out.append(f'  {{ id: "k{i}", term: {json.dumps(term)}, volume: 0, ownRank: 0 }}, // volume/ownRank illustrative -- no traffic data in source')
     out.append("];")
     out.append("")
 
-    out.append(f"export const REAL_WEEK_LABELS = {json.dumps(REAL_WEEK_LABELS)};")
-    out.append(f"export const REAL_SOS_WEEK_LABELS = {json.dumps(REAL_SOS_WEEK_LABELS)};")
+    out.append("export const REAL_WEEK_LABELS: Record<string, string[]> = {")
+    for company, labels in week_labels_by_company.items():
+        out.append(f'  {json.dumps(company)}: {json.dumps(labels)},')
+    out.append("};")
+    out.append("export const REAL_SOS_WEEK_LABELS: Record<string, string[]> = {")
+    for company, labels in sos_week_labels_by_company.items():
+        out.append(f'  {json.dumps(company)}: {json.dumps(labels)},')
+    out.append("};")
+    out.append("")
+
+    # Raw ISO dates behind the labels above, per company -- used by the
+    # custom date-range picker to match a user-selected window against this
+    # company's own genuinely-real crawl dates (matchRangeWeeks in
+    # mockData.ts), never a shared/hardcoded date list.
+    out.append("export const REAL_WEEK_DATES: Record<string, string[]> = {")
+    for company, dates in week_dates_by_company.items():
+        out.append(f'  {json.dumps(company)}: {json.dumps(dates)},')
+    out.append("};")
+    out.append("export const REAL_SOS_WEEK_DATES: Record<string, string[]> = {")
+    for company, dates in sos_week_dates_by_company.items():
+        out.append(f'  {json.dumps(company)}: {json.dumps(dates)},')
+    out.append("};")
     out.append("")
 
     out.append("export const REAL_PRODUCT_WEEKLY: Record<string, {")
@@ -1098,10 +1080,11 @@ def main():
     out.append("  sos: number[];")
     out.append("  /* Raw matched-result-count / total-result-count behind sos that week --")
     out.append("     pool (sum numerator / sum denominator), never average, when combining")
-    out.append("     multiple weeks, same reasoning as REAL_ROLLUP_WEEKLY's stockRateSum. */")
+    out.append("     multiple weeks, same reasoning as REAL_ROLLUP_WEEKLY's stockRateSum.")
+    out.append("     Keyed \"company::scope\" (scope = \"portfolio\" or a retailer code). */")
     out.append("  sosSum: number[]; sosWeight: number[];")
     out.append("}> = {")
-    for k, v in real_sos_weekly.items():
+    for k, v in sos_weekly.items():
         out.append(f'  {json.dumps(k)}: {{ sos: {json.dumps(v["sos"])}, sosSum: {json.dumps(v["sosSum"])}, sosWeight: {json.dumps(v["sosWeight"])} }},')
     out.append("};")
     out.append("")
@@ -1118,9 +1101,6 @@ def main():
     out.append("};")
     out.append("")
 
-    # Day-by-day series behind priceChangePct/REAL_BUYBOX_COMPETITOR -- only
-    # emitted for products that have at least one entry, to keep this block
-    # from ballooning for the (few) SKUs with zero observed daily rows.
     out.append("export const REAL_PRICE_TIMELINE: Record<string, Array<{ date: string; price: number }>> = {")
     for pid, entries in real_price_timeline.items():
         if not entries:
@@ -1146,23 +1126,10 @@ def main():
 
     out.append("export const REAL_ROLLUP_WEEKLY: Record<string, {")
     out.append("  stockRate: number[]; buyBoxRate: number[]; rating: number[]; content: number[]; avgPrice: number[];")
-    out.append("  /* raw daily-row counts behind stockRate/buyBoxRate/avgPrice that week --")
-    out.append("     pool (sum numerator / sum denominator), never average, when combining")
-    out.append("     multiple weeks (e.g. for a custom date range); see the comment above")
-    out.append("     this table's construction in build_mock_data.py for why. avgPriceSum is")
-    out.append("     the raw (unrounded) dollar total behind avgPrice that week -- pool")
-    out.append("     avgPriceSum/avgPriceWeight across weeks for an exact result; pooling the")
-    out.append("     already-rounded-to-cents avgPrice instead can drift a cent from the true")
-    out.append("     flat average once per-week roundings don't cancel out. */")
     out.append("  stockRateWeight: number[]; buyBoxRateWeight: number[]; avgPriceWeight: number[]; avgPriceSum: number[];")
-    out.append("  /* Raw (unrounded) in-stock/buy-box-owned counts behind stockRate/")
-    out.append("     buyBoxRate that week -- same reasoning as avgPriceSum above: pool")
-    out.append("     stockRateSum/stockRateWeight (or buyBoxRateSum/buyBoxRateWeight) across")
-    out.append("     weeks for an exact rate, never reconstruct from the already-rounded")
-    out.append("     stockRate/buyBoxRate percentages. */")
     out.append("  stockRateSum: number[]; buyBoxRateSum: number[];")
     out.append("}> = {")
-    for scope, v in real_rollup_weekly.items():
+    for scope, v in rollup_weekly.items():
         out.append(
             f'  {json.dumps(scope)}: {{ stockRate: {json.dumps(v["stockRate"])}, buyBoxRate: {json.dumps(v["buyBoxRate"])}, '
             f'rating: {json.dumps(v["rating"])}, content: {json.dumps(v["content"])}, avgPrice: {json.dumps(v["avgPrice"])}, '
@@ -1173,33 +1140,17 @@ def main():
     out.append("};")
     out.append("")
 
-    out.append("const RETAILER_BIAS: Record<string, { sos: number; stock: number; rating: number; content: number }> = {")
-    out.append('  all: { sos: 0, stock: 0, rating: 0, content: 0 },')
-    for code, b in bias.items():
-        out.append(f'  {json.dumps(code)}: {{ sos: {b["sos"]}, stock: {b["stock"]}, rating: {b["rating"]}, content: {b["content"]} }}, // {RETAILER_NAMES[code]}')
+    out.append("export const RETAILER_BIAS: Record<string, { sos: number; stock: number; rating: number; content: number }> = {")
+    for company in companies:
+        out.append(f'  {json.dumps(company + "::all")}: {{ sos: 0, stock: 0, rating: 0, content: 0 }},')
+    for key, b in bias_by_key.items():
+        out.append(f'  {json.dumps(key)}: {{ sos: {b["sos"]}, stock: {b["stock"]}, rating: {b["rating"]}, content: {b["content"]} }},')
     out.append("};")
 
     print("\n".join(out))
 
     # ── debug dump ────────────────────────────────────────────────────────
-    debug = {
-        "counts": {
-            "content_products": len(content_by_product),
-            "price_products": len(price_by_product),
-            "catalog_size": len(catalog),
-            "price_only_excluded": [f"{c}-{n}" for c, n in excluded_price_only],
-        },
-        "component_bucket_averages": {b: avg(v) for b, v in component_bucket_totals.items()},
-        "sample_catalog_rows": catalog[:10],
-        "real_rollup_weekly": real_rollup_weekly,
-        "real_sos_weekly": real_sos_weekly,
-        "bias": bias,
-        "buybox_competitor_count": len(real_buybox_competitor),
-        "cross_retailer_match_count": len(cross_retailer_match),
-        "keyword_terms": keyword_terms,
-        "priceless_ids_using_peer_avg_fallback": priceless_ids,
-        "still_null_after_fallback": [p["id"] for p in catalog if p["price"] is None],
-    }
+    debug = {"companies": companies, "per_company": debug_per_company}
     with open("build_debug.json", "w", encoding="utf-8") as f:
         json.dump(debug, f, indent=2, default=str)
 
