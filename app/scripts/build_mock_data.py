@@ -129,7 +129,18 @@ CATEGORY_NORMALIZE = {
     "HG": "HG",
 }
 
-OOS_MARKERS = ("out of stock", "unavailable", "temporarily out")
+OOS_MARKERS = (
+    "out of stock", "unavailable", "temporarily out",
+    # "Url Failed" (222 rows across 4 of the new companies) is a crawl
+    # failure, not an observed stock status -- the retailer's page was
+    # never actually reached that day. Was previously falling through to
+    # "in stock" by default (it matches none of the markers above), which
+    # silently inflated every affected company's real Stock Availability
+    # and Buy Box Ownership numbers. Treated the same way the user's own
+    # reference calculation treats it: counted as not-in-stock, not
+    # excluded from the denominator.
+    "url failed",
+)
 DEFAULT_COMPANY = "Perfality"
 
 
