@@ -143,6 +143,21 @@ OOS_MARKERS = (
 )
 DEFAULT_COMPANY = "Perfality"
 
+# A company's own listing is sometimes won by a seller name that's neither
+# the retailer's own name (Amazon.com, Walmart, ...) nor a raw "You" --
+# it's the company/brand's own storefront name on that marketplace (e.g.
+# Ancestry selling as "AncestryDNA" on Amazon rather than "Ships from and
+# sold by Amazon.com"). Matched in is_own_seller() below alongside the
+# existing retailer-name check, normalized the same way (norm_seller), so
+# these don't get miscounted as a genuine 3rd-party buy-box loss. Supplied
+# directly by each client -- add here as new companies confirm their own
+# storefront seller name(s), never guessed.
+OWN_SELLER_NAMES = {
+    "Ancestry": ["AncestryDNA", "AncestryDNA Official"],
+    "MAXSTONE": ["MAX + STONE"],
+    "STYLECRAFT": ["STYLECRAFT"],
+}
+
 
 def norm_site(s):
     if not s:
@@ -160,10 +175,14 @@ def norm_seller(s):
     return re.sub(r"[^a-z0-9]", "", str(s).lower())
 
 
-def is_own_seller(seller, site_code_):
+def is_own_seller(seller, site_code_, company=None):
     """Home Depot & Lowe's buy-box-seller fields are store/location names, not
     real marketplace competitors (verified against the raw data) -- treat any
-    seller on those two retailers as self."""
+    seller on those two retailers as self. Otherwise self if the seller name
+    is the retailer's own name/domain (a 1P "sold by Amazon.com"-style
+    listing) OR one of this company's own known storefront names on that
+    marketplace (see OWN_SELLER_NAMES) -- a company selling under its own
+    brand name is still us, not a 3rd-party competitor."""
     if site_code_ in ("r4", "r6"):
         return True
     if not seller:
@@ -171,7 +190,13 @@ def is_own_seller(seller, site_code_):
     ns = norm_seller(seller)
     site_name = norm_seller(RETAILER_NAMES[site_code_])
     site_domain = norm_seller([k for k, v in SITE_TO_CODE.items() if v == site_code_][0])
-    return ns == site_name or ns == site_domain or site_name in ns or ns in site_name
+    if ns == site_name or ns == site_domain or site_name in ns or ns in site_name:
+        return True
+    for alias in OWN_SELLER_NAMES.get(company, []):
+        na = norm_seller(alias)
+        if ns == na or na in ns:
+            return True
+    return False
 
 
 def date_key(d):
@@ -514,7 +539,7 @@ def process_company(company, content_rows, price_rows, sos_rows, map_price_by_si
         if code not in ("r4", "r6"):
             real_buybox_timeline[pid] = [
                 {"date": date_key(r.get("Crawl date")),
-                 "holder": "You" if is_own_seller(r.get("Buy box seller"), code) else str(r.get("Buy box seller"))}
+                 "holder": "You" if is_own_seller(r.get("Buy box seller"), code, company) else str(r.get("Buy box seller"))}
                 for r in prows
                 if is_in_stock(r.get("Stock status")) and r.get("Buy box seller")
             ]
@@ -535,7 +560,7 @@ def process_company(company, content_rows, price_rows, sos_rows, map_price_by_si
                     last_known_stock = round(100.0 * sum(in_stock_flags) / len(in_stock_flags), 1)
                 stock_rate = last_known_stock
                 owned_flags = [
-                    1 if (is_in_stock(r.get("Stock status")) and is_own_seller(r.get("Buy box seller"), code)) else 0
+                    1 if (is_in_stock(r.get("Stock status")) and is_own_seller(r.get("Buy box seller"), code, company)) else 0
                     for r in bucket
                 ]
                 if bucket:
@@ -564,7 +589,7 @@ def process_company(company, content_rows, price_rows, sos_rows, map_price_by_si
         all_prices = [price_value(r) for r in prows if price_value(r) is not None]
         stock_flags_all = [f for f in (is_in_stock(r.get("Stock status")) for r in prows) if f is not None]
         buybox_flags_all = [
-            bool(is_in_stock(r.get("Stock status")) and is_own_seller(r.get("Buy box seller"), code))
+            bool(is_in_stock(r.get("Stock status")) and is_own_seller(r.get("Buy box seller"), code, company))
             for r in prows
         ]
         price_change_pct = None
@@ -726,7 +751,7 @@ def process_company(company, content_rows, price_rows, sos_rows, map_price_by_si
                         total_n += 1
                         in_stock_n += 1 if flag else 0
                     buybox_d += 1
-                    buybox_n += 1 if (flag and is_own_seller(r.get("Buy box seller"), code)) else 0
+                    buybox_n += 1 if (flag and is_own_seller(r.get("Buy box seller"), code, company)) else 0
                     pv = price_value(r)
                     if pv is not None:
                         price_sum += pv
@@ -860,7 +885,7 @@ def process_company(company, content_rows, price_rows, sos_rows, map_price_by_si
         pid = make_pid(company, code, native_id)
         non_self = [
             str(r.get("Buy box seller")) for r in prows
-            if r.get("Buy box seller") and not is_own_seller(r.get("Buy box seller"), code) and is_in_stock(r.get("Stock status"))
+            if r.get("Buy box seller") and not is_own_seller(r.get("Buy box seller"), code, company) and is_in_stock(r.get("Stock status"))
         ]
         if not non_self:
             continue
