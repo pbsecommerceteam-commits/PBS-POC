@@ -2896,11 +2896,21 @@ function itemPriceIndex(price: number | null, asp: number | null): number | null
    "Out Of Stock", "Currently unavailable.", "Temporarily out of stock.",
    "Only 2 left in stock - order soon." (a genuine low-stock signal in the
    raw crawl, not invented). Replaces the old per-session random status
-   roll, which could disagree with the real crawl entirely. */
+   roll, which could disagree with the real crawl entirely.
+
+   "Url Failed" -- a crawl failure, not an observed stock status; the
+   retailer's page was never actually reached that day -- must be treated
+   as not-in-stock here too, the same way it already is in the numeric
+   stockBias/inStockRate (see build_mock_data.py's OOS_MARKERS, and the
+   "Url Failed" stockBias fix earlier in this project). This function is
+   the frontend's own independent read of the same raw field for the
+   In Stock/Low Stock/Out of Stock badge -- it was never updated to match,
+   so a "Url Failed" SKU showed a contradictory "In Stock" badge right next
+   to its own correctly-computed "0.0% of days" in-stock rate. */
 function classifyStockStatus(raw: string | null): "In Stock" | "Low Stock" | "Out of Stock" {
   if (!raw) return "In Stock";
   const s = raw.toLowerCase();
-  if (s.includes("out of stock") || s.includes("unavailable") || s.includes("temporarily out")) return "Out of Stock";
+  if (s.includes("out of stock") || s.includes("unavailable") || s.includes("temporarily out") || s.includes("url failed")) return "Out of Stock";
   if (s.includes("only") && s.includes("left")) return "Low Stock";
   return "In Stock";
 }
