@@ -73,7 +73,11 @@ export default function ProductDetail() {
   ];
 
   const maxStars = Math.max(...detail.reviewMix.map((m: any) => m.count));
-  const lo = Math.min(...t.price), hi = Math.max(...t.price);
+  // No honest price chart exists for a SKU the crawl never priced at all --
+  // t.price is either fully real or fully null in lockstep with p.price
+  // (see mockData.ts), so checking p.price stands in for "any price data".
+  const hasPriceData = p.price != null;
+  const lo = hasPriceData ? Math.min(...t.price) : 0, hi = hasPriceData ? Math.max(...t.price) : 0;
   const reviewsLo = Math.min(...t.reviews), reviewsHi = Math.max(...t.reviews);
 
   const isReal = detail.dataSource === "real";
@@ -87,11 +91,11 @@ export default function ProductDetail() {
      range so the line never renders clipped when MAP sits above/below
      every observed price point. */
   const priceLo = Math.min(lo, p.mapPrice ?? lo), priceHi = Math.max(hi, p.mapPrice ?? hi);
-  const priceChart = lineChart({ id: "d-price", title: "Price Trend", subtitle: "Shelf price over the period" + realNote,
+  const priceChart = hasPriceData ? lineChart({ id: "d-price", title: "Price Trend", subtitle: "Shelf price over the period" + realNote,
     labels, lo: priceLo * 0.94, hi: priceHi * 1.06, ticks: [priceLo * 0.96, (priceLo + priceHi) / 2, priceHi * 1.04], fmt: (v) => "$" + v.toFixed(2), hideLegend: true,
     series: [{ name: "Price", values: t.price }],
     target: p.mapPrice ?? undefined, targetLabel: "MAP Price",
-    badge: p.mapPrice != null ? "MAP $" + p.mapPrice.toFixed(2) : undefined }, hover, onEnter);
+    badge: p.mapPrice != null ? "MAP $" + p.mapPrice.toFixed(2) : undefined }, hover, onEnter) : null;
   const stockChart = barChart({ id: "d-stock", title: "Stock Availability 1P + 3P Trend", subtitle: "In-stock rate at this retailer" + realNote, badge: "Target 98%",
     labels, values: t.stock, valueName: "In stock", lo: 60, hi: 100, ticks: [60, 70, 80, 90, 100], fmt: (v) => v.toFixed(1) + "%", target: 98,
     fill: (v) => (v >= 98 ? "var(--status-positive-fg)" : "var(--color-accent-300)") }, hover, onEnter);
@@ -111,7 +115,7 @@ export default function ProductDetail() {
 
   const facts = [
     { label: "Stock Availability 1P + 3P", value: p.inStockRate.toFixed(1) + "%", sub: p.stockStatus },
-    { label: "Average price", value: "$" + p.avgSellingPrice.toFixed(2), sub: "$" + p.price.toFixed(2) + " current price" },
+    { label: "Average price", value: p.avgSellingPrice != null ? "$" + p.avgSellingPrice.toFixed(2) : "—", sub: p.price != null ? "$" + p.price.toFixed(2) + " current price" : "No price data" },
     { label: "Content completeness", value: p.contentScore + "%", sub: "of content checks passed" },
     { label: "Rating", value: p.rating.toFixed(2), sub: "average rating" },
     { label: "Review count", value: p.reviews.toLocaleString(), sub: "tracked reviews" },
@@ -122,13 +126,17 @@ export default function ProductDetail() {
     toast("Exported key facts.");
   };
 
-  const eff = p.currentPrice ?? p.price;
-  const underMap = p.mapPrice != null && eff < p.mapPrice;
-  const onPromotion = (p.listPrice != null && eff < p.listPrice) || p.couponValue != null;
+  // eff (the "currently in effect" price) is null only when the crawl never
+  // observed a price for this SKU at all -- underMap/onPromotion must not
+  // fall for null coercing to 0 in a `<` comparison (which would silently
+  // mark an unpriced SKU as "under MAP"/"on promotion").
+  const eff: number | null = p.currentPrice ?? p.price;
+  const underMap = p.mapPrice != null && eff != null && eff < p.mapPrice;
+  const onPromotion = (p.listPrice != null && eff != null && eff < p.listPrice) || p.couponValue != null;
   const priceFields = [
     { label: "List Price", value: p.listPrice != null ? "$" + p.listPrice.toFixed(2) : "—" },
-    { label: "Current Price", value: "$" + eff.toFixed(2) },
-    { label: "Average Selling Price", value: "$" + p.avgSellingPrice.toFixed(2) },
+    { label: "Current Price", value: eff != null ? "$" + eff.toFixed(2) : "—" },
+    { label: "Average Selling Price", value: p.avgSellingPrice != null ? "$" + p.avgSellingPrice.toFixed(2) : "—" },
     { label: "Subscription Price", value: p.subscriptionPrice != null ? "$" + p.subscriptionPrice.toFixed(2) : "—" },
     { label: "MAP Price", value: p.mapPrice != null ? "$" + p.mapPrice.toFixed(2) : "Not tracked" },
     { label: "Coupon", value: p.couponValue ?? "—" },
@@ -150,7 +158,7 @@ export default function ProductDetail() {
     [{ label: "Retailer", align: "left" }, { label: "Price", align: "right" }, { label: "In Stock", align: "right" }, { label: "Rating", align: "right" }, { label: "Content", align: "right" }],
     detail.retailerPerformance.map((r: any) => ({ cells: [
       cell(r.retailer, { strong: r.isSelf, sub: r.isSelf ? "This listing" : (r.listed ? undefined : "Not tracked") }),
-      cell(r.listed ? "$" + r.price.toFixed(2) : "—", { align: "right" }),
+      cell(r.listed && r.price != null ? "$" + r.price.toFixed(2) : "—", { align: "right" }),
       cell(r.listed ? r.inStock.toFixed(1) + "%" : "—", { align: "right" }),
       cell(r.listed ? r.rating.toFixed(2) : "—", { align: "right" }),
       cell(r.listed ? r.content + "%" : "—", { align: "right" }),
@@ -210,7 +218,14 @@ export default function ProductDetail() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,430px),1fr))", gap: "var(--app-gap)" }}>
-        <ChartCard c={priceChart} onLeave={onLeave} onExportCsv={() => exportChart("shelfline-" + p.id + "-price-trend.csv", "Price Trend", [{ name: "Price", values: t.price }], p.mapPrice != null ? { name: "MAP Price", value: p.mapPrice } : undefined)} />
+        {hasPriceData && priceChart ? (
+          <ChartCard c={priceChart} onLeave={onLeave} onExportCsv={() => exportChart("shelfline-" + p.id + "-price-trend.csv", "Price Trend", [{ name: "Price", values: t.price }], p.mapPrice != null ? { name: "MAP Price", value: p.mapPrice } : undefined)} />
+        ) : (
+          <Card padding="20px 22px 16px">
+            <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Price Trend</h4>
+            <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 10 }}>No price was ever observed for this SKU in the crawl.</div>
+          </Card>
+        )}
         <ChartCard c={stockChart} onLeave={onLeave} onExportCsv={() => exportChart("shelfline-" + p.id + "-stock-availability-trend.csv", "Stock Availability Trend", [{ name: "In Stock %", values: t.stock }])} />
       </div>
 
@@ -263,7 +278,7 @@ export default function ProductDetail() {
           <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>
             Price Index<InfoTip text="Current price ÷ this SKU's own average selling price this period, ×100. Above 100 = priced above its own norm right now; below 100 = a markdown." />
           </div>
-          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 28, lineHeight: 1, marginTop: 8 }}>{(p.priceIndex * 100).toFixed(0)}</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 28, lineHeight: 1, marginTop: 8 }}>{p.priceIndex != null ? (p.priceIndex * 100).toFixed(0) : "—"}</div>
         </Card>
         <Card padding="18px 20px">
           <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>

@@ -7,7 +7,10 @@ const OPP_ORDER: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
  *  under MAP, a violation) -- Infinity for SKUs with no MAP tracked, so
  *  they always sort as the least urgent, never mixed in among genuine
  *  violations. */
-const mapGapPct = (p: Product) => (p.mapPrice ? (((p.currentPrice ?? p.price) - p.mapPrice) / p.mapPrice) * 100 : Infinity);
+const mapGapPct = (p: Product) => {
+  const eff = p.currentPrice ?? p.price;
+  return p.mapPrice && eff != null ? ((eff - p.mapPrice) / p.mapPrice) * 100 : Infinity;
+};
 
 /** One comparator per sortable product column, shared by every product
  *  table (Overview, Digital Shelf, Performance Intelligence) so sort behavior — and
@@ -17,9 +20,11 @@ export const productSorters: Record<string, (a: Product, b: Product) => number> 
   category: (a, b) => a.category.localeCompare(b.category),
   retailerName: (a, b) => a.retailerName.localeCompare(b.retailerName),
   keywordCoverage: (a, b) => a.keywordCoverage - b.keywordCoverage,
-  price: (a, b) => a.price - b.price,
-  priceIndex: (a, b) => a.priceIndex - b.priceIndex,
-  currentPrice: (a, b) => (a.currentPrice ?? a.price) - (b.currentPrice ?? b.price),
+  // A SKU the crawl never priced (null) always sorts last, either direction
+  // -- same convention as listPrice/subscriptionPrice/mapPrice below.
+  price: (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity),
+  priceIndex: (a, b) => (a.priceIndex ?? Infinity) - (b.priceIndex ?? Infinity),
+  currentPrice: (a, b) => (a.currentPrice ?? a.price ?? Infinity) - (b.currentPrice ?? b.price ?? Infinity),
   listPrice: (a, b) => (a.listPrice ?? Infinity) - (b.listPrice ?? Infinity),
   subscriptionPrice: (a, b) => (a.subscriptionPrice ?? Infinity) - (b.subscriptionPrice ?? Infinity),
   mapPrice: (a, b) => (a.mapPrice ?? Infinity) - (b.mapPrice ?? Infinity),

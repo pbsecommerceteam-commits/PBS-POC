@@ -95,7 +95,7 @@ export default function SalesShareSummary() {
      catalog only keeps first-vs-last percent change, not the first price
      itself, so this reconstructs it rather than adding a new stored field
      for a number the existing real field already implies exactly. */
-  const impliedPreviousPrice = (p: Product) => (p.priceChangePct > -100 ? p.price / (1 + p.priceChangePct / 100) : null);
+  const impliedPreviousPrice = (p: Product) => (p.price != null && p.priceChangePct > -100 ? p.price / (1 + p.priceChangePct / 100) : null);
 
   /* Discount % = (List Price - Effective Price) / List Price -- "Effective
      Price" is the currently displayed/paid price (Current Price, falling
@@ -104,15 +104,17 @@ export default function SalesShareSummary() {
      analysis on the Drivers tab, so this stays list-vs-current only.
      Averaged only over SKUs that actually posted a list price (a SKU with
      none has nothing to discount from). */
-  const withList = sh.products.filter((p: Product) => p.listPrice != null && p.listPrice > 0);
+  const withList = sh.products.filter((p: Product) => p.listPrice != null && p.listPrice > 0 && (p.currentPrice ?? p.price) != null);
   const avgDiscountPct = withList.length
-    ? withList.reduce((a: number, p: Product) => a + ((p.listPrice! - (p.currentPrice ?? p.price)) / p.listPrice!) * 100, 0) / withList.length
+    ? withList.reduce((a: number, p: Product) => a + ((p.listPrice! - (p.currentPrice ?? p.price)!) / p.listPrice!) * 100, 0) / withList.length
     : 0;
   /* "On promotion" = genuinely marked down from list (current < list) or
      carrying a real crawled coupon -- either is a real, currently-active
-     promotional mechanism, not a fabricated status. */
+     promotional mechanism, not a fabricated status. Requires an actual
+     observed price to compare against list -- a priceless SKU must not
+     silently read as "below list" via null coercing to 0. */
   const promotionProducts = sh.products.filter((p: Product) =>
-    (p.listPrice != null && (p.currentPrice ?? p.price) < p.listPrice) || p.couponValue != null,
+    (p.listPrice != null && (p.currentPrice ?? p.price) != null && (p.currentPrice ?? p.price)! < p.listPrice) || p.couponValue != null,
   );
   const onPromotion = promotionProducts.length;
 
@@ -120,15 +122,17 @@ export default function SalesShareSummary() {
      workbook the user supplies (not the crawl itself -- MAP is a brand
      policy value). Only SKUs with a genuine MAP row count toward either
      number; a SKU with none is neither compliant nor a violation, it's
-     simply not tracked. */
+     simply not tracked. Also requires an actual observed price -- a
+     priceless SKU must not silently read as "below MAP" via null
+     coercing to 0 in the comparison. */
   const withMap = sh.products.filter((p: Product) => p.mapPrice != null);
   const belowMapProducts = withMap
-    .filter((p: Product) => (p.currentPrice ?? p.price) < p.mapPrice!)
-    .sort((a: Product, b: Product) => ((b.mapPrice! - (b.currentPrice ?? b.price)) / b.mapPrice!) - ((a.mapPrice! - (a.currentPrice ?? a.price)) / a.mapPrice!));
+    .filter((p: Product) => (p.currentPrice ?? p.price) != null && (p.currentPrice ?? p.price)! < p.mapPrice!)
+    .sort((a: Product, b: Product) => ((b.mapPrice! - (b.currentPrice ?? b.price)!) / b.mapPrice!) - ((a.mapPrice! - (a.currentPrice ?? a.price)!) / a.mapPrice!));
   const belowMap = belowMapProducts;
 
   const discountedProducts = withList
-    .map((p: Product) => ({ p, eff: p.currentPrice ?? p.price, pct: ((p.listPrice! - (p.currentPrice ?? p.price)) / p.listPrice!) * 100 }))
+    .map((p: Product) => ({ p, eff: (p.currentPrice ?? p.price)!, pct: ((p.listPrice! - (p.currentPrice ?? p.price)!) / p.listPrice!) * 100 }))
     .sort((a: any, b: any) => b.pct - a.pct);
 
   /* One DrillTableConfig per clickable KPI tile above -- built with the same
@@ -147,7 +151,7 @@ export default function SalesShareSummary() {
       cell(p.retailerName, { align: "center" }),
       cell(p.retailerId, { align: "center" }),
       cell(prev != null ? "$" + prev.toFixed(2) : "—", { align: "center" }),
-      cell("$" + p.price.toFixed(2), { align: "center" }),
+      cell(p.price != null ? "$" + p.price.toFixed(2) : "—", { align: "center" }),
       cell(delta(p.priceChangePct, "%"), { align: "center", color: deltaColor(p.priceChangePct) }),
     ], detail: priceDateDetail(p.id) }; }),
   };
@@ -159,7 +163,7 @@ export default function SalesShareSummary() {
       cell(p.retailerName, { align: "center" }),
       cell(p.retailerId, { align: "center" }),
       cell(prev != null ? "$" + prev.toFixed(2) : "—", { align: "center" }),
-      cell("$" + p.price.toFixed(2), { align: "center" }),
+      cell(p.price != null ? "$" + p.price.toFixed(2) : "—", { align: "center" }),
       cell(delta(p.priceChangePct, "%"), { align: "center", color: deltaColor(p.priceChangePct) }),
     ], detail: priceDateDetail(p.id) }; }),
   };
@@ -195,14 +199,14 @@ export default function SalesShareSummary() {
       cell(p.retailerName, { align: "center" }),
       cell(p.retailerId, { align: "center" }),
       cell(p.listPrice != null ? "$" + p.listPrice.toFixed(2) : "—", { align: "center" }),
-      cell("$" + (p.currentPrice ?? p.price).toFixed(2), { align: "center" }),
+      cell((p.currentPrice ?? p.price) != null ? "$" + (p.currentPrice ?? p.price)!.toFixed(2) : "—", { align: "center" }),
       cell(p.couponValue ?? "—", { align: "center" }),
     ] })),
   };
   const belowMapTable: DrillTableConfig = {
     title: "Below MAP", subtitle: `${belowMap.length} of ${withMap.length} SKUs tracked under MAP are priced under it`,
     cols: [{ label: "Product", align: "left" }, { label: "Retailer", align: "center" }, { label: "Retailer ID", align: "center" }, { label: "MAP Price", align: "center" }, { label: "Effective Price", align: "center" }, { label: "Under MAP", align: "center" }],
-    rows: belowMapProducts.map((p: Product) => { const eff = p.currentPrice ?? p.price; const gap = p.mapPrice! - eff; return { cells: [
+    rows: belowMapProducts.map((p: Product) => { const eff = (p.currentPrice ?? p.price)!; const gap = p.mapPrice! - eff; return { cells: [
       cell(p.name, { onClick: () => goToProduct(p.id) }),
       cell(p.retailerName, { align: "center" }),
       cell(p.retailerId, { align: "center" }),
@@ -252,13 +256,18 @@ export default function SalesShareSummary() {
   if (skuMatch) {
     const w = (REAL_PRODUCT_WEEKLY as any)[skuMatch.id];
     const companyLabels = REAL_WEEK_LABELS[(skuMatch as any).company] || [];
-    if (w) {
+    // w.price is entirely null (every point) for a SKU the crawl never
+    // priced at all -- fill_series only leaves gaps unfilled in that one
+    // case, so checking the first point stands in for "any real data".
+    // Falls through to the portfolio-wide default trend rather than
+    // charting a line of nulls.
+    if (w && w.price[0] != null) {
       trendLabels = companyLabels; trendValues = w.price; trendMap = skuMatch.mapPrice ?? null;
       trendTitle = skuMatch.name; trendSubtitle = "Real crawl price · " + skuMatch.retailerName;
       trendValueLabel = "Price"; trendMapLabel = "MAP Price";
     }
   } else if (priceTrendCategory && catProducts.length) {
-    const withSeries = catProducts.map((p: Product) => (REAL_PRODUCT_WEEKLY as any)[p.id]?.price).filter((s: any): s is number[] => !!s);
+    const withSeries = catProducts.map((p: Product) => (REAL_PRODUCT_WEEKLY as any)[p.id]?.price).filter((s: any): s is number[] => !!s && s[0] != null);
     const companyLabels = REAL_WEEK_LABELS[(catProducts[0] as any)?.company] || [];
     if (withSeries.length) {
       trendLabels = companyLabels;
@@ -298,8 +307,8 @@ export default function SalesShareSummary() {
      naturally collapses this to the one retailer that SKU is tracked at. */
   const retailerPriceRows: Array<{ name: string; avgPrice: number }> = isScoped
     ? Array.from(new Set(scopedProducts.map((p: Product) => p.retailerName))).map((name) => {
-        const prods = scopedProducts.filter((p: Product) => p.retailerName === name);
-        return { name, avgPrice: prods.reduce((a: number, p: Product) => a + p.price, 0) / prods.length };
+        const prods = scopedProducts.filter((p: Product) => p.retailerName === name && p.price != null);
+        return { name, avgPrice: prods.length ? prods.reduce((a: number, p: Product) => a + p.price!, 0) / prods.length : 0 };
       }).sort((a, b) => b.avgPrice - a.avgPrice)
     : sh.retailers.map((r: any) => ({ name: r.name, avgPrice: r.avgPrice }));
   const retailerHi = Math.max(20, Math.ceil((Math.max(...retailerPriceRows.map((r) => r.avgPrice)) + 5) / 5) * 5);
@@ -342,10 +351,11 @@ export default function SalesShareSummary() {
      this card's stated purpose; the start-of-period figure rides along
      underneath for whichever products that ranking surfaces. */
   const priceGaps = scopedProducts
+    .filter((p: Product) => p.price != null)
     .map((p: Product) => {
       const startPrice = impliedPreviousPrice(p);
       return {
-        p, gapPct: p.avgSellingPrice ? ((p.price - p.avgSellingPrice) / p.avgSellingPrice) * 100 : 0,
+        p, gapPct: p.avgSellingPrice ? ((p.price! - p.avgSellingPrice) / p.avgSellingPrice) * 100 : 0,
         startPrice, startGapPct: startPrice != null ? p.priceChangePct : null,
       };
     })

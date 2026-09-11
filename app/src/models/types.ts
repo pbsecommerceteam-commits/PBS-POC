@@ -38,9 +38,12 @@ export interface Product {
    *  the same keyword all 4 real weeks, so there was genuinely no
    *  movement to report. */
   keywordCoverageDelta: number;
-  price: number;
-  avgSellingPrice: number;
-  priceIndex: number;
+  /** Real crawl price. Null when the crawl never observed a price for this
+   *  SKU at all -- never backfilled with a peer-group or company-wide
+   *  average (see build_mock_data.py); render as "—", never $0. */
+  price: number | null;
+  avgSellingPrice: number | null;
+  priceIndex: number | null;
   priceChangePct: number;
   listPrice: number | null;
   currentPrice: number | null;

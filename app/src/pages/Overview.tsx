@@ -93,7 +93,7 @@ export default function Overview() {
 
   const columns: Column<Product>[] = [
     { key: "name", label: "Product", minWidth: 280, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.category} imageUrl={p.imageUrl} noClamp /> },
-    { key: "price", label: "Price", align: "center", sortable: true, render: (p) => "$" + p.price.toFixed(2) },
+    { key: "price", label: "Price", align: "center", sortable: true, render: (p) => p.price != null ? "$" + p.price.toFixed(2) : "—" },
     { key: "stockStatus", label: "Stock", align: "center", sortable: true, render: (p) => (
       <><Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge><div className="sl-table-sub">{p.inStockRate.toFixed(1)}% of days</div></>
     ) },

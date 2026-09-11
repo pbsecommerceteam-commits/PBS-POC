@@ -31,9 +31,9 @@ export default function SalesShareDrivers() {
   /* Discount % / $ = List Price vs. Effective Price (Current Price, falling
      back to the snapshot price the same way every other pricing feature
      does), only over SKUs that actually posted a list price. */
-  const withList = (sd.products as Product[]).filter((p) => p.listPrice != null && p.listPrice > 0);
+  const withList = (sd.products as Product[]).filter((p) => p.listPrice != null && p.listPrice > 0 && (p.currentPrice ?? p.price) != null);
   const discounts = withList.map((p) => {
-    const eff = p.currentPrice ?? p.price;
+    const eff = (p.currentPrice ?? p.price)!;
     const dollarOff = p.listPrice! - eff;
     return { p, eff, dollarOff, pctOff: (dollarOff / p.listPrice!) * 100 };
   });
@@ -43,9 +43,9 @@ export default function SalesShareDrivers() {
   /* Real Price-tab "Subscription price" -- savings measured against each
      SKU's own current price, only over SKUs that actually posted a
      subscription price. */
-  const withSub = (sd.products as Product[]).filter((p) => p.subscriptionPrice != null);
+  const withSub = (sd.products as Product[]).filter((p) => p.subscriptionPrice != null && (p.currentPrice ?? p.price) != null);
   const subSavings = withSub.map((p) => {
-    const eff = p.currentPrice ?? p.price;
+    const eff = (p.currentPrice ?? p.price)!;
     const dollarSaved = eff - p.subscriptionPrice!;
     return { dollarSaved, pctSaved: eff > 0 ? (dollarSaved / eff) * 100 : 0 };
   });
@@ -76,9 +76,9 @@ export default function SalesShareDrivers() {
      value, see build_mock_data.py's load_map_price). Only SKUs with a
      genuine MAP row count as tracked; a SKU with none is neither
      compliant nor a violation. */
-  const withMap = (sd.products as Product[]).filter((p) => p.mapPrice != null);
+  const withMap = (sd.products as Product[]).filter((p) => p.mapPrice != null && (p.currentPrice ?? p.price) != null);
   const mapGaps = withMap.map((p) => {
-    const eff = p.currentPrice ?? p.price;
+    const eff = (p.currentPrice ?? p.price)!;
     const gapDollar = p.mapPrice! - eff;
     return { p, eff, gapDollar, gapPct: (gapDollar / p.mapPrice!) * 100 };
   });
@@ -94,9 +94,9 @@ export default function SalesShareDrivers() {
   const categoryIds = Array.from(new Set((sd.products as Product[]).map((p) => p.category)));
   const categoryDiscounts = categoryIds
     .map((cat) => {
-      const prods = (sd.products as Product[]).filter((p) => p.category === cat && p.listPrice != null && p.listPrice! > 0);
+      const prods = (sd.products as Product[]).filter((p) => p.category === cat && p.listPrice != null && p.listPrice! > 0 && (p.currentPrice ?? p.price) != null);
       const avgList = avg(prods.map((p) => p.listPrice!));
-      const avgCurrent = avg(prods.map((p) => p.currentPrice ?? p.price));
+      const avgCurrent = avg(prods.map((p) => (p.currentPrice ?? p.price)!));
       const discountPct = avgList != null && avgCurrent != null ? ((avgList - avgCurrent) / avgList) * 100 : null;
       return { category: cat, avgList, avgCurrent, discountPct, skus: prods.length };
     })

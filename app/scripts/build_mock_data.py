@@ -692,26 +692,17 @@ def process_company(company, content_rows, price_rows, sos_rows, map_price_by_si
 
     catalog.sort(key=lambda p: (p["retailer"], p["category"], p["rank"]))
 
+    # A SKU with zero priced crawl rows across the whole period keeps price
+    # (and avgSellingPrice) honestly null -- never backfilled with a peer-
+    # group or company-wide average. That average is a real number about
+    # OTHER products, not this one, and showed up in the UI indistinguishable
+    # from an actually-observed price (a client audit caught exactly this:
+    # a $0-priced SKU with no Current/List price on the source sheet at all
+    # was rendered with a specific dollar figure and no indication it was
+    # estimated). The frontend is responsible for rendering null as "--",
+    # the same convention already used for listPrice/currentPrice/mapPrice.
     priceless_ids = [p["id"] for p in catalog if p["price"] is None]
-    peer_avg = defaultdict(list)
-    company_avg_prices = []
     for p in catalog:
-        if p["price"] is not None:
-            peer_avg[p["priceGroup"]].append(p["price"])
-            company_avg_prices.append(p["price"])
-    for p in catalog:
-        if p["price"] is None:
-            group_prices = peer_avg.get(p["priceGroup"])
-            # Widen to this company's whole-catalog average on the rare
-            # case its own (retailer, category) peer group has zero priced
-            # products either (e.g. every tracked SKU in that market is
-            # perpetually out of stock, so no peer average exists at all) --
-            # still a genuine average of this company's own real observed
-            # prices, never a fabricated $0 default.
-            fallback_prices = group_prices or company_avg_prices
-            p["price"] = round(sum(fallback_prices) / len(fallback_prices), 2) if fallback_prices else None
-            if p["price"] is not None and p["id"] in real_product_weekly:
-                real_product_weekly[p["id"]]["price"] = [p["price"]] * len(content_weeks)
         if p["avgSellingPrice"] is None:
             p["avgSellingPrice"] = p["price"]
 
@@ -957,8 +948,7 @@ def process_company(company, content_rows, price_rows, sos_rows, map_price_by_si
             "sos_weeks": sos_weeks,
             "buybox_competitor_count": len(real_buybox_competitor),
             "cross_retailer_match_count": len(cross_retailer_match),
-            "priceless_ids_using_peer_avg_fallback": priceless_ids,
-            "still_null_after_fallback": [p["id"] for p in catalog if p["price"] is None],
+            "priceless_ids": priceless_ids,
         },
     }
 
@@ -1081,7 +1071,7 @@ def main():
             "  { id: %s, company: %s, name: %s, brand: %s, category: %s, retailer: %s, rank: %s, price: %s, avgSellingPrice: %s, rating: %s, reviews: %s, content: %s, stockBias: %s, buyBoxRate: %s, priceChangePct: %s, priceGroup: %s, listPrice: %s, currentPrice: %s, subscriptionPrice: %s, mapPrice: %s, url: %s, stockStatusRaw: %s, couponValue: %s, otherSellers: %s, contentChecks: %s, titleLength: %s, imageUrl: %s, imageCount: %s, bulletCount: %s, descriptionLength: %s, enhancedContent: %s, retailerId: %s, sku: %s, siteCategory: %s, buyBoxSeller: %s, buyBoxShipper: %s, videoCount: %s, questionCount: %s, has360Image: %s, descriptionText: %s, bulletsText: %s, variations: %s },"
             % (
                 ts_str(p["id"]), ts_str(p["company"]), ts_str(p["name"]), ts_str(p["brand"]), ts_str(p["category"]), ts_str(p["retailer"]),
-                ts_num(p["rank"], 1), ts_num(p["price"], 0), ts_num(p["avgSellingPrice"], p["price"] or 0),
+                ts_num(p["rank"], 1), ts_num_or_null(p["price"]), ts_num_or_null(p["avgSellingPrice"]),
                 ts_num(p["rating"], 0), ts_num(p["reviews"], 0),
                 ts_num(p["content"], 0), ts_num(p["stockBias"], 1.0), ts_num(p["buyBoxRate"], 1.0),
                 ts_num(p["priceChangePct"], 0.0), ts_str(p["priceGroup"]),
@@ -1133,7 +1123,7 @@ def main():
     out.append("")
 
     out.append("export const REAL_PRODUCT_WEEKLY: Record<string, {")
-    out.append("  rating: number[]; reviews: number[]; price: number[]; stockRate: number[]; buyBoxRate: number[]; content: number[];")
+    out.append("  rating: number[]; reviews: number[]; price: (number | null)[]; stockRate: number[]; buyBoxRate: number[]; content: number[];")
     out.append("}> = {")
     for pid, v in real_product_weekly.items():
         out.append(f'  {json.dumps(pid)}: {{ rating: {json.dumps(v["rating"])}, reviews: {json.dumps(v["reviews"])}, price: {json.dumps(v["price"])}, stockRate: {json.dumps(v["stockRate"])}, buyBoxRate: {json.dumps(v["buyBoxRate"])}, content: {json.dumps(v["content"])} }},')
