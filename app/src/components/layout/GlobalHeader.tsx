@@ -6,7 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import { FilterSelect } from "../ui/FilterSelect";
 import { DateRangePicker } from "../ui/DateRangePicker";
 import { SearchPalette } from "./SearchPalette";
-import { user, catalog } from "../../data/mockData";
+import { user, catalog, REAL_WEEK_DATES } from "../../data/mockData";
 
 const SEVERITY_GROUP: Record<string, { label: string; order: number }> = {
   high: { label: "Critical", order: 0 },
@@ -27,6 +27,18 @@ export function GlobalHeader() {
     { id: "", name: "All SKUs" },
     ...(catalog as any[]).filter((p) => p.company === company).map((p) => ({ id: p.id, name: p.name, sub: p.retailerId || undefined })),
   ], [company]);
+  /* The date picker's selectable bounds -- this company's own real earliest
+     and latest crawl dates (REAL_WEEK_DATES, already the source of truth
+     `defaultWideIdx` and every real* KPI derive "the full real window"
+     from), never a hardcoded month. As new companies/refreshes add dates
+     further out (this dataset already spans 2022-2026 across companies),
+     these bounds move with them automatically -- no code change needed. */
+  const [dateMin, dateMax] = useMemo(() => {
+    const dates = REAL_WEEK_DATES[company] || [];
+    if (!dates.length) return ["", ""];
+    const sorted = [...dates].sort();
+    return [sorted[0], sorted[sorted.length - 1]];
+  }, [company]);
   const { notifDismissed, notifications, markAllRead } = useUi();
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -78,7 +90,7 @@ export function GlobalHeader() {
         <FilterSelect label="Category" value={category} onChange={setCategory} options={categoryOptions} width={178} />
         <FilterSelect label="Brand" value={brand} onChange={setBrand} options={brandOptions} width={168} searchable searchPlaceholder="Search brands…" />
         <FilterSelect label="SKU" value={sku} onChange={onSkuChange} options={skuOptions} width={190} searchable searchPlaceholder="Product name or retailer ID…" />
-        <DateRangePicker value={dateRange} onChange={setDateRange} />
+        <DateRangePicker value={dateRange} onChange={setDateRange} minDate={dateMin} maxDate={dateMax} />
       </div>
 
       <div className="sl-header__actions" style={{ display: "flex", alignItems: "center", gap: 14, marginLeft: "auto", flexShrink: 0 }}>
