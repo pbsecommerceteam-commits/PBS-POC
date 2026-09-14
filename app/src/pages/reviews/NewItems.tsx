@@ -130,6 +130,15 @@ export default function ReviewsNewItems() {
           <InfoTip text="6 brand-new PetWise items with no price/content/stock crawl data of their own -- real customer reviews only, from a client-supplied export. Sentiment is a genuine read of each review's own text, done review by review, not a keyword score or a mirror of the star rating." />
         </div>
         <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 4 }}>168 real customer reviews across 6 new items, not yet part of the tracked catalog -- scoped to this page only.</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+          <span className="sl-muted" style={{ fontSize: 12.5 }}>Filter by item:</span>
+          <select className="input" value={itemFilter} onChange={(e) => { setItemFilter(e.target.value); setPage(1); }} style={{ minHeight: 32, fontSize: 12.5, width: 240 }}>
+            <option value="">All items</option>
+            {PETWISE_NEW_ITEMS.map((it) => <option key={it.asin} value={it.asin}>{it.name}</option>)}
+          </select>
+          {itemFilter && <button className="btn btn-ghost" onClick={() => setItemFilter("")} style={{ fontSize: 12.5 }}>Clear</button>}
+          <span className="sl-faint" style={{ fontSize: 11.5 }}>These items aren't in the tracked catalog, so they can't be filtered from the header -- use this filter instead.</span>
+        </div>
       </Card>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,200px),1fr))", gap: "var(--app-gap)" }}>
@@ -197,10 +206,6 @@ export default function ReviewsNewItems() {
             <div className="sl-muted" style={{ fontSize: 12.5, marginTop: 2 }}>{total} of {totalReviews} reviews{itemFilter ? " · " + PETWISE_NEW_ITEMS.find((i) => i.asin === itemFilter)?.name : ""}{sentimentFilter ? " · " + SENTIMENT_LABEL[sentimentFilter] : ""}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <select className="input" value={itemFilter} onChange={(e) => setItemFilter(e.target.value)} style={{ minHeight: 32, fontSize: 12.5, width: 200 }}>
-              <option value="">All items</option>
-              {PETWISE_NEW_ITEMS.map((it) => <option key={it.asin} value={it.asin}>{it.name}</option>)}
-            </select>
             <select className="input" value={sentimentFilter} onChange={(e) => setSentimentFilter(e.target.value)} style={{ minHeight: 32, fontSize: 12.5, width: 140 }}>
               <option value="">All sentiment</option>
               <option value="positive">Positive</option>

@@ -73,7 +73,7 @@ export const periods = [
   { id: "12m", name: "Last 12 months", points: 12, grain: "month" },
 ];
 
-export const user = { name: "R. Vance", role: "Commercial Insights", initials: "RV" };
+export const user = { name: "Perfality", role: "Commercial Insights", initials: "PI" };
 
 export const sectionMeta: Record<string, { title: string; subtitle: string }> = {
   overview: { title: "Overview", subtitle: "Monitor digital shelf health across your retailers, products and categories." },
