@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { PageShell } from "../../components/layout/PageShell";
 import { PageTabs } from "../../components/ui/PageTabs";
 import { useDashboardData } from "../../context/DataContext";
+import { useFilters } from "../../context/FiltersContext";
 import { useUi } from "../../context/UiContext";
 import { columnsToCsv } from "../../lib/format";
 import { REVIEWS_COLUMNS } from "./Products";
@@ -20,6 +21,7 @@ export interface ReviewsContext {
 
 export default function ReviewsLayout() {
   const { snap } = useDashboardData();
+  const { company } = useFilters();
   const { toast } = useUi();
   const [pageExport, setPageExport] = useState<(() => void) | null>(null);
   const registerExport = useCallback((fn: (() => void) | null) => setPageExport(() => fn), []);
@@ -41,6 +43,12 @@ export default function ReviewsLayout() {
       tabs={<PageTabs items={[
         { label: "Summary", to: "/reviews", end: true },
         { label: "Products", to: "/reviews/products" },
+        /* Real review data for 6 brand-new PetWise items (see
+           data/petwiseNewItemReviews.ts) -- there's no price/content/stock
+           crawl for them, so this tab (and the data it reads) is scoped to
+           PetWise only, never blended into any other company's numbers or
+           shown to a company it doesn't belong to. */
+        ...(company === "PetWise" ? [{ label: "New Items", to: "/reviews/new-items" }] : []),
       ]} />}
       onSaveView={() => toast("View saved.")}
       onExportCsv={snap ? (pageExport ?? defaultExport) : undefined}

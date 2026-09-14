@@ -20,6 +20,7 @@ import ContentBrands from "./pages/content/Brands";
 import ReviewsLayout from "./pages/reviews/Layout";
 import ReviewsSummary from "./pages/reviews/Summary";
 import ReviewsProducts from "./pages/reviews/Products";
+import ReviewsNewItems from "./pages/reviews/NewItems";
 import CompetitorsLayout from "./pages/competitors/Layout";
 import CompetitorsSummary from "./pages/competitors/Summary";
 import Alerts from "./pages/Alerts";
@@ -56,6 +57,7 @@ export default function App() {
               <Route path="reviews" element={<ReviewsLayout />}>
                 <Route index element={<ReviewsSummary />} />
                 <Route path="products" element={<ReviewsProducts />} />
+                <Route path="new-items" element={<ReviewsNewItems />} />
               </Route>
 
               <Route path="competitors" element={<CompetitorsLayout />}>
