@@ -430,10 +430,23 @@ def content_completeness(row):
     return score, checks
 
 
+def as_float(v):
+    """Coerce a numeric-looking string cell (e.g. a price column Excel
+    stored as Text in some export runs) to a float -- the underlying value
+    is still a real crawled number, just typed as text; never used to
+    invent a value where the cell was genuinely blank."""
+    if isinstance(v, str):
+        try:
+            return float(v)
+        except ValueError:
+            return None
+    return v
+
+
 def price_value(row):
-    v = row.get("Current price")
+    v = as_float(row.get("Current price"))
     if v is None:
-        v = row.get("List everyday price")
+        v = as_float(row.get("List everyday price"))
     return v
 
 
@@ -597,9 +610,9 @@ def process_company(company, content_rows, price_rows, sos_rows, map_price_by_si
             price_change_pct = round(((all_prices[-1] - all_prices[0]) / all_prices[0]) * 100, 1)
 
         latest_price_row = prows[-1] if prows else None
-        list_price = latest_price_row.get("List everyday price") if latest_price_row else None
-        current_price = latest_price_row.get("Current price") if latest_price_row else None
-        subscription_price = latest_price_row.get("Subscription price") if latest_price_row else None
+        list_price = as_float(latest_price_row.get("List everyday price")) if latest_price_row else None
+        current_price = as_float(latest_price_row.get("Current price")) if latest_price_row else None
+        subscription_price = as_float(latest_price_row.get("Subscription price")) if latest_price_row else None
         url = get_any(latest_price_row, "Url", "Spb url") if latest_price_row else None
         stock_status_raw = latest_price_row.get("Stock status") if latest_price_row else None
         coupon_value = latest_price_row.get("Coupon value") if latest_price_row else None
