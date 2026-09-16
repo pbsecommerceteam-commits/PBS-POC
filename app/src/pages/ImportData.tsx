@@ -88,7 +88,7 @@ export default function ImportData() {
             <div>
               <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
                 1. Get the template
-                <InfoTip text="A real .xlsx pre-filled with the current 117-SKU crawl (Content, Price, Share Of Search, MAP Price tabs), so you can see exactly the format expected. Fill in changed or new rows, keeping every column header exactly as-is." />
+                <InfoTip text="A real .xlsx pre-filled with the current real crawl data for every tracked company (Content, Price, Share Of Search, MAP Price tabs), so you can see exactly the format expected. Fill in changed or new rows, keeping every column header exactly as-is." />
               </h3>
               <div className="sl-muted" style={{ fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
                 Same 4 tabs the data pipeline already reads, plus a Company column so another client's data can use this same template later.
