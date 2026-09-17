@@ -36,6 +36,8 @@ export default function Overview() {
   const [stockFilter, setStockFilter] = useState<StockStatus | "All">("All");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [pageSize, setPageSize] = useState(25);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   /* The global header's SKU filter pinpoints one item -- when set, it wins
      outright over every local tab/search on this page (that's the point:
@@ -58,8 +60,12 @@ export default function Overview() {
     );
   }, [snap, sku, stockFilter, categoryFilter, brand, searchTerm]);
 
+  // A changed filter can drop selected rows out of `all` entirely -- clear
+  // the selection rather than leave it referencing invisible products.
+  useEffect(() => { setSelected(new Set()); }, [sku, stockFilter, categoryFilter, brand, searchTerm]);
+
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
-    all, productSorters, "shelfScore", 8, [sku, stockFilter, categoryFilter, brand, searchTerm].join("|"),
+    all, productSorters, "shelfScore", pageSize, [sku, stockFilter, categoryFilter, brand, searchTerm, pageSize].join("|"),
   );
 
   /* A dropdown of clickable matches, same idea as the header's SKU search --
@@ -91,7 +97,28 @@ export default function Overview() {
 
   const kpi = (id: string) => snap.kpis.find((k: any) => k.id === id);
 
+  const toggleSelected = (id: string) => setSelected((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const allSelected = all.length > 0 && all.every((p) => selected.has(p.id));
+  const downloadSelected = () => {
+    const rows = all.filter((p) => selected.has(p.id));
+    if (!rows.length) return;
+    const blob = new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `shelfline-products-selected.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast(`Exported ${rows.length} selected rows.`);
+  };
+
   const columns: Column<Product>[] = [
+    { key: "__select", label: "", minWidth: 34, align: "center", render: (p) => (
+      <input type="checkbox" checked={selected.has(p.id)} onClick={(e) => e.stopPropagation()} onChange={() => toggleSelected(p.id)} />
+    ) },
     { key: "name", label: "Product", minWidth: 280, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.category} imageUrl={p.imageUrl} noClamp /> },
     { key: "price", label: "Price", align: "center", sortable: true, render: (p) => p.price != null ? "$" + p.price.toFixed(2) : "—" },
     { key: "stockStatus", label: "Stock", align: "center", sortable: true, render: (p) => (
@@ -248,6 +275,28 @@ export default function Overview() {
             </div>
           )}
         </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", margin: "2px 0 12px" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, cursor: all.length ? "pointer" : "default" }}>
+            <input
+              type="checkbox" disabled={!all.length} checked={allSelected}
+              onChange={() => setSelected(allSelected ? new Set() : new Set(all.map((p) => p.id)))}
+            />
+            Select all{selected.size > 0 ? ` · ${selected.size} selected` : ""}
+          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {selected.size > 0 && (
+              <button className="btn btn-secondary" style={{ fontSize: 12.5 }} onClick={downloadSelected}>⬇ Download selected ({selected.size})</button>
+            )}
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5 }}>
+              Rows per page
+              <select className="input" style={{ height: 30, fontSize: 12.5 }} value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </label>
+          </div>
+        </div>
         <SortableTable columns={columns} rows={slice} sortKey={sortKey} sortDir={sortDir} onSort={onSort} onRowClick={(p) => navigate("/product/" + p.id)} rowKey={(p) => p.id} resizable wrap />
         {all.length === 0 && (
           <div style={{ padding: "32px 4px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
@@ -256,7 +305,7 @@ export default function Overview() {
             <button className="btn btn-secondary" onClick={() => { setSku(""); setStockFilter("All"); setCategoryFilter(""); setBrand(""); setSearchTerm(""); }}>Reset filters</button>
           </div>
         )}
-        <Pagination page={page} totalPages={totalPages} total={total} pageSize={8} onPage={setPage} />
+        <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPage={setPage} />
       </Card>
     </PageShell>
   );
