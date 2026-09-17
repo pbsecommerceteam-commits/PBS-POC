@@ -124,7 +124,9 @@ export default function Overview() {
       exportDisabled={all.length === 0}
     >
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,238px),1fr))", gap: "var(--app-gap)" }}>
-        {["instock", "pidx", "content", "rating", "buybox"].map((id) => <KpiCard key={id} k={kpiCard(kpi(id), spark)} />)}
+        {["instock", "pidx", "content", "rating", "buybox"].map((id) => (
+          <KpiCard key={id} k={kpiCard(kpi(id), spark, { showLastDay: id === "instock" || id === "pidx" })} />
+        ))}
       </div>
 
       <section>

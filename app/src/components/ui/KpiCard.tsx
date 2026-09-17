@@ -23,8 +23,11 @@ export function KpiCard({ k }: { k: KpiVM }) {
         {k.unit && <span className="sl-muted" style={{ fontSize: 14 }}>{k.unit}</span>}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 12.5 }}>
-        <span style={{ color: k.deltaColor, fontWeight: 600 }}>{k.deltaText}</span>
-        <span className="sl-faint">vs previous period</span>
+        {k.lastDayText != null ? (
+          <><span className="sl-faint">Last day:</span><span style={{ fontWeight: 600 }}>{k.lastDayText}</span></>
+        ) : (
+          <><span style={{ color: k.deltaColor, fontWeight: 600 }}>{k.deltaText}</span><span className="sl-faint">vs previous period</span></>
+        )}
       </div>
 
       <div style={{ position: "relative", marginTop: 12 }}>

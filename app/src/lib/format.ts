@@ -159,11 +159,16 @@ export interface KpiVM {
   /** "What is this" hover hint for KpiCard's InfoTip, looked up from
    *  KPI_INFO by id -- undefined (no icon shown) for any id not in the map. */
   info?: string;
+  /** When set, KpiCard renders "Last day: {lastDayText}" in place of the
+   *  delta/"vs previous period" row -- opt-in per call site (see kpiCard's
+   *  `opts.showLastDay`), so every other KPI/page keeps today's delta row
+   *  untouched. */
+  lastDayText?: string;
 }
 
 /** Turns a raw KPI metric (value/delta/target/spark) into everything the
  *  KpiCard component renders. Ported verbatim from Component#kpiCard. */
-export function kpiCard(k: { id: string; label: string; unit: string; value: number; delta: number; target: number; spark: number[]; labels?: string[] }, sparkFn: (vals: number[]) => { d: string; area: string; points: Array<{ x: number; y: number }>; W: number }): KpiVM {
+export function kpiCard(k: { id: string; label: string; unit: string; value: number; delta: number; target: number; spark: number[]; labels?: string[] }, sparkFn: (vals: number[]) => { d: string; area: string; points: Array<{ x: number; y: number }>; W: number }, opts?: { showLastDay?: boolean }): KpiVM {
   const inverted = ["oos", "rank", "gap", "issues", "pidx"].indexOf(k.id) >= 0;
   const digits = k.id === "rating" || k.id === "pidx" ? 2 : (k.id === "rank" || k.id === "avgcoverage" || k.unit === "%") ? 1 : 0;
   const up = k.delta >= 0;
@@ -212,5 +217,6 @@ export function kpiCard(k: { id: string; label: string; unit: string; value: num
       : "Target " + k.target + k.unit,
     sparkD: sp.d, sparkArea: sp.area, sparkW: sp.W, sparkPoints,
     info: KPI_INFO[k.id],
+    lastDayText: opts?.showLastDay && k.spark.length ? fmtPoint(k.spark[k.spark.length - 1]) : undefined,
   };
 }
