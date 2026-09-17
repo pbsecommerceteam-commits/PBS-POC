@@ -3192,7 +3192,22 @@ function realRangeValueAvgPrice(company: string, retailer: string, idx: number[]
   const value = totalWeight
     ? idx.reduce((s, i) => s + row.avgPriceSum[i], 0) / totalWeight
     : idx.reduce((s, i) => s + row.avgPrice[i], 0) / idx.length;
-  const delta = row.avgPrice[idx[idx.length - 1]] - row.avgPrice[idx[0]];
+  /* "Previous" (shown as "Previous $X" under the KPI, reconstructed by
+     kpiCard as value - delta) is the price the day before it LAST
+     actually changed, not the day before the selected range started --
+     two flat days in a row (e.g. today and yesterday both $10, the day
+     before that $7.50) should show Previous $7.50, not silently repeat
+     $10. Walk backward from the last real day, skipping over any run of
+     unchanged days, to the most recent day whose price differs; if the
+     whole history up to that point never changes, Previous is that same
+     (constant) price. */
+  const lastIdx = idx[idx.length - 1];
+  const lastVal = row.avgPrice[lastIdx];
+  let previous = lastVal;
+  for (let j = lastIdx - 1; j >= 0; j--) {
+    if (row.avgPrice[j] !== lastVal) { previous = row.avgPrice[j]; break; }
+  }
+  const delta = value - previous;
   return { value, delta };
 }
 
