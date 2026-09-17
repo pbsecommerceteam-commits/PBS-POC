@@ -787,6 +787,23 @@ export const CONTENT_ISSUE_LABELS: Record<string, string> = {
   enhanced: "No enhanced content",
 };
 
+/* One general, real-world reason each check matters to discoverability or
+   conversion -- authored explanatory copy (same category as the why/action
+   text already used throughout OpportunityCard/insight strings elsewhere
+   in this app), not a data/numeric claim, so it doesn't conflict with the
+   project's real-data rule. */
+export const CONTENT_ISSUE_IMPACT: Record<string, string> = {
+  title: "A title over the retailer's effective display length gets truncated in search results and browse grids, hiding the attributes that drive click-through.",
+  images: "Fewer images than shoppers expect for the category reduces confidence at the point of purchase and is strongly linked to lower conversion.",
+  video: "Listings with product video see meaningfully higher time-on-page and conversion -- its absence is a missed differentiator versus competitors who have one.",
+  bulletCount: "Too few bullet points leaves key specs and use-cases unstated, pushing shoppers to a competitor's listing that answers their questions faster.",
+  bulletCaps: "Inconsistent bullet capitalization reads as an unpolished or unmaintained listing, quietly undermining buyer trust before they even read the content.",
+  bulletLength: "Bullets that are too short skip real detail; bullets that are too long bury the key point -- both suppress the scannability shoppers rely on to decide quickly.",
+  description: "A description outside the effective length range either fails to answer common questions or gets truncated by the retailer, losing SEO value from unindexed text either way.",
+  rating: "A rating below the category norm is one of the first signals shoppers screen on -- it suppresses click-through in search results even before the listing is opened.",
+  enhanced: "Missing enhanced/A+ content forfeits the retailer's premium content module entirely, a placement competitors with enhanced content occupy instead.",
+};
+
 export const reviewThemes = [
   { id: "t1", theme: "Flavour and taste", sentiment: "Positive" },
   { id: "t2", theme: "Value for money", sentiment: "Mixed" },
@@ -3614,10 +3631,14 @@ function snapshot(company: string, retailer: string, period: string, dateRange?:
     // are equally weighted (~11.1% each), so no weight column is shown --
     // it would read the same on every row.
     contentCoverage: Object.keys(CONTENT_CHECK_LABELS).map((cid) => {
-      const failing = pool.filter((p) => p.contentChecks.includes(cid)).length;
+      // "Url failed" SKUs excluded from both numerator and denominator --
+      // they neither pass nor fail this check, they were never scraped
+      // (same reasoning as contentIssues below).
+      const covered = pool.filter((p) => !isUrlFailed(p));
+      const failing = covered.filter((p) => p.contentChecks.includes(cid)).length;
       return {
         id: cid, name: CONTENT_CHECK_LABELS[cid],
-        coverage: pool.length ? Math.round(((pool.length - failing) / pool.length) * 100) : 0,
+        coverage: covered.length ? Math.round(((covered.length - failing) / covered.length) * 100) : 0,
         failing,
       };
     }),
@@ -3632,11 +3653,17 @@ function snapshot(company: string, retailer: string, period: string, dateRange?:
        product's contentChecks (see productFor) lists the ids of the 9
        binary checks it currently fails; this tallies how many products
        fail each one, for a Profitero-style "Products With Issues"
-       breakdown. */
+       breakdown. SKUs whose crawl URL failed (see isUrlFailed) are
+       excluded here -- their score is 0 and every check fails because no
+       data was ever scraped, not because the content is genuinely
+       incomplete, so counting them here would misattribute a crawl gap as
+       a content-quality problem. They get their own urlFailedCount
+       instead, surfaced as a separate callout. */
     contentIssues: Object.keys(CONTENT_ISSUE_LABELS).map((id) => ({
       id, label: CONTENT_ISSUE_LABELS[id],
-      count: pool.filter((p) => (p as any).contentChecks?.includes(id)).length,
+      count: pool.filter((p) => !isUrlFailed(p) && (p as any).contentChecks?.includes(id)).length,
     })).sort((a, b) => b.count - a.count),
+    urlFailedCount: pool.filter((p) => isUrlFailed(p)).length,
     /* Real first-vs-last-real-week content score movement, from
        REAL_PRODUCT_WEEKLY[id].content -- not a fabricated delta. Products
        with no real weekly series (fell back to the peer-average price

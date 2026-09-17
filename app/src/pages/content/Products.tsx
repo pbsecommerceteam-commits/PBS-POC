@@ -164,8 +164,13 @@ export default function ContentProducts() {
   const catCounts = countByExcluding("category", (p) => p.category);
   const brandCounts = countByExcluding("brand", (p) => p.brand);
   const retailerCounts = countByExcluding("retailer", (p) => p.retailerName);
+  // "Url failed" SKUs excluded -- a crawl that never happened fails every
+  // check for a reason unrelated to content quality, so it shouldn't
+  // inflate any one check's facet count (same exclusion as Content
+  // Intelligence Summary's "Products With Issues", mockData.ts).
   const issueCounts: Record<string, number> = {};
-  poolExcluding("issue").forEach((p) => p.contentChecks.forEach((id) => { issueCounts[id] = (issueCounts[id] || 0) + 1; }));
+  poolExcluding("issue").filter((p) => !String(p.stockStatusRaw || "").toLowerCase().includes("url failed"))
+    .forEach((p) => p.contentChecks.forEach((id) => { issueCounts[id] = (issueCounts[id] || 0) + 1; }));
 
   /* Only ever show an option that's actually reachable given every other
      active filter -- except one the user already checked, which stays
