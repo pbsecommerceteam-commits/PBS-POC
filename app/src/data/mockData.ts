@@ -2921,6 +2921,17 @@ function classifyStockStatus(raw: string | null): "In Stock" | "Low Stock" | "Ou
   return "In Stock";
 }
 
+/* A SKU whose crawl URL failed has no scraped data at all -- its content
+   score is 0 and every check fails not because the content is genuinely
+   incomplete, but because nothing was ever read. Shared by deriveInsights
+   (Pricing/Content/Buy Box & Availability/Enhancement buckets) and the
+   Content Intelligence "Products With Issues" breakdown so both exclude
+   these SKUs from every quality-issue count and surface them as their own
+   separate "crawl failed" callout instead. */
+function isUrlFailed(p: { stockStatusRaw?: string | null }): boolean {
+  return String(p.stockStatusRaw || "").toLowerCase().includes("url failed");
+}
+
 function productFor(p: (typeof catalog)[number]) {
   return {
     id: p.id,
@@ -3715,42 +3726,54 @@ function snapshot(company: string, retailer: string, period: string, dateRange?:
 }
 
 /* Analytics layer: insights are derived from the snapshot, never authored as
-   copy in the UI. Each carries the action the user should take next. */
-function deriveInsights(s: any) {
-  const lowAvail = s.products.filter((p: any) => p.inStockRate < 95);
-  const weakContent = s.products.filter((p: any) => p.contentScore < 80);
+   copy in the UI. Each carries the action the user should take next.
 
-  const list: any[] = [];
-  list.push({
-    id: "i-buybox",
-    kind: s.buyBoxLoss.skusLost > 0 ? "warning" : "positive",
-    title: s.buyBoxLoss.skusLost > 0 ? "Buy box loss detected" : "Buy box fully held",
-    body: s.buyBoxLoss.skusLost > 0
-      ? s.buyBoxLoss.skusLost + " of " + s.buyBoxLoss.skusTracked + " tracked SKUs lost the buy box to a 3rd-party seller this period" +
-        (s.buyBoxLoss.topSeller ? ", most often to " + s.buyBoxLoss.topSeller + "." : ".")
-      : "Every tracked SKU held the buy box across the full period.",
-    action: "View details", target: "competitors",
-  });
-  list.push({
-    id: "i-avail",
-    kind: lowAvail.length > 4 ? "critical" : lowAvail.length ? "warning" : "positive",
-    title: "Availability opportunity",
-    body: lowAvail.length === 0
-      ? "Every tracked SKU held above the 95% availability threshold across the period."
-      : lowAvail.length + " product" + (lowAvail.length === 1 ? "" : "s") +
-        " dipped below the 95% availability threshold, an estimated " +
-        (lowAvail.length * 0.4).toFixed(1) + " pts of category share at risk.",
-    action: "Review products", target: "shelf",
-  });
-  list.push({
-    id: "i-content",
-    kind: weakContent.length > 5 ? "warning" : "neutral",
-    title: "Content opportunity",
-    body: weakContent.length + " product" + (weakContent.length === 1 ? "" : "s") +
-      " scored under 80 on attribute completeness, which suppresses discoverability on long-tail terms.",
-    action: "Review content", target: "content",
-  });
-  return list;
+   4 consistently-formatted priority buckets (Pricing / Content / Buy Box &
+   Availability / Enhancement), each a real, already-tracked signal:
+     - Pricing: SKUs priced under their real MAP (same signal already proven
+       in sales-share/Summary.tsx's belowMap).
+     - Content: SKUs scoring under 80 on Content Completeness.
+     - Buy Box & Availability: SKUs below the 95% availability threshold OR
+       not holding the buy box 100% of the period -- one combined real-shelf-
+       health bucket, counted once even if a SKU fails both.
+     - Enhancement: SKUs specifically failing the "enhanced content" check
+       (a real content-quality sub-signal, distinct from -- and lower
+       priority than -- the broad Content bucket above).
+   "Url failed" SKUs (crawl never reached the listing, see isUrlFailed) are
+   excluded from Content/Enhancement -- a missing crawl isn't a content
+   quality problem, it's a data gap; see the matching exclusion in
+   contentIssues below.
+
+   Priority is a fixed % of tracked SKUs affected, applied the same way to
+   every bucket: High >15%, Medium 5-15%, Low 1-5%, omitted entirely at 0%. */
+function deriveInsights(s: any) {
+  const total: number = s.products.length || 1;
+  const contentPool = s.products.filter((p: any) => !isUrlFailed(p));
+
+  const pricingIssues = s.products.filter((p: any) => p.mapPrice != null && (p.currentPrice ?? p.price) != null && (p.currentPrice ?? p.price) < p.mapPrice);
+  const contentIssuesList = contentPool.filter((p: any) => p.contentScore < 80);
+  const buyBoxAvailIssues = s.products.filter((p: any) => p.inStockRate < 95 || p.buyBoxRate < 1);
+  const enhancementIssues = contentPool.filter((p: any) => (p.contentChecks ?? []).includes("enhanced"));
+
+  const bucket = (id: string, label: string, count: number, target: string) => {
+    const affectedPct = (count / total) * 100;
+    const priority = affectedPct > 15 ? "High" : affectedPct >= 5 ? "Medium" : affectedPct > 0 ? "Low" : null;
+    if (!priority) return null;
+    return {
+      id,
+      kind: priority === "High" ? "critical" : priority === "Medium" ? "warning" : "neutral",
+      title: `${label}: ${count} SKU${count === 1 ? "" : "s"} (${priority} Priority)`,
+      body: `${count} of ${total} tracked SKUs (${affectedPct.toFixed(1)}%) flagged for ${label.toLowerCase()}.`,
+      action: "Review " + label.toLowerCase(), target,
+    };
+  };
+
+  return [
+    bucket("i-pricing", "Pricing", pricingIssues.length, "sales"),
+    bucket("i-content", "Content", contentIssuesList.length, "content"),
+    bucket("i-buybox-avail", "Buy Box & Availability", buyBoxAvailIssues.length, "shelf"),
+    bucket("i-enhancement", "Enhancement", enhancementIssues.length, "content"),
+  ].filter((x): x is NonNullable<typeof x> => x != null);
 }
 
 const LATENCY = 340;
