@@ -85,6 +85,8 @@ export default function SalesShareSummary() {
   const priceDroppedProducts = sh.products.filter((p: Product) => p.priceChangePct < 0).sort((a: Product, b: Product) => a.priceChangePct - b.priceChangePct);
   const priceIncreased = priceIncreasedProducts.length;
   const priceDropped = priceDroppedProducts.length;
+  const priceIncreasedPct = sh.products.length ? (priceIncreased / sh.products.length) * 100 : 0;
+  const priceDroppedPct = sh.products.length ? (priceDropped / sh.products.length) * 100 : 0;
   const { skusTracked, skusLost, topSeller } = sh.buyBoxLoss;
   const buyBoxLostProducts = sh.products
     .filter((p: Product) => REAL_BUYBOX_COMPETITOR[p.id])
@@ -108,15 +110,20 @@ export default function SalesShareSummary() {
   const avgDiscountPct = withList.length
     ? withList.reduce((a: number, p: Product) => a + ((p.listPrice! - (p.currentPrice ?? p.price)!) / p.listPrice!) * 100, 0) / withList.length
     : 0;
-  /* "On promotion" = genuinely marked down from list (current < list) or
-     carrying a real crawled coupon -- either is a real, currently-active
-     promotional mechanism, not a fabricated status. Requires an actual
-     observed price to compare against list -- a priceless SKU must not
-     silently read as "below list" via null coercing to 0. */
-  const promotionProducts = sh.products.filter((p: Product) =>
-    (p.listPrice != null && (p.currentPrice ?? p.price) != null && (p.currentPrice ?? p.price)! < p.listPrice) || p.couponValue != null,
+  /* Two separate real discount mechanisms -- there is no "promotion" field
+     anywhere in the data model, only a real crawled coupon and a real
+     list-vs-current price comparison, so each gets its own honest count
+     rather than being blended into one ambiguous "on promotion" number.
+     Coupon requires the real crawled couponValue field; Promotional Price
+     Cut requires an actual observed price below an actual list price (a
+     priceless SKU must not silently read as "below list" via null
+     coercing to 0). */
+  const couponProducts = sh.products.filter((p: Product) => p.couponValue != null);
+  const priceCutProducts = sh.products.filter((p: Product) =>
+    p.listPrice != null && (p.currentPrice ?? p.price) != null && (p.currentPrice ?? p.price)! < p.listPrice,
   );
-  const onPromotion = promotionProducts.length;
+  const couponPct = sh.products.length ? (couponProducts.length / sh.products.length) * 100 : 0;
+  const priceCutPct = sh.products.length ? (priceCutProducts.length / sh.products.length) * 100 : 0;
 
   /* Real MAP (Minimum Advertised Price), from a separate reference
      workbook the user supplies (not the crawl itself -- MAP is a brand
@@ -144,7 +151,7 @@ export default function SalesShareSummary() {
      behind that row's summary number, expandable via DrilldownModal's
      "View dates" toggle. */
   const priceIncreasedTable: DrillTableConfig = {
-    title: "Price Increased", subtitle: `${priceIncreased} SKUs with a real whole-month price increase`,
+    title: "Price Increased", subtitle: `${priceIncreased} of ${sh.products.length} SKUs (${priceIncreasedPct.toFixed(1)}%) with a real whole-month price increase`,
     cols: [{ label: "Product", align: "left" }, { label: "Retailer", align: "center" }, { label: "Retailer ID", align: "center" }, { label: "Previous Price", align: "center" }, { label: "Current Price", align: "center" }, { label: "Change", align: "center" }],
     rows: priceIncreasedProducts.map((p: Product) => { const prev = impliedPreviousPrice(p); return { cells: [
       cell(p.name, { onClick: () => goToProduct(p.id) }),
@@ -156,7 +163,7 @@ export default function SalesShareSummary() {
     ], detail: priceDateDetail(p.id) }; }),
   };
   const priceDroppedTable: DrillTableConfig = {
-    title: "Price Dropped", subtitle: `${priceDropped} SKUs with a real whole-month price decrease`,
+    title: "Price Dropped", subtitle: `${priceDropped} of ${sh.products.length} SKUs (${priceDroppedPct.toFixed(1)}%) with a real whole-month price decrease`,
     cols: [{ label: "Product", align: "left" }, { label: "Retailer", align: "center" }, { label: "Retailer ID", align: "center" }, { label: "Previous Price", align: "center" }, { label: "Current Price", align: "center" }, { label: "Change", align: "center" }],
     rows: priceDroppedProducts.map((p: Product) => { const prev = impliedPreviousPrice(p); return { cells: [
       cell(p.name, { onClick: () => goToProduct(p.id) }),
@@ -191,10 +198,10 @@ export default function SalesShareSummary() {
       cell((pct >= 0 ? "" : "−") + Math.abs(pct).toFixed(1) + "%", { align: "center", color: deltaColor(pct, true) }),
     ] })),
   };
-  const promotionTable: DrillTableConfig = {
-    title: "SKUs on Promotion", subtitle: `${onPromotion} of ${sh.products.length} SKUs marked down from list, or carrying a coupon`,
+  const couponTable: DrillTableConfig = {
+    title: "Coupon", subtitle: `${couponProducts.length} of ${sh.products.length} SKUs (${couponPct.toFixed(1)}%) carry a real crawled coupon`,
     cols: [{ label: "Product", align: "left" }, { label: "Retailer", align: "center" }, { label: "Retailer ID", align: "center" }, { label: "List Price", align: "center" }, { label: "Current Price", align: "center" }, { label: "Coupon", align: "center" }],
-    rows: promotionProducts.map((p: Product) => ({ cells: [
+    rows: couponProducts.map((p: Product) => ({ cells: [
       cell(p.name, { onClick: () => goToProduct(p.id) }),
       cell(p.retailerName, { align: "center" }),
       cell(p.retailerId, { align: "center" }),
@@ -202,6 +209,18 @@ export default function SalesShareSummary() {
       cell((p.currentPrice ?? p.price) != null ? "$" + (p.currentPrice ?? p.price)!.toFixed(2) : "—", { align: "center" }),
       cell(p.couponValue ?? "—", { align: "center" }),
     ] })),
+  };
+  const priceCutTable: DrillTableConfig = {
+    title: "Promotional Price Cut", subtitle: `${priceCutProducts.length} of ${sh.products.length} SKUs (${priceCutPct.toFixed(1)}%) priced below their own list price`,
+    cols: [{ label: "Product", align: "left" }, { label: "Retailer", align: "center" }, { label: "Retailer ID", align: "center" }, { label: "List Price", align: "center" }, { label: "Current Price", align: "center" }, { label: "Cut", align: "center" }],
+    rows: priceCutProducts.map((p: Product) => { const eff = (p.currentPrice ?? p.price)!; const pct = ((p.listPrice! - eff) / p.listPrice!) * 100; return { cells: [
+      cell(p.name, { onClick: () => goToProduct(p.id) }),
+      cell(p.retailerName, { align: "center" }),
+      cell(p.retailerId, { align: "center" }),
+      cell("$" + p.listPrice!.toFixed(2), { align: "center" }),
+      cell("$" + eff.toFixed(2), { align: "center" }),
+      cell("−" + pct.toFixed(1) + "%", { align: "center", color: "var(--status-positive-fg)" }),
+    ] }; }),
   };
   const belowMapTable: DrillTableConfig = {
     title: "Below MAP", subtitle: `${belowMap.length} of ${withMap.length} SKUs tracked under MAP are priced under it`,
@@ -368,13 +387,13 @@ export default function SalesShareSummary() {
         <KpiCard k={kpiCard(pidx, spark)} />
         <Card padding="18px 20px" interactive onClick={() => setDrill(priceIncreasedTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Price Increased<InfoTip text="Real whole-month price increase (first vs. last observed price this Sep) -- not a single-day comparison." /></div>
-          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{priceIncreased}</div>
-          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real whole-month change · click to view</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{priceIncreased}<span style={{ fontSize: 16, fontWeight: 500 }}> / {sh.products.length}</span></div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>{priceIncreasedPct.toFixed(1)}% of tracked SKUs · click to view</div>
         </Card>
         <Card padding="18px 20px" interactive onClick={() => setDrill(priceDroppedTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Price Dropped<InfoTip text="Real whole-month price decrease (first vs. last observed price this Sep) -- not a single-day comparison." /></div>
-          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{priceDropped}</div>
-          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>SKUs, real whole-month change · click to view</div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{priceDropped}<span style={{ fontSize: 16, fontWeight: 500 }}> / {sh.products.length}</span></div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>{priceDroppedPct.toFixed(1)}% of tracked SKUs · click to view</div>
         </Card>
         <Card padding="18px 20px" interactive onClick={() => setDrill(buyBoxLostTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Buy Box Lost (1P)<InfoTip text="Real count of SKUs where a 3rd-party seller won the buy box at any point this period, from the crawl's daily buy-box-holder field." /></div>
@@ -386,10 +405,15 @@ export default function SalesShareSummary() {
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8, color: avgDiscountPct > 0 ? "var(--status-positive-fg)" : "inherit" }}>{avgDiscountPct.toFixed(1)}%</div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>(List − Current) ÷ List, {withList.length} of {sh.products.length} SKUs</div>
         </Card>
-        <Card padding="18px 20px" interactive onClick={() => setDrill(promotionTable)}>
-          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>SKUs on Promotion<InfoTip text="Real count of SKUs currently priced below their own list price, or carrying a real crawled coupon." /></div>
-          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{onPromotion}<span style={{ fontSize: 16, fontWeight: 500 }}> / {sh.products.length}</span></div>
-          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>Marked down from list, or carrying a coupon</div>
+        <Card padding="18px 20px" interactive onClick={() => setDrill(couponTable)}>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Coupon<InfoTip text="Real count of SKUs carrying a real crawled coupon value -- the retailer's own posted discount, exactly as crawled." /></div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{couponProducts.length}<span style={{ fontSize: 16, fontWeight: 500 }}> / {sh.products.length}</span></div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>{couponPct.toFixed(1)}% of tracked SKUs</div>
+        </Card>
+        <Card padding="18px 20px" interactive onClick={() => setDrill(priceCutTable)}>
+          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Promotional Price Cut<InfoTip text="Real count of SKUs currently priced below their own list price -- a real, crawled markdown. There is no separate 'promotion' field in the data, so this is built from the same list-vs-current comparison as Average Price Discount above, just as a count rather than an average." /></div>
+          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, marginTop: 8 }}>{priceCutProducts.length}<span style={{ fontSize: 16, fontWeight: 500 }}> / {sh.products.length}</span></div>
+          <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 8 }}>{priceCutPct.toFixed(1)}% of tracked SKUs</div>
         </Card>
         <Card padding="18px 20px" interactive onClick={() => setDrill(belowMapTable)}>
           <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>Below MAP<InfoTip text="Real count of SKUs priced under their real MAP (Minimum Advertised Price), from the separate MAP reference file. A SKU with no MAP row isn't counted either way." /></div>
