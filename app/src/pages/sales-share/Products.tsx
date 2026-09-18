@@ -65,7 +65,6 @@ export const SALES_COLUMNS: Column<Product>[] = [
     return p.listPrice != null && cur != null ? (cur - p.listPrice).toFixed(2) : "";
   } },
   { key: "priceChangePct", label: "Price Change", align: "center", sortable: true, render: (p) => <span style={{ color: deltaColor(p.priceChangePct) }}>{delta(p.priceChangePct, "%")}</span>, csv: (p) => p.priceChangePct, info: "Real whole-month change: first vs. last real observed price this September -- not a single-day comparison." },
-  { key: "priceIndex", label: "Price Index", align: "center", sortable: true, render: (p) => <span>{p.priceIndex != null ? (p.priceIndex * 100).toFixed(0) : "—"}</span>, csv: (p) => p.priceIndex != null ? (p.priceIndex * 100).toFixed(0) : "", info: "This SKU's current price ÷ its own average selling price this period, ×100. Above 100 = priced above its own norm right now; below 100 = a markdown." },
   { key: "stockStatusRaw", label: "Stock Status", align: "center", sortable: true, render: (p) => p.stockStatusRaw ?? "—", csv: (p) => p.stockStatusRaw ?? "" },
   { key: "buyBoxRate", label: "Buy Box", align: "center", sortable: true, render: (p) => (
     <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
