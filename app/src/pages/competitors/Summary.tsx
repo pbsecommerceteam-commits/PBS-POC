@@ -12,13 +12,16 @@ const fmtDate = (iso: string) => { const [, m, d] = iso.split("-").map(Number); 
 
 /** Real day-by-day buy-box holder behind a SKU's Competitor Days Won count
  *  (see REAL_BUYBOX_TIMELINE) -- same as Pricing Intelligence's Buy Box
- *  Lost (1P) drill-down: the raw timeline marks our own days "You", shown
- *  here as the SKU's actual retailer name since every other holder in the
- *  column is already a real named entity. */
-function buyBoxDateDetail(pid: string, retailerName: string) {
+ *  Lost (1P) drill-down: the raw timeline marks our own days "You" (a
+ *  sentinel, not a real name), shown here as the SKU's own real crawled
+ *  buyBoxSeller instead since every other holder in the column is already
+ *  a real named entity. Falls back to a plainly-labeled "Your listing
+ *  (1P)" only when buyBoxSeller is genuinely null on file. */
+function buyBoxDateDetail(pid: string, buyBoxSeller: string | null) {
   const timeline = (REAL_BUYBOX_TIMELINE as any)[pid];
   if (!timeline || !timeline.length) return undefined;
-  return { cols: ["Date", "Held By"], rows: timeline.map((e: any) => [fmtDate(e.date), e.holder === "You" ? retailerName : e.holder]) };
+  const ownLabel = buyBoxSeller ? buyBoxSeller + " (1P)" : "Your listing (1P)";
+  return { cols: ["Date", "Held By"], rows: timeline.map((e: any) => [fmtDate(e.date), e.holder === "You" ? ownLabel : e.holder]) };
 }
 
 /* Search Visibility and Keyword Coverage (the "sos"/"gap"/"avgcoverage"
@@ -45,7 +48,7 @@ export default function CompetitorsSummary() {
       cell(seller, { align: "center" }),
       cell(daysWon + " of 30", { align: "center" }),
       cell(p.buyBoxRate + "%", { align: "center", color: p.buyBoxRate < 50 ? "var(--status-negative-fg)" : "inherit" }),
-    ], detail: buyBoxDateDetail(p.id, p.retailerName) })),
+    ], detail: buyBoxDateDetail(p.id, p.buyBoxSeller) })),
     info: "Real named 3rd-party sellers who won the buy box on real tracked days, from the crawl's daily buy-box-holder field -- the one real competitive signal in this data (see Competitor column).",
   };
 
