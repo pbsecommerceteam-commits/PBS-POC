@@ -10,19 +10,40 @@ import { InfoTip } from "../components/ui/InfoTip";
 import { Badge, stockTone, opportunityTone } from "../components/ui/Badge";
 import { Tabs } from "../components/ui/Tabs";
 import { ProductCell } from "../components/ui/ProductCell";
+import { DrilldownModal, type DrillTableConfig } from "../components/ui/DrilldownModal";
 import { useDashboardData } from "../context/DataContext";
 import { useFilters } from "../context/FiltersContext";
 import { useUi } from "../context/UiContext";
 import { useSortedPage } from "../hooks/useSortedPage";
 import { spark } from "../lib/charts";
-import { kpiCard, pct, delta, deltaColor } from "../lib/format";
+import { kpiCard, cell, table, pct, delta, deltaColor } from "../lib/format";
 import { productSorters } from "../lib/productSort";
-import { toCsv } from "../data/mockData";
+import { toCsv, REAL_BUYBOX_TIMELINE } from "../data/mockData";
 import type { Product, StockStatus } from "../models/types";
 
 const STOCK_TABS: Array<{ id: StockStatus | "All"; label: string }> = [
   { id: "All", label: "All" }, { id: "In Stock", label: "In stock" }, { id: "Low Stock", label: "Low" }, { id: "Out of Stock", label: "Out of stock" },
 ];
+
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const fmtDate = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return MONTH_ABBR[m - 1] + " " + d; };
+
+/** Real day-by-day buy-box holder for one product (see REAL_BUYBOX_TIMELINE /
+ *  build_mock_data.py), colored green when we held it that day and red when
+ *  a 3rd-party seller did -- same {cols,rows} shape DrilldownModal's "View
+ *  dates" toggle already renders elsewhere (sales-share/competitors
+ *  Summary), just with colored cells instead of plain text. */
+function buyBoxDateDetail(pid: string) {
+  const timeline = (REAL_BUYBOX_TIMELINE as any)[pid];
+  if (!timeline || !timeline.length) return undefined;
+  return {
+    cols: ["Date", "Held By"],
+    rows: timeline.map((e: any) => [
+      fmtDate(e.date),
+      { text: e.holder === "You" ? "You (1P)" : e.holder, color: e.holder === "You" ? "var(--status-positive-fg)" : "var(--status-negative-fg)" },
+    ]),
+  };
+}
 
 const CATEGORY_TABS: Array<{ id: string; label: string }> = [
   { id: "", label: "All" }, { id: "GPC", label: "GPC" }, { id: "HPC", label: "HPC" }, { id: "HG", label: "HG" },
@@ -38,6 +59,7 @@ export default function Overview() {
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState(25);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [drill, setDrill] = useState<DrillTableConfig | null>(null);
 
   /* The global header's SKU filter pinpoints one item -- when set, it wins
      outright over every local tab/search on this page (that's the point:
@@ -97,6 +119,25 @@ export default function Overview() {
 
   const kpi = (id: string) => snap.kpis.find((k: any) => k.id === id);
 
+  /* Buy Box Ownership 1P's drill: one row per tracked product with its real
+     Buy Box Rate, each expandable (via DrilldownModal's existing "View
+     dates" toggle) to that product's real day-by-day buy-box holder --
+     green when 1P held it, red when a 3P seller did. Products with no
+     REAL_BUYBOX_TIMELINE entry (never contested, or an r4/r6 retailer with
+     no resolvable 3P signal) simply get no expand toggle. */
+  const buyBoxByDayTable: DrillTableConfig = table(
+    "Buy Box Ownership 1P -- Day by Day", `Real daily buy-box holder across ${snap.products.length} tracked SKUs -- green = you (1P), red = a 3rd-party seller`,
+    [{ label: "Product", align: "left" }, { label: "Retailer", align: "left" }, { label: "Buy Box Rate", align: "right" }],
+    snap.products.map((p: Product) => ({
+      cells: [
+        cell(p.name, { onClick: () => navigate("/product/" + p.id) }),
+        cell(p.retailerName),
+        cell(p.buyBoxRate + "%", { align: "right", strong: true, color: p.buyBoxRate >= 50 ? "var(--status-positive-fg)" : "var(--status-negative-fg)" }),
+      ],
+      detail: buyBoxDateDetail(p.id),
+    })),
+  );
+
   const toggleSelected = (id: string) => setSelected((prev) => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -152,7 +193,17 @@ export default function Overview() {
     >
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,238px),1fr))", gap: "var(--app-gap)" }}>
         {["instock", "pidx", "content", "rating", "buybox"].map((id) => (
-          <KpiCard key={id} k={kpiCard(kpi(id), spark, { showLastDay: id === "instock" || id === "pidx" })} />
+          <KpiCard
+            key={id}
+            k={kpiCard(kpi(id), spark, { showLastDay: id === "instock" || id === "pidx" })}
+            onClick={() => {
+              if (id === "buybox") setDrill(buyBoxByDayTable);
+              else if (id === "instock") navigate("/content/products");
+              else if (id === "pidx") navigate("/sales-share");
+              else if (id === "content") navigate("/content");
+              else if (id === "rating") navigate("/reviews");
+            }}
+          />
         ))}
       </div>
 
@@ -307,6 +358,8 @@ export default function Overview() {
         )}
         <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPage={setPage} />
       </Card>
+
+      {drill && <DrilldownModal t={drill} onClose={() => setDrill(null)} />}
     </PageShell>
   );
 }

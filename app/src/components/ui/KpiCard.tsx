@@ -9,14 +9,14 @@ import type { KpiVM } from "../../lib/format";
  *  competing for attention. Each card owns its own hover slot (unlike the
  *  big charts' page-shared useChartHover) since several cards render at
  *  once and their sparklines are independent of each other. */
-export function KpiCard({ k }: { k: KpiVM }) {
+export function KpiCard({ k, onClick }: { k: KpiVM; onClick?: () => void }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const n = k.sparkPoints.length;
   const sliceW = n ? k.sparkW / n : k.sparkW;
   const hovered = hoverIdx != null ? k.sparkPoints[hoverIdx] : null;
 
   return (
-    <Card padding="18px 20px" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <Card padding="18px 20px" interactive={!!onClick} onClick={onClick} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>{k.label}{k.info && <InfoTip text={k.info} />}</div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 4 }}>
         <span style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 32, lineHeight: 1, color: "var(--text-display)", letterSpacing: "-.01em" }}>{k.valueText}</span>

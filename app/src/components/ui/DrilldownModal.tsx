@@ -9,7 +9,7 @@ export interface DrillRow {
    *  Rows without this render as plain, non-expandable rows; DrilldownModal
    *  only adds the toggle column at all when at least one row in the table
    *  has one. */
-  detail?: { cols: string[]; rows: string[][] };
+  detail?: { cols: string[]; rows: (string | { text: string; color: string })[][] };
 }
 
 export interface DrillTableConfig extends Omit<TableConfig, "rows"> {
@@ -86,7 +86,11 @@ export function DrilldownModal({ t, onClose }: { t: DrillTableConfig; onClose: (
                                 <tbody>
                                   {r.detail.rows.map((row, rri) => (
                                     <tr key={rri}>
-                                      {row.map((v, vi) => <td key={vi} style={{ textAlign: vi === 0 ? "left" : "center", whiteSpace: "normal", overflow: "visible", textOverflow: "clip", maxWidth: "none" }}>{v}</td>)}
+                                      {row.map((v, vi) => (
+                                        <td key={vi} style={{ textAlign: vi === 0 ? "left" : "center", whiteSpace: "normal", overflow: "visible", textOverflow: "clip", maxWidth: "none" }}>
+                                          {typeof v === "string" ? v : <span style={{ color: v.color, fontWeight: 600 }}>{v.text}</span>}
+                                        </td>
+                                      ))}
                                     </tr>
                                   ))}
                                 </tbody>
