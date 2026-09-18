@@ -83,7 +83,7 @@ export default function ProductDetail() {
         buyBoxTimeline.map((e: any) => ({
           cells: [
             cell(fmtBuyBoxDate(e.date)),
-            cell(e.holder === "You" ? (p.buyBoxSeller ? p.buyBoxSeller + " (1P)" : "Your listing (1P)") : e.holder, { align: "center", color: e.holder === "You" ? "var(--status-positive-fg)" : "var(--status-negative-fg)" }),
+            cell(e.holder === "You" ? (p.buyBoxSeller || p.retailerName) + " (1P)" : e.holder, { align: "center", color: e.holder === "You" ? "var(--status-positive-fg)" : "var(--status-negative-fg)" }),
           ],
         })))
     : null;

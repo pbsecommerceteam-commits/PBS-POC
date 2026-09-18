@@ -39,16 +39,16 @@ const fmtDate = (iso: string) => { const [, m, d] = iso.split("-").map(Number); 
  *  here as this SKU's own real crawled buyBoxSeller instead, the same real
  *  field the product's other buy-box displays already use. A SKU whose
  *  buyBoxSeller is genuinely null on file (e.g. its latest crawl found it
- *  unavailable, with no seller to record) falls back to a plainly-labeled
- *  "Your listing (1P)" rather than inventing a name. */
-function buyBoxDateDetail(pid: string, buyBoxSeller: string | null) {
+ *  unavailable, with no seller to record) falls back to the real retailer
+ *  name (e.g. "Amazon.com") rather than a generic invented label. */
+function buyBoxDateDetail(pid: string, buyBoxSeller: string | null, retailerName: string) {
   const timeline = (REAL_BUYBOX_TIMELINE as any)[pid];
   if (!timeline || !timeline.length) return undefined;
   return {
     cols: ["Date", "Held By"],
     rows: timeline.map((e: any) => [
       fmtDate(e.date),
-      { text: e.holder === "You" ? (buyBoxSeller ? buyBoxSeller + " (1P)" : "Your listing (1P)") : e.holder, color: e.holder === "You" ? "var(--status-positive-fg)" : "var(--status-negative-fg)" },
+      { text: e.holder === "You" ? (buyBoxSeller || retailerName) + " (1P)" : e.holder, color: e.holder === "You" ? "var(--status-positive-fg)" : "var(--status-negative-fg)" },
     ]),
   };
 }
@@ -142,7 +142,7 @@ export default function Overview() {
         cell(p.retailerName),
         cell(p.buyBoxRate + "%", { align: "right", strong: true, color: p.buyBoxRate >= 50 ? "var(--status-positive-fg)" : "var(--status-negative-fg)" }),
       ],
-      detail: buyBoxDateDetail(p.id, p.buyBoxSeller),
+      detail: buyBoxDateDetail(p.id, p.buyBoxSeller, p.retailerName),
     })),
   );
 
