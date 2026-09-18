@@ -10,7 +10,7 @@ import { Pagination } from "../../components/table/Pagination";
 import { useUi } from "../../context/UiContext";
 import { useSortedPage } from "../../hooks/useSortedPage";
 import { columnsToCsv } from "../../lib/format";
-import { productSorters } from "../../lib/productSort";
+import { productSorters, urlFailedLast } from "../../lib/productSort";
 import { buildActionableIssues } from "../../lib/issuePanel";
 import { CONTENT_ISSUE_LABELS } from "../../data/mockData";
 import { passFail, CHECK_COLUMNS } from "./contentChecks";
@@ -192,12 +192,13 @@ export default function ContentProducts() {
   const all: Product[] = products.filter((p) => (Object.keys(matches) as FacetKey[]).every((k) => matches[k](p)));
   const issueCards = buildActionableIssues(all);
 
-  const SORTERS = { ...productSorters, completeness: (a: Product, b: Product) => (9 - a.contentChecks.length) - (9 - b.contentChecks.length),
-    bulletsText: (a: Product, b: Product) => a.bulletsText.length - b.bulletsText.length,
-    descriptionText: (a: Product, b: Product) => a.descriptionLength - b.descriptionLength,
-    variationCount: (a: Product, b: Product) => a.variations.length - b.variations.length,
-    variations: (a: Product, b: Product) => a.variations.length - b.variations.length,
-    ...Object.fromEntries(CHECK_COLUMNS.map((c) => [c.key, (a: Product, b: Product) => Number(passFail(a, c.id)) - Number(passFail(b, c.id))])) };
+  const SORTERS = { ...productSorters,
+    completeness: urlFailedLast((a: Product, b: Product) => (9 - a.contentChecks.length) - (9 - b.contentChecks.length)),
+    bulletsText: urlFailedLast((a: Product, b: Product) => a.bulletsText.length - b.bulletsText.length),
+    descriptionText: urlFailedLast((a: Product, b: Product) => a.descriptionLength - b.descriptionLength),
+    variationCount: urlFailedLast((a: Product, b: Product) => a.variations.length - b.variations.length),
+    variations: urlFailedLast((a: Product, b: Product) => a.variations.length - b.variations.length),
+    ...Object.fromEntries(CHECK_COLUMNS.map((c) => [c.key, urlFailedLast((a: Product, b: Product) => Number(passFail(a, c.id)) - Number(passFail(b, c.id)))])) };
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
     all, SORTERS, "completeness", pageSize, [retailer, stock, opportunity, category, brand, issue, search, pageSize].join("|"),
   );

@@ -12,10 +12,26 @@ const mapGapPct = (p: Product) => {
   return p.mapPrice && eff != null ? ((eff - p.mapPrice) / p.mapPrice) * 100 : Infinity;
 };
 
+/** Wraps any comparator so a URL-failed SKU (no data ever scraped) always
+ *  sorts after every genuinely-tracked row, regardless of which column is
+ *  being sorted -- its price/rating/content/etc. are all real zeros/nulls
+ *  that would otherwise put it first under the default ascending sort on
+ *  ANY column, not just shelfScore. Exported so a page with its own extra,
+ *  locally-defined sorter (e.g. content/Products.tsx's "completeness") can
+ *  apply the same treatment. Reliable for the default ascending direction
+ *  every table loads with; a user who manually re-sorts descending gets
+ *  the same pre-existing direction-flip behavior every "?? Infinity"
+ *  null-handling comparator below already has. */
+export function urlFailedLast<T extends { urlFailed: boolean }>(cmp: (a: T, b: T) => number) {
+  return (a: T, b: T) => (a.urlFailed !== b.urlFailed ? (a.urlFailed ? 1 : -1) : cmp(a, b));
+}
+
 /** One comparator per sortable product column, shared by every product
  *  table (Overview, Digital Shelf, Performance Intelligence) so sort behavior — and
- *  the string/enum/numeric special-casing — is defined once. */
-export const productSorters: Record<string, (a: Product, b: Product) => number> = {
+ *  the string/enum/numeric special-casing — is defined once. Every entry is
+ *  wrapped in urlFailedLast (see above) so a URL-failed SKU sorts last no
+ *  matter which column the table is currently sorted by. */
+const RAW_SORTERS: Record<string, (a: Product, b: Product) => number> = {
   name: (a, b) => a.name.localeCompare(b.name),
   category: (a, b) => a.category.localeCompare(b.category),
   retailerName: (a, b) => a.retailerName.localeCompare(b.retailerName),
@@ -51,14 +67,13 @@ export const productSorters: Record<string, (a: Product, b: Product) => number> 
   buyBoxShipper: (a, b) => (a.buyBoxShipper ?? "").localeCompare(b.buyBoxShipper ?? ""),
   has360Image: (a, b) => Number(b.has360Image) - Number(a.has360Image),
   enhancedContent: (a, b) => Number(b.enhancedContent) - Number(a.enhancedContent),
-  // A URL-failed SKU always sorts last, same "?? Infinity" convention as
-  // price/listPrice/etc. above -- its shelfScore is a real, honest 0 (see
-  // withShelfMetrics, mockData.ts), but 0 would otherwise put it first
-  // under the default ascending sort, which is exactly the confusing
-  // "broken row on top" behavior this fixes.
-  shelfScore: (a, b) => (a.urlFailed ? Infinity : a.shelfScore) - (b.urlFailed ? Infinity : b.shelfScore),
+  shelfScore: (a, b) => a.shelfScore - b.shelfScore,
   opportunity: (a, b) => OPP_ORDER[a.opportunity] - OPP_ORDER[b.opportunity],
   sales: (a, b) => a.sales - b.sales,
   salesGrowth: (a, b) => a.salesGrowth - b.salesGrowth,
   units: (a, b) => a.units - b.units,
 };
+
+export const productSorters: Record<string, (a: Product, b: Product) => number> = Object.fromEntries(
+  Object.entries(RAW_SORTERS).map(([key, cmp]) => [key, urlFailedLast(cmp)]),
+);

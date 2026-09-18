@@ -7,12 +7,16 @@ import { DataTable } from "../components/table/DataTable";
 import { Card } from "../components/ui/Card";
 import { InfoTip } from "../components/ui/InfoTip";
 import { Badge, stockTone, opportunityTone } from "../components/ui/Badge";
+import { DrilldownModal, type DrillTableConfig } from "../components/ui/DrilldownModal";
 import { useFilters } from "../context/FiltersContext";
 import { useUi } from "../context/UiContext";
 import { useChartHover } from "../hooks/useChartHover";
 import { lineChart, barChart, spark } from "../lib/charts";
 import { kpiCard, cell, table, deltaColor, delta, seriesToCsv, rowsToCsv, downloadCsv } from "../lib/format";
-import { fetchProduct } from "../data/mockData";
+import { fetchProduct, REAL_BUYBOX_TIMELINE } from "../data/mockData";
+
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const fmtBuyBoxDate = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return MONTH_ABBR[m - 1] + " " + d; };
 
 // No user-facing period control exists any more (see FiltersContext) --
 // pinned to "4w", the one window backed by real crawl data.
@@ -27,6 +31,7 @@ export default function ProductDetail() {
 
   const [detail, setDetail] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [drill, setDrill] = useState<DrillTableConfig | null>(null);
   // Tries the local downloaded photo first, then the real crawled front-
   // image URL, then the initials monogram -- same fallback order as
   // ProductCell (see that component's own comment for why).
@@ -65,6 +70,23 @@ export default function ProductDetail() {
   const t = detail.trends;
   const labels = detail.labels;
   const initials = p.name.split(" ").filter(Boolean).slice(0, 2).map((w: string) => w[0]).join("");
+
+  /* This SKU's real day-by-day buy-box holder (see REAL_BUYBOX_TIMELINE),
+     colored green when we held it, red when a 3P seller did -- same
+     convention as Overview's portfolio-wide buy-box drill, just scoped to
+     the one product already on screen. undefined (no click) when this SKU
+     has no timeline entries at all. */
+  const buyBoxTimeline = (REAL_BUYBOX_TIMELINE as any)[p.id];
+  const buyBoxTable: DrillTableConfig | null = buyBoxTimeline && buyBoxTimeline.length
+    ? table(p.name + " -- Buy Box, Day by Day", "Real daily buy-box holder for this listing -- green = you (1P), red = a 3rd-party seller",
+        [{ label: "Date", align: "left" }, { label: "Held By", align: "center" }],
+        buyBoxTimeline.map((e: any) => ({
+          cells: [
+            cell(fmtBuyBoxDate(e.date)),
+            cell(e.holder === "You" ? "You (1P)" : e.holder, { align: "center", color: e.holder === "You" ? "var(--status-positive-fg)" : "var(--status-negative-fg)" }),
+          ],
+        })))
+    : null;
 
   const kpis = [
     { id: "instock", label: "Stock Availability 1P + 3P", unit: "%", value: p.inStockRate, target: 98, delta: Number((p.inStockRate - t.stock[0]).toFixed(1)), spark: t.stock, labels },
@@ -274,15 +296,9 @@ export default function ProductDetail() {
           </div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 28, lineHeight: 1, marginTop: 8, color: deltaColor(p.priceChangePct) }}>{delta(p.priceChangePct, "%")}</div>
         </Card>
-        <Card padding="18px 20px">
+        <Card padding="18px 20px" interactive={!!buyBoxTable} onClick={buyBoxTable ? () => setDrill(buyBoxTable) : undefined}>
           <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>
-            Price Index<InfoTip text="Current price ÷ this SKU's own average selling price this period, ×100. Above 100 = priced above its own norm right now; below 100 = a markdown." />
-          </div>
-          <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 28, lineHeight: 1, marginTop: 8 }}>{p.priceIndex != null ? (p.priceIndex * 100).toFixed(0) : "—"}</div>
-        </Card>
-        <Card padding="18px 20px">
-          <div className="sl-muted" style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 5 }}>
-            Buy Box Ownership 1P<InfoTip text="Real % of tracked days this SKU's own listing (not a 3rd-party seller) held the buy box." />
+            Buy Box Ownership 1P<InfoTip text="Real % of tracked days this SKU's own listing (not a 3rd-party seller) held the buy box. Click to see the real day-by-day holder." />
           </div>
           <div style={{ fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 28, lineHeight: 1, marginTop: 8 }}>{p.buyBoxRate}%</div>
           <div className="sl-faint" style={{ fontSize: 11.5, marginTop: 6 }}>{detail.note}</div>
@@ -331,6 +347,8 @@ export default function ProductDetail() {
       </div>
 
       <DataTable t={retailerTable} />
+
+      {drill && <DrilldownModal t={drill} onClose={() => setDrill(null)} />}
     </PageShell>
   );
 }
