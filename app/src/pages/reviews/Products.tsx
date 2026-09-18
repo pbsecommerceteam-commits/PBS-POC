@@ -4,12 +4,14 @@ import { Card } from "../../components/ui/Card";
 import { FacetPanel, type FacetGroup } from "../../components/ui/FacetPanel";
 import { Badge, stockTone, opportunityTone } from "../../components/ui/Badge";
 import { ProductCell } from "../../components/ui/ProductCell";
+import { OpportunityCard } from "../../components/ui/OpportunityCard";
 import { SortableTable, type Column } from "../../components/table/SortableTable";
 import { Pagination } from "../../components/table/Pagination";
 import { useUi } from "../../context/UiContext";
 import { useSortedPage } from "../../hooks/useSortedPage";
 import { columnsToCsv } from "../../lib/format";
 import { productSorters } from "../../lib/productSort";
+import { buildActionableIssues } from "../../lib/issuePanel";
 import type { Product } from "../../models/types";
 import type { ReviewsContext } from "./Layout";
 
@@ -61,6 +63,8 @@ export default function ReviewsProducts() {
     (!q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)),
   ), [products, stars, stock, brand, q]);
 
+  const issueCards = buildActionableIssues(all);
+
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
     all, productSorters, "rating", 8, [stars, stock, brand, q].join("|"),
   );
@@ -87,6 +91,16 @@ export default function ReviewsProducts() {
   }, [registerExport]);
 
   return (
+    <>
+    {issueCards.length > 0 && (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,320px),1fr))", gap: "var(--app-gap)" }}>
+        {issueCards.map((c) => (
+          <OpportunityCard key={c.id} impact={c.impact} impactTone={c.impactTone} count={c.count} title={c.title}
+            problem={c.problem} why={c.why} action={c.action} cta={c.cta}
+            onGo={() => navigate(c.id === "buybox" ? "/sales-share" : "/content")} />
+        ))}
+      </div>
+    )}
     <div style={{ display: "flex", gap: "var(--app-gap)", alignItems: "flex-start" }}>
       <FacetPanel groups={facets} onClearAll={() => { setStars([]); setStock([]); setBrand([]); setSearch(""); }} />
       <Card padding="20px 22px 14px" style={{ flex: 1, minWidth: 0 }}>
@@ -106,5 +120,6 @@ export default function ReviewsProducts() {
         <Pagination page={page} totalPages={totalPages} total={total} pageSize={8} onPage={setPage} />
       </Card>
     </div>
+    </>
   );
 }

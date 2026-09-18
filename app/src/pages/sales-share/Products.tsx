@@ -10,6 +10,7 @@ import { useUi } from "../../context/UiContext";
 import { useSortedPage } from "../../hooks/useSortedPage";
 import { columnsToCsv, deltaColor, delta } from "../../lib/format";
 import { productSorters } from "../../lib/productSort";
+import { buildActionableIssues } from "../../lib/issuePanel";
 import type { Product } from "../../models/types";
 import type { SalesShareContext } from "./Layout";
 
@@ -96,6 +97,8 @@ export default function SalesShareProducts() {
     );
   }, [sd, categoryFilter, brand, search]);
 
+  const issueCards = buildActionableIssues(all);
+
   const { slice, sortKey, sortDir, onSort, page, totalPages, setPage, total } = useSortedPage(
     all, productSorters, "shelfScore", 8, [categoryFilter, brand, search].join("|"),
   );
@@ -155,6 +158,11 @@ export default function SalesShareProducts() {
             <OpportunityCard key={o.id} impact={o.impact + " impact"} impactTone={opportunityTone(o.impact)} count={o.count + (o.count === 1 ? " SKU affected" : " SKUs affected")}
               title={o.title} problem={o.problem} why={o.why} action={o.action} cta="View products →"
               onGo={() => { navigate(`/content/products?focus=${o.focus}`); toast("Content filtered to " + o.title.toLowerCase() + "."); }} />
+          ))}
+          {issueCards.map((c) => (
+            <OpportunityCard key={c.id} impact={c.impact} impactTone={c.impactTone} count={c.count} title={c.title}
+              problem={c.problem} why={c.why} action={c.action} cta={c.cta}
+              onGo={() => navigate(c.id === "buybox" ? "/sales-share" : "/content")} />
           ))}
         </div>
       </section>

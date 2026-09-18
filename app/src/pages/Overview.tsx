@@ -10,7 +10,9 @@ import { InfoTip } from "../components/ui/InfoTip";
 import { Badge, stockTone, opportunityTone } from "../components/ui/Badge";
 import { Tabs } from "../components/ui/Tabs";
 import { ProductCell } from "../components/ui/ProductCell";
+import { OpportunityCard } from "../components/ui/OpportunityCard";
 import { DrilldownModal, type DrillTableConfig } from "../components/ui/DrilldownModal";
+import { buildActionableIssues } from "../lib/issuePanel";
 import { useDashboardData } from "../context/DataContext";
 import { useFilters } from "../context/FiltersContext";
 import { useUi } from "../context/UiContext";
@@ -137,6 +139,8 @@ export default function Overview() {
       detail: buyBoxDateDetail(p.id),
     })),
   );
+
+  const issueCards = buildActionableIssues(all);
 
   const toggleSelected = (id: string) => setSelected((prev) => {
     const next = new Set(prev);
@@ -281,6 +285,18 @@ export default function Overview() {
           })}
         </div>
       </Card>
+
+      {issueCards.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,320px),1fr))", gap: "var(--app-gap)" }}>
+          {issueCards.map((c) => (
+            <OpportunityCard
+              key={c.id} impact={c.impact} impactTone={c.impactTone} count={c.count} title={c.title}
+              problem={c.problem} why={c.why} action={c.action} cta={c.cta}
+              onGo={() => navigate(c.id === "buybox" ? "/sales-share" : "/content")}
+            />
+          ))}
+        </div>
+      )}
 
       <Card padding="20px 22px 14px">
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>

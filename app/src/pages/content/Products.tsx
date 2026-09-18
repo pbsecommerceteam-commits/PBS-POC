@@ -4,12 +4,14 @@ import { Card } from "../../components/ui/Card";
 import { FacetPanel, type FacetGroup } from "../../components/ui/FacetPanel";
 import { ColumnPicker, type ColumnOption } from "../../components/ui/ColumnPicker";
 import { ProductCell } from "../../components/ui/ProductCell";
+import { OpportunityCard } from "../../components/ui/OpportunityCard";
 import { SortableTable, type Column } from "../../components/table/SortableTable";
 import { Pagination } from "../../components/table/Pagination";
 import { useUi } from "../../context/UiContext";
 import { useSortedPage } from "../../hooks/useSortedPage";
 import { columnsToCsv } from "../../lib/format";
 import { productSorters } from "../../lib/productSort";
+import { buildActionableIssues } from "../../lib/issuePanel";
 import { CONTENT_ISSUE_LABELS } from "../../data/mockData";
 import { passFail, CHECK_COLUMNS } from "./contentChecks";
 import type { Product } from "../../models/types";
@@ -188,6 +190,7 @@ export default function ContentProducts() {
   ];
 
   const all: Product[] = products.filter((p) => (Object.keys(matches) as FacetKey[]).every((k) => matches[k](p)));
+  const issueCards = buildActionableIssues(all);
 
   const SORTERS = { ...productSorters, completeness: (a: Product, b: Product) => (9 - a.contentChecks.length) - (9 - b.contentChecks.length),
     bulletsText: (a: Product, b: Product) => a.bulletsText.length - b.bulletsText.length,
@@ -230,6 +233,16 @@ export default function ContentProducts() {
   }, [registerExport]);
 
   return (
+    <>
+    {issueCards.length > 0 && (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,320px),1fr))", gap: "var(--app-gap)" }}>
+        {issueCards.map((c) => (
+          <OpportunityCard key={c.id} impact={c.impact} impactTone={c.impactTone} count={c.count} title={c.title}
+            problem={c.problem} why={c.why} action={c.action} cta={c.cta}
+            onGo={() => navigate(c.id === "buybox" ? "/sales-share" : "/content")} />
+        ))}
+      </div>
+    )}
     <div style={{ display: "flex", gap: "var(--app-gap)", alignItems: "flex-start" }}>
       <div ref={facetRef}>
         <FacetPanel groups={facets} onClearAll={() => { setRetailer([]); setStock([]); setOpportunity([]); setCategory([]); setBrand([]); setIssue([]); setSearch(""); }} />
@@ -252,5 +265,6 @@ export default function ContentProducts() {
         <Pagination page={page} totalPages={totalPages} total={total} pageSize={pageSize} onPage={setPage} />
       </Card>
     </div>
+    </>
   );
 }
