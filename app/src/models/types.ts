@@ -63,6 +63,8 @@ export interface Product {
   otherSellers: Array<{ name: string; price: number | null }>;
   /** The literal crawled availability sentence (Price tab's "Stock status", e.g. "Only 1 left in stock - order soon."), distinct from the derived 3-bucket stockStatus below. */
   stockStatusRaw: string | null;
+  /** True when the crawl URL itself failed -- no data was ever scraped for this listing (stockStatusRaw contains "url failed"). Distinct from a genuine Out of Stock read. */
+  urlFailed: boolean;
   /** The retailer's own posted discount, exactly as crawled (Price tab's "Coupon value", e.g. "4.22 (53%)"). */
   couponValue: string | null;
   stockStatus: StockStatus;

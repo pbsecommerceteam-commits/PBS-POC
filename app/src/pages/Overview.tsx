@@ -119,7 +119,7 @@ export default function Overview() {
     { key: "__select", label: "", minWidth: 34, align: "center", render: (p) => (
       <input type="checkbox" checked={selected.has(p.id)} onClick={(e) => e.stopPropagation()} onChange={() => toggleSelected(p.id)} />
     ) },
-    { key: "name", label: "Product", minWidth: 280, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.category} imageUrl={p.imageUrl} noClamp /> },
+    { key: "name", label: "Product", minWidth: 280, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.category} imageUrl={p.imageUrl} urlFailed={p.urlFailed} noClamp /> },
     { key: "price", label: "Price", align: "center", sortable: true, render: (p) => p.price != null ? "$" + p.price.toFixed(2) : "—" },
     { key: "stockStatus", label: "Stock", align: "center", sortable: true, render: (p) => (
       <><Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge><div className="sl-table-sub">{p.inStockRate.toFixed(1)}% of days</div></>
@@ -261,7 +261,7 @@ export default function Overview() {
                         style={{ width: "100%", justifyContent: "space-between", gap: 10 }}
                       >
                         <span style={{ flex: 1, minWidth: 0 }}>
-                          <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.retailerName} imageUrl={p.imageUrl} imageSize={28} />
+                          <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} meta={p.retailerName} imageUrl={p.imageUrl} urlFailed={p.urlFailed} imageSize={28} />
                         </span>
                         <Badge tone={stockTone(p.stockStatus)}>{p.stockStatus}</Badge>
                       </button>

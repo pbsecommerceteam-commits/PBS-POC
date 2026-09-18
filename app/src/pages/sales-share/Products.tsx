@@ -34,7 +34,7 @@ import type { SalesShareContext } from "./Layout";
    column picker on this table (every column here is always shown), so
    "all columns" for export purposes is simply this whole list. */
 export const SALES_COLUMNS: Column<Product>[] = [
-  { key: "name", label: "Product", minWidth: 280, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} imageUrl={p.imageUrl} noClamp />, csv: (p) => `${p.id.toUpperCase()} - ${p.name}` },
+  { key: "name", label: "Product", minWidth: 280, sortable: true, render: (p) => <ProductCell id={p.id} name={p.name} sku={p.id.toUpperCase()} imageUrl={p.imageUrl} urlFailed={p.urlFailed} noClamp />, csv: (p) => `${p.id.toUpperCase()} - ${p.name}` },
   { key: "category", label: "Category", align: "center", sortable: true, render: (p) => p.category, csv: (p) => p.category },
   { key: "retailerName", label: "Retailer", align: "center", sortable: true, render: (p) => <span style={{ fontSize: 13 }}>{p.retailerName}</span>, csv: (p) => p.retailerName },
   { key: "retailerId", label: "Retailer ID", align: "center", sortable: true, render: (p) => p.retailerId ?? "—", csv: (p) => p.retailerId ?? "" },

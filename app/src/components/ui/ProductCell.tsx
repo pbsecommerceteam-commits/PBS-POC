@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Badge } from "./Badge";
 
 /** The product identity cell used in every product table and list. Tries a
  *  locally-downloaded photo first (public/product-images/{id}.jpg -- fast,
@@ -9,7 +10,7 @@ import { useState } from "react";
  *  local and real remote photo have failed to load. Never falls back to a
  *  placeholder/stock image -- every photo shown is a genuine crawled photo
  *  of that SKU, or it's the monogram. */
-export function ProductCell({ id, name, sku, meta, imageUrl, nameLines = 1, noClamp = false, imageSize = 34 }: { id?: string; name: string; sku?: string; meta?: string; imageUrl?: string | null; nameLines?: number; noClamp?: boolean; imageSize?: number }) {
+export function ProductCell({ id, name, sku, meta, imageUrl, nameLines = 1, noClamp = false, imageSize = 34, urlFailed = false }: { id?: string; name: string; sku?: string; meta?: string; imageUrl?: string | null; nameLines?: number; noClamp?: boolean; imageSize?: number; urlFailed?: boolean }) {
   const initials = name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("");
   const [stage, setStage] = useState<"local" | "remote" | "initials">(id ? "local" : imageUrl ? "remote" : "initials");
   const src = stage === "local" ? `${import.meta.env.BASE_URL}product-images/${id}.jpg` : stage === "remote" ? imageUrl! : undefined;
@@ -51,7 +52,10 @@ export function ProductCell({ id, name, sku, meta, imageUrl, nameLines = 1, noCl
         <span className="sl-avatar" style={imageSize !== 34 ? { width: imageSize, height: imageSize } : undefined}>{initials}</span>
       )}
       <div style={{ minWidth: 0 }}>
-        <div className="sl-table-name" style={nameStyle}>{name}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+          <span className="sl-table-name" style={{ minWidth: 0, ...nameStyle }}>{name}</span>
+          {urlFailed && <span style={{ flex: "none" }}><Badge tone="critical">URL Failed</Badge></span>}
+        </div>
         {(sku || meta) && <div className="sl-table-sub">{[sku, meta].filter(Boolean).join(" · ")}</div>}
       </div>
     </div>

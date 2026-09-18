@@ -51,7 +51,12 @@ export const productSorters: Record<string, (a: Product, b: Product) => number> 
   buyBoxShipper: (a, b) => (a.buyBoxShipper ?? "").localeCompare(b.buyBoxShipper ?? ""),
   has360Image: (a, b) => Number(b.has360Image) - Number(a.has360Image),
   enhancedContent: (a, b) => Number(b.enhancedContent) - Number(a.enhancedContent),
-  shelfScore: (a, b) => a.shelfScore - b.shelfScore,
+  // A URL-failed SKU always sorts last, same "?? Infinity" convention as
+  // price/listPrice/etc. above -- its shelfScore is a real, honest 0 (see
+  // withShelfMetrics, mockData.ts), but 0 would otherwise put it first
+  // under the default ascending sort, which is exactly the confusing
+  // "broken row on top" behavior this fixes.
+  shelfScore: (a, b) => (a.urlFailed ? Infinity : a.shelfScore) - (b.urlFailed ? Infinity : b.shelfScore),
   opportunity: (a, b) => OPP_ORDER[a.opportunity] - OPP_ORDER[b.opportunity],
   sales: (a, b) => a.sales - b.sales,
   salesGrowth: (a, b) => a.salesGrowth - b.salesGrowth,

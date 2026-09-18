@@ -2993,6 +2993,11 @@ function productFor(p: (typeof catalog)[number]) {
     mapPrice: (p as any).mapPrice ?? null,
     url: (p as any).url ?? null,
     stockStatusRaw: (p as any).stockStatusRaw ?? null,
+    // Real -- true when the crawl URL itself failed (no data was ever
+    // scraped for this listing), computed once here so every consumer
+    // (shelfScore, sort order, the "URL Failed" badge, issue panels) reads
+    // the same real signal instead of re-deriving it from stockStatusRaw.
+    urlFailed: isUrlFailed({ stockStatusRaw: (p as any).stockStatusRaw ?? null }),
     couponValue: (p as any).couponValue ?? null,
     otherSellers: (p as any).otherSellers ?? [],
     // Real -- badge from the latest raw crawl status, rate from the
@@ -3059,6 +3064,12 @@ function productFor(p: (typeof catalog)[number]) {
    in the tool right now, including as a silent input to a score the tool
    does show. In-Stock/Content/Rating weights: 40/40/20. */
 function withShelfMetrics(q: any) {
+  // A SKU whose crawl URL failed has no real signal to score at all -- the
+  // normal 20-100 floor below is meant for a genuinely-tracked SKU that's
+  // just performing poorly, not a listing that was never actually read.
+  // Score it a real, honest 0 rather than letting it land on the same
+  // floor as a real (if weak) product -- see isUrlFailed/urlFailed above.
+  if (q.urlFailed) { q.shelfScore = 0; return q; }
   // priceIndex is null for a SKU with no observed price at all -- treated
   // as neutral (1.0, no penalty) rather than excluding the product or
   // crashing the score, since there's no honest basis to penalize pricing
